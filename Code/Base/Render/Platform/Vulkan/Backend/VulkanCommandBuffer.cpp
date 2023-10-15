@@ -3,8 +3,10 @@
 #include "VulkanBuffer.h"
 #include "VulkanTexture.h"
 #include "VulkanRenderPass.h"
+#include "VulkanFramebuffer.h"
 #include "VulkanPipelineState.h"
 
+#include "Base/Math/Math.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
 namespace EE::Render
@@ -31,19 +33,42 @@ namespace EE::Render
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
-        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RenderArea const& renderArea )
+        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView*> textureViews )
         {
-            if ( pRhiRenderPass )
+            EE_ASSERT( pFramebuffer );
+            EE_ASSERT( renderArea.IsValid() );
+            EE_ASSERT( !textureViews.empty() );
+
+            if ( pRenderPass )
             {
-                if ( auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRhiRenderPass ) )
+                if ( auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
                 {
+                    TFixedVector<VkImageView, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> views;
+                    views.reserve( textureViews.size() );
+                    for ( RHI::RHITextureView*& texView : textureViews )
+                    {
+                        auto* pVkTexView = RHI::RHIDowncast<VulkanTextureView>( texView );
+                        views.push_back( pVkTexView->m_pHandle );
+                    }
+
                     VkRenderPassAttachmentBeginInfo attachmentBeginInfo = {};
                     attachmentBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
-                    //attachmentBeginInfo.
+                    attachmentBeginInfo.attachmentCount = static_cast<uint32_t>( views.size() );
+                    attachmentBeginInfo.pAttachments = views.data();
 
                     VkRenderPassBeginInfo beginInfo = {};
                     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                     beginInfo.pNext = &attachmentBeginInfo;
+                    beginInfo.renderPass = pVkRenderPass->m_pHandle;
+                    // Safety: here we make a copy of a VkFramebuffer pointer, so it is safe to write this without having the risk of dangling reference.
+                    beginInfo.framebuffer = RHI::RHIDowncast<VulkanFramebuffer>( pFramebuffer )->m_pHandle;
+                    // TODO: initial clear value.
+                    beginInfo.clearValueCount = 0;
+                    beginInfo.pClearValues = nullptr;
+                    beginInfo.renderArea.extent.width = renderArea.m_width;
+                    beginInfo.renderArea.extent.height = renderArea.m_height;
+                    beginInfo.renderArea.offset.x = renderArea.m_OffsetX;
+                    beginInfo.renderArea.offset.y = renderArea.m_OffsetY;
 
                     vkCmdBeginRenderPass( m_pHandle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
@@ -127,9 +152,38 @@ namespace EE::Render
             }
         }
 
+        // State Settings
+        //-------------------------------------------------------------------------
+
+        void VulkanCommandBuffer::SetViewport( uint32_t width, uint32_t height, int32_t xOffset, int32_t yOffset )
+        {
+            EE_ASSERT( static_cast<uint32_t>( Math::Abs( xOffset ) ) <= width );
+            EE_ASSERT( static_cast<uint32_t>( Math::Abs( yOffset ) ) <= height );
+
+            // Note: upside-down vulkan viewport to manually flip vulkan NDC y-axis.
+            VkViewport viewport = {};
+            viewport.width = static_cast<float>( width );
+            viewport.height = -static_cast<float>( height );
+            viewport.x = static_cast<float>( xOffset );
+            viewport.y = static_cast<float>( height + yOffset );
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport( m_pHandle, 0, 1, &viewport );
+        }
+
+        void VulkanCommandBuffer::SetScissor( uint32_t width, uint32_t height, int32_t xOffset, int32_t yOffset )
+        {
+            VkRect2D cullRect = {};
+            cullRect.extent.width = width;
+            cullRect.extent.height = height;
+            cullRect.offset.x = xOffset;
+            cullRect.offset.y = yOffset;
+            vkCmdSetScissor( m_pHandle, 0, 1, &cullRect );
+        }
+
         // Vulkan Pipeline Barrier Utility Functions
         //-------------------------------------------------------------------------
-    
+
         inline static VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> const& flags )
         {
             VkImageAspectFlags flag = 0;
@@ -557,7 +611,7 @@ namespace EE::Render
 
             return barrier;
         }
-    }
+	}
 }
 
 #endif

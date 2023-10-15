@@ -249,7 +249,10 @@ namespace EE::RG
 
 	struct RGImportedResource
 	{
-		TSharedPtr<RHI::RHIResource>			m_pImportedResource;
+        // TODO: rhi resource reference counting
+        // Note: Swapchain imported texture resource is nullptr when register into the RGResourceRegistry.
+        //       Actual present texture fetch will be delayed to render graph execution stage.
+		RHI::RHIResource*       	    		m_pImportedResource;
 		RHI::RenderResourceBarrierState			m_currentAccess;
 	};
 
@@ -270,8 +273,14 @@ namespace EE::RG
 
 	public:
 
+        RGResource() = default;
+
         template <typename RGDescType, typename DescType>
         RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc );
+
+        template <typename RGDescType, typename DescType>
+        RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource );
+
         ~RGResource() = default;
 
         RGResource( RGResource const& ) = delete;
@@ -349,7 +358,12 @@ namespace EE::RG
 
     template <typename RGDescType, typename DescType>
     RGResource::RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc )
-        : m_desc( desc.GetRGDesc() )
+        : m_desc( desc.GetRGDesc() ), m_resource( RGLazyCreateResource{} )
+    {}
+
+    template <typename RGDescType, typename DescType>
+    RGResource::RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource )
+        : m_desc( desc.GetRGDesc() ), m_resource( std::move( importedResource ) )
     {}
 
 	template <typename Tag, typename DescType, typename DescConstRefType>
@@ -364,6 +378,7 @@ namespace EE::RG
     class RGCompiledResource
     {
         friend class RGResource;
+        friend class RenderGraph;
 
     public:
 
@@ -378,6 +393,12 @@ namespace EE::RG
             typename RGCompiledResourceRefType = typename std::add_lvalue_reference_t<typename DescType::RGCompiledResourceType>
         >
         RGCompiledResourceRefType GetResource();
+
+        template <typename Tag,
+            typename DescType = typename Tag::DescType,
+            typename RGCompiledResourceConstRefType = typename std::add_lvalue_reference_t<std::add_const_t<typename DescType::RGCompiledResourceType>>
+        >
+        RGCompiledResourceConstRefType GetResource() const;
 
         inline RGResourceType GetResourceType() const
         {
@@ -397,6 +418,9 @@ namespace EE::RG
 
         inline bool IsImportedResource() const { return m_importedResource.has_value(); }
 
+        inline RHI::RenderResourceAccessState& GetCurrentAccessState() { return m_currentAccessState; }
+        inline RHI::RenderResourceAccessState const& GetCurrentAccessState() const { return m_currentAccessState; }
+
         //-------------------------------------------------------------------------
 
         // TODO: change RGCompiledResource into RGRetiredResource
@@ -413,6 +437,7 @@ namespace EE::RG
             typename _Impl::RGBufferDesc::RGCompiledResourceType,
             typename _Impl::RGTextureDesc::RGCompiledResourceType
         >		                                                        m_resource;
+        RHI::RenderResourceAccessState                                  m_currentAccessState;
         // Note: Imported resources contain share pointer to outer resource.
         //       It is our duty to keep this share pointer alive until finish using this imported resource.
         //       So after compile RGResource to RGCompiledResource, we should keep a copy of imported resource if it is.
@@ -430,6 +455,15 @@ namespace EE::RG
 
     template <typename Tag, typename DescType, typename RGCompiledResourceRefType>
     RGCompiledResourceRefType EE::RG::RGCompiledResource::GetResource()
+    {
+        EE_ASSERT( GetResourceType() == Tag::GetRGResourceType() );
+
+        constexpr size_t const index = static_cast<size_t>( Tag::GetRGResourceType() );
+        return eastl::get<index>( m_resource );
+    }
+
+    template <typename Tag, typename DescType, typename RGCompiledResourceConstRefType>
+    RGCompiledResourceConstRefType EE::RG::RGCompiledResource::GetResource( ) const
     {
         EE_ASSERT( GetResourceType() == Tag::GetRGResourceType() );
 

@@ -1,9 +1,14 @@
 #include "RenderGraph.h"
+#include "Base/Types/Arrays.h"
 #include "Base/Logging/Log.h"
 #include "Base/Threading/Threading.h"
 #include "Base/RHI/RHIDevice.h"
+#include "Base/RHI/RHISwapchain.h"
+#include "Base/RHI/RHICommandQueue.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
 #include "Base/RHI/Resource/RHITexture.h"
+
+#include "EASTL/algorithm.h"
 
 namespace EE
 {
@@ -25,7 +30,7 @@ namespace EE
             EE_ASSERT( !m_frameExecuting );
             EE_ASSERT( pRhiDevice != nullptr );
 
-            m_currentDeviceFrameIndex = pRhiDevice->GetCurrentDeviceFrameIndex();
+            m_currentDeviceFrameIndex = pRhiDevice->GetDeviceFrameIndex();
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
 
             commandContext.SetCommandContext( this, pRhiDevice, pRhiDevice->AllocateCommandBuffer() );
@@ -49,6 +54,28 @@ namespace EE
             commandContext.Reset();
 
             m_frameExecuting = false;
+        }
+
+        RGResourceHandle<RGResourceTagTexture> RenderGraph::FetchPresentTextureResource( RHI::RHISwapchain* pSwapchain )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+            EE_ASSERT( pSwapchain );
+                
+            // Note: register swapchain texture resource as regular imported render graph texture resource.
+            _Impl::RGTextureDesc rgDesc = {};
+            EE::RG::TextureDesc textureDesc;
+            textureDesc.m_desc = pSwapchain->GetPresentTextureDesc();
+            rgDesc.m_desc = textureDesc;
+
+            RGImportedResource importResource;
+            importResource.m_pImportedResource = nullptr;
+            importResource.m_currentAccess = RHI::RenderResourceBarrierState::Undefined;
+
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( rgDesc, std::move( importResource ) );
+            RGResourceHandle<RGResourceTagTexture> handle;
+            handle.m_slotID = id;
+            handle.m_desc = textureDesc;
+            return handle;
         }
 
         RGNodeBuilder RenderGraph::AddNode( String const& nodeName )
@@ -100,6 +127,34 @@ namespace EE
 
             // Compile and Analyze graph nodes to populate an execution sequence
             //-------------------------------------------------------------------------
+
+            bool allNodesAreReady = true;
+            
+            for ( auto& node : m_graph )
+            {
+                if ( !node.ReadyToExecute( &m_resourceRegistry ) )
+                {
+                    allNodesAreReady = false;
+                    break;
+                }
+            }
+
+            // Note: we can only change m_executionSequence when all nodes are ready to be executed.
+            if ( allNodesAreReady )
+            {
+                m_executionSequence.clear();
+
+                for ( auto& node : m_graph )
+                {
+                    m_executionSequence.emplace_back( eastl::exchange( node, {} ).IntoExecutableNode( &m_resourceRegistry ) );
+                }
+
+                m_graph.clear();
+            }
+            else
+            {
+                m_graph.clear();
+            }
         }
 
         // Execution Stage
@@ -109,6 +164,65 @@ namespace EE
         {
             EE_ASSERT( Threading::IsMainThread() );
             EE_ASSERT( m_frameExecuting );
+            EE_ASSERT( m_resourceRegistry.GetCurrentResourceState() == RGResourceRegistry::ResourceState::Compiled );
+
+            if ( !m_executionSequence.empty() )
+            {
+                // Transition all resources used in execution nodes ahead to reduce some pipeline bubbles.
+                //-------------------------------------------------------------------------
+            
+                // TODO: Count for total transition resource ahead, to avoid frequently memory allocation.
+                TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
+
+                for ( RGExecutableNode& node : m_executionSequence )
+                {
+                    for ( RGNodeResource& input : node.m_pInputs )
+                    {
+                        transitionResources.emplace_back(
+                            m_resourceRegistry.GetCompiledResource( input ),
+                            // Note: force skipping synchronization.
+                            RHI::RenderResourceAccessState{ input.m_passAccess.GetCurrentAccess(), true }
+                            );
+
+                        // Note: we already transition the barrier state once, skip synchronization next time encounter.
+                        input.m_passAccess.SetSkipSyncIfContinuous( true );
+                    }
+
+                    for ( RGNodeResource& output : node.m_pOutputs )
+                    {
+                        transitionResources.emplace_back(
+                            m_resourceRegistry.GetCompiledResource( output ),
+                            // Note: force skipping synchronization.
+                            RHI::RenderResourceAccessState{ output.m_passAccess.GetCurrentAccess(), true }
+                        );
+
+                        // Note: we already transition the barrier state once, skip synchronization next time encounter.
+                        output.m_passAccess.SetSkipSyncIfContinuous( true );
+                    }
+                }
+
+                for ( auto& transitionResource : transitionResources )
+                {
+                    TransitionResource( transitionResource.first, transitionResource.second );
+                }
+
+                // Execute render graph
+                //-------------------------------------------------------------------------
+
+                for ( RGExecutableNode& executionNode : m_executionSequence )
+                {
+                    
+                }
+            }
+            else
+            {
+                EE_LOG_MESSAGE( "RenderGraph", "", "RenderGraph waiting for all nodes to be ready..." );
+            }
+        }
+
+        void RenderGraph::Present( RHI::RHISwapchain* pSwapchain )
+        {
+
         }
 
         // Cleanup Stage
@@ -117,6 +231,253 @@ namespace EE
         void RenderGraph::ClearAllResources( RHI::RHIDevice* pRhiDevice )
         {
             m_resourceRegistry.ClearAll( pRhiDevice );
+        }
+
+        //-------------------------------------------------------------------------
+
+        int32_t RenderGraph::FindPresentNodeIndex() const
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+
+            if ( m_executionSequence.empty() )
+            {
+                return -1;
+            }
+
+            int32_t result = -1;
+            int32_t currentNode = static_cast<int32_t>( m_executionSequence.size() - 1 );
+            // For now, this node.m_id is the index inside m_executionSequence.
+            for ( auto beg = m_executionSequence.end(); beg != m_executionSequence.begin(); --beg )
+            {
+                auto& node = *beg;
+                for ( auto const& output : node.m_pOutputs )
+                {
+                    auto& compiledResource = m_resourceRegistry.GetCompiledResource( output );
+                    if ( compiledResource.IsImportedResource() && compiledResource.GetResourceType() == RGResourceType::Texture )
+                    {
+                        if ( compiledResource.m_importedResource->m_pImportedResource == nullptr )
+                        {
+                            result = currentNode;
+                            break;
+                        }
+                    }
+                }
+
+                --currentNode;
+            }
+
+            return result;
+        }
+
+        void RenderGraph::TransitionResource( RGCompiledResource& compiledResource, RHI::RenderResourceAccessState const& access )
+        {
+            // TODO: Batched barrier transition.
+            //       It is more efficient to transition barrier all at once than one by one.
+
+            if ( access.GetSkipSyncIfContinuous() && access.GetCurrentAccess() == compiledResource.GetCurrentAccessState().GetCurrentAccess() )
+            {
+                return;
+            }
+
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            auto* pSubmitQueue = commandContext.m_pCommandQueue;
+
+            switch ( compiledResource.GetResourceType() )
+            {
+                case RGResourceType::Buffer:
+                {
+                    RHI::RenderResourceBarrierState prevBarrier[1] = { compiledResource.GetCurrentAccessState().GetCurrentAccess() };
+                    RHI::RenderResourceBarrierState nextBarrier[1] = { access.GetCurrentAccess() };
+
+                    RHI::BufferBarrier barrier;
+                    barrier.m_pRhiBuffer = compiledResource.GetResource<RGResourceTagBuffer>();
+                    barrier.m_size = compiledResource.GetDesc<RGResourceTagBuffer>().m_desc.m_desireSize;
+                    barrier.m_offset = 0;
+                    barrier.m_previousAccessesCount = 1;
+                    barrier.m_pPreviousAccesses = prevBarrier;
+                    barrier.m_nextAccessesCount = 1;
+                    barrier.m_pNextAccesses = nextBarrier;
+                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+
+                    commandContext.GetRHICommandBuffer()->PipelineBarrier(
+                        nullptr,
+                        1, &barrier,
+                        0, nullptr
+                    );
+
+                    compiledResource.GetCurrentAccessState().TransiteTo( nextBarrier[0] );
+                    break;
+                }
+                case RGResourceType::Texture:
+                {
+                    RHI::RenderResourceBarrierState prevBarrier[1] = { compiledResource.GetCurrentAccessState().GetCurrentAccess() };
+                    RHI::RenderResourceBarrierState nextBarrier[1] = { access.GetCurrentAccess() };
+
+                    RHI::TextureBarrier barrier;
+                    barrier.m_pRhiTexture = compiledResource.GetResource<RGResourceTagTexture>();
+                    barrier.m_previousAccessesCount = 1;
+                    barrier.m_pPreviousAccesses = prevBarrier;
+                    barrier.m_nextAccessesCount = 1;
+                    barrier.m_pNextAccesses = nextBarrier;
+                    barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
+                    barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
+                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                    // TODO: for now, always keep contents
+                    barrier.m_discardContents = false;
+
+                    auto& desc = compiledResource.GetDesc<RGResourceTagTexture>().m_desc;
+                    barrier.m_subresourceRange = RHI::TextureSubresourceRange::AllSubresources( PixelFormatToAspectFlags( desc.m_format ) );
+
+                    commandContext.GetRHICommandBuffer()->PipelineBarrier(
+                        nullptr,
+                        0, nullptr,
+                        1, &barrier
+                    );
+
+                    compiledResource.GetCurrentAccessState().TransiteTo( nextBarrier[0] );
+                    break;
+                }
+                default:
+                EE_UNIMPLEMENTED_FUNCTION();
+                break;
+            }
+        }
+
+        void RenderGraph::TransitionResourceBatched( TSpan<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources )
+        {
+            if ( transitionResources.empty() )
+            {
+                return;
+            }
+
+            TInlineVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>, 32> filteredTransitionResources;
+            filteredTransitionResources.reserve( transitionResources.size() );
+
+            eastl::copy_if( transitionResources.begin(), transitionResources.end(), eastl::back_inserter(filteredTransitionResources), [] ( TPair<RGCompiledResource&, RHI::RenderResourceAccessState>& pair )
+            { 
+                auto& [transitionResource, access] = pair;
+                return !( access.GetSkipSyncIfContinuous() &&
+                          access.GetCurrentAccess() == transitionResource.GetCurrentAccessState().GetCurrentAccess() );
+            });
+
+            TInlineVector<RHI::BufferBarrier, 32> bufferBarriers;
+            TInlineVector<RHI::TextureBarrier, 32> textureBarriers;
+
+            TInlineVector<TPair<RHI::RenderResourceBarrierState, RHI::RenderResourceBarrierState>, 64> barrierTransitions;
+
+            for ( auto& [transitionResource, access] : filteredTransitionResources )
+            {
+                barrierTransitions.emplace_back( transitionResource.GetCurrentAccessState().GetCurrentAccess(), access.GetCurrentAccess() );
+            }
+
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            auto* pSubmitQueue = commandContext.m_pCommandQueue;
+
+            // Safety: After this time point, barrierTransitions should NOT be reallocated.
+            //         This will cause m_pPreviousAccesses and m_pNextAccesses points to dangling memory.
+            size_t currentTransition = 0;
+            for ( auto& [transitionResource, access] : filteredTransitionResources )
+            {
+                switch ( transitionResource.GetResourceType() )
+                {
+                    case RGResourceType::Buffer:
+                    {
+                        RHI::BufferBarrier barrier;
+                        barrier.m_pRhiBuffer = transitionResource.GetResource<RGResourceTagBuffer>();
+                        barrier.m_size = transitionResource.GetDesc<RGResourceTagBuffer>().m_desc.m_desireSize;
+                        barrier.m_offset = 0;
+                        barrier.m_previousAccessesCount = 1;
+                        barrier.m_pPreviousAccesses = &barrierTransitions[currentTransition].first;
+                        barrier.m_nextAccessesCount = 1;
+                        barrier.m_pNextAccesses = &barrierTransitions[currentTransition].second;
+                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+
+                        bufferBarriers.push_back( barrier );
+
+                        transitionResource.GetCurrentAccessState().TransiteTo( barrierTransitions[currentTransition].second );
+                        break;
+                    }
+                    case RGResourceType::Texture:
+                    {
+                        RHI::TextureBarrier barrier;
+                        barrier.m_pRhiTexture = transitionResource.GetResource<RGResourceTagTexture>();
+                        barrier.m_previousAccessesCount = 1;
+                        barrier.m_pPreviousAccesses = &barrierTransitions[currentTransition].first;
+                        barrier.m_nextAccessesCount = 1;
+                        barrier.m_pNextAccesses = &barrierTransitions[currentTransition].second;
+                        barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
+                        barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
+                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                        // TODO: for now, always keep contents
+                        barrier.m_discardContents = false;
+
+                        auto& desc = transitionResource.GetDesc<RGResourceTagTexture>().m_desc;
+                        barrier.m_subresourceRange = RHI::TextureSubresourceRange::AllSubresources( PixelFormatToAspectFlags( desc.m_format ) );
+
+                        textureBarriers.push_back( barrier );
+
+                        transitionResource.GetCurrentAccessState().TransiteTo( barrierTransitions[currentTransition].second );
+                        break;
+                    }
+                    default:
+                    EE_UNIMPLEMENTED_FUNCTION();
+                    break;
+                }
+
+                ++currentTransition;
+            }
+
+
+            if ( !bufferBarriers.empty() )
+            {
+                commandContext.GetRHICommandBuffer()->PipelineBarrier(
+                    nullptr,
+                    static_cast<uint32_t>(bufferBarriers.size()), bufferBarriers.data(),
+                    0, nullptr
+                );
+            }
+            if ( !textureBarriers.empty() )
+            {
+                commandContext.GetRHICommandBuffer()->PipelineBarrier(
+                    nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>( textureBarriers.size() ), textureBarriers.data()
+                );
+            }
+        }
+
+        void RenderGraph::ExecuteNode( RGExecutableNode& node )
+        {
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+
+            size_t totalResourceCount = node.m_pInputs.size() + node.m_pOutputs.size();
+            TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
+            transitionResources.reserve( totalResourceCount );
+
+            for ( RGNodeResource& input : node.m_pInputs )
+            {
+                transitionResources.emplace_back(
+                    m_resourceRegistry.GetCompiledResource( input ),
+                    input.m_passAccess
+                );
+            }
+
+            for ( RGNodeResource& output : node.m_pOutputs )
+            {
+                transitionResources.emplace_back(
+                    m_resourceRegistry.GetCompiledResource( output ),
+                    output.m_passAccess
+                );
+            }
+
+            TransitionResourceBatched( transitionResources );
+
+            // execute node callback
+            node.m_executionCallback( commandContext );
         }
     }
 }

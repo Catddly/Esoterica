@@ -6,15 +6,24 @@
 #include "RenderGraphResourceRegistry.h"
 #include "RenderGraphNodeBuilder.h"
 #include "Base/Types/Arrays.h"
+#include "Base/Types/Tuple.h"
 #include "Base/Types/String.h"
+#include "Base/RHI/RHIDevice.h"
 // TODO: may be decouple pipeline barrier from command buffer 
 #include "Base/RHI/RHICommandBuffer.h"
-#include "Base/RHI/RHIDevice.h"
+
+namespace EE::RHI
+{
+    class RHIDevice;
+    class RHISwapchain;
+}
 
 namespace EE
 {
 	namespace RG
 	{
+        class RGCompiledResource;
+
 		class EE_BASE_API RenderGraph
 		{
 			friend class RGNodeBuilder;
@@ -38,6 +47,9 @@ namespace EE
 			template <typename DescType, typename RTTag = typename DescType::RGResourceTypeTag>
 			RGResourceHandle<RTTag> CreateResource( DescType const& desc );
 
+            // TODO: support multiple swapchain (multiple render window)
+            RGResourceHandle<RGResourceTagTexture> FetchPresentTextureResource( RHI::RHISwapchain* pSwapchain );
+
 			[[nodiscard]] RGNodeBuilder AddNode( String const& nodeName );
 
 			#if EE_DEVELOPMENT_TOOLS
@@ -54,10 +66,27 @@ namespace EE
 
             void Execute();
 
+            void Present( RHI::RHISwapchain* pSwapchain );
+
             // Cleanup Stage
             //-------------------------------------------------------------------------
 
             void ClearAllResources( RHI::RHIDevice* pRhiDevice );
+
+        private:
+
+            inline RGResourceRegistry&       GetResourceRegistry() { return m_resourceRegistry; };
+            inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
+
+            // Return -1 if failed to find the presentable node.
+            int32_t FindPresentNodeIndex() const;
+
+            void TransitionResource( RGCompiledResource& compiledResource, RHI::RenderResourceAccessState const& access );
+            void TransitionResourceBatched( TSpan<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources );
+
+            // All resources used in this node should be in positioned. (i.e. theirs resource barrier states is correct)
+            // This function will 
+            void ExecuteNode( RGExecutableNode& node );
 
 		private:
         
@@ -68,7 +97,7 @@ namespace EE
 			TVector<RGNode>							m_graph;
             RGResourceRegistry                      m_resourceRegistry;
 
-            //TVector<RGExecutableNode>               m_executableGraph;
+            TVector<RGExecutableNode>               m_executionSequence;
 
             // Note: this render command context will match exact the device frame index.
             RGRenderCommandContext                  m_renderCommandContexts[RHI::RHIDevice::NumDeviceFrameCount];

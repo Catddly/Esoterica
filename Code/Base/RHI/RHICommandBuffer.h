@@ -1,6 +1,9 @@
 #pragma once
 
 #include "RHITaggedType.h"
+#include "Resource/RHIResourceCreationCommons.h"
+#include "Base/Types/Arrays.h"
+#include "Base/Math/Math.h"
 // TODO: remove this
 #include "Base/Render/RenderTexture.h"
 
@@ -167,7 +170,12 @@ namespace EE::RHI
             : m_skipSyncIfContinuous( skipSyncIfContinuous ), m_targetBarrier( targetBarrier )
         {}
 
-        inline bool SkipSyncIfContinuous() const
+        inline void SetSkipSyncIfContinuous( bool enable )
+        {
+            m_skipSyncIfContinuous = enable;
+        }
+
+        inline bool GetSkipSyncIfContinuous() const
         {
             return m_skipSyncIfContinuous;
         }
@@ -233,6 +241,8 @@ namespace EE::RHI
         Metadata,
     };
 
+    TBitFlags<TextureAspectFlags> PixelFormatToAspectFlags( EPixelFormat format );
+
     struct TextureSubresourceRange
     {
         TBitFlags<TextureAspectFlags>		    m_aspectFlags;
@@ -240,6 +250,17 @@ namespace EE::RHI
         uint32_t							    m_levelCount;
         uint32_t							    m_baseArrayLayer;
         uint32_t							    m_layerCount;
+
+        static TextureSubresourceRange AllSubresources( TBitFlags<TextureAspectFlags> aspectFlags )
+        {
+            TextureSubresourceRange range;
+            range.m_aspectFlags = aspectFlags;
+            range.m_baseMipLevel = 0;
+            range.m_baseArrayLayer = 0;
+            range.m_levelCount = ~(0u);
+            range.m_layerCount = ~(0u);
+            return range;
+        }
     };
 
     struct TextureBarrier
@@ -258,15 +279,26 @@ namespace EE::RHI
     };
 
     class RHIRenderPass;
+    class RHIFramebuffer;
     class RHIPipelineState;
 
     struct RenderArea
     {
         uint32_t                                m_width;
         uint32_t                                m_height;
-        uint32_t                                m_OffsetX;
-        uint32_t                                m_OffsetY;
+        int32_t                                 m_OffsetX;
+        int32_t                                 m_OffsetY;
+
+        inline bool IsValid() const
+        {
+            return m_width != 0
+                && m_height != 0
+                && static_cast<uint32_t>( Math::Abs( m_OffsetX ) ) <= m_width
+                && static_cast<uint32_t>( Math::Abs( m_OffsetY ) ) <= m_height;
+        }
     };
+
+    class RHITextureView;
 
     class RHICommandBuffer : public RHITaggedType
     {
@@ -289,16 +321,19 @@ namespace EE::RHI
         virtual void Draw( uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstInstance = 0 ) = 0;
         virtual void DrawIndexed( uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0 ) = 0;
 
-        virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RenderArea const& renderArea ) = 0;
+        virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView*> textureViews ) = 0;
         virtual void EndRenderPass() = 0;
 
         virtual void PipelineBarrier(
             GlobalBarrier const* pGlobalBarriers,
             uint32_t bufferBarrierCount, BufferBarrier const* pBufferBarriers,
-            uint32_t imageBarrierCount, TextureBarrier const* pImageBarriers
+            uint32_t textureBarrierCount, TextureBarrier const* pTextureBarriers
         ) = 0;
 
         virtual void BindPipelineState( RHIPipelineState* pRhiPipelineState ) = 0;
+
+        virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
+        virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
 
     private:
         

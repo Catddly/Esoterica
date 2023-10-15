@@ -13,15 +13,15 @@ namespace EE::Render
 
             if ( queueFamily.IsGraphicQueue() )
             {
-                m_type = Type::Graphic;
+                m_type = RHI::CommandQueueType::Graphic;
             }
             else if ( queueFamily.IsComputeQueue() )
             {
-                m_type = Type::Compute;
+                m_type = RHI::CommandQueueType::Compute;
             }
             else if ( queueFamily.IsTransferQueue() )
             {
-                m_type = Type::Transfer;
+                m_type = RHI::CommandQueueType::Transfer;
             }
 
             EE_ASSERT( m_pHandle != nullptr );

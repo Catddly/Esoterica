@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHITaggedType.h"
+#include "Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RHI
 {
@@ -18,6 +19,10 @@ namespace EE::RHI
 
         RHISwapchain( RHISwapchain&& ) = default;
         RHISwapchain& operator=( RHISwapchain&& ) = default;
+
+    public:
+
+        virtual RHI::RHITextureCreateDesc GetPresentTextureDesc() const = 0;
     };
 
 }

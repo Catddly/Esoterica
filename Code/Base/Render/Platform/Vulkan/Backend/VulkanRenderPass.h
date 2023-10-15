@@ -16,6 +16,8 @@ namespace EE::Render
     {
         class VulkanFramebuffer : public RHI::RHIFramebuffer
         {
+            friend class VulkanDevice;
+            friend class VulkanCommandBuffer;
             friend class VulkanFramebufferCache;
 
         public:
@@ -43,6 +45,7 @@ namespace EE::Render
         class VulkanRenderPass : public RHI::RHIRenderPass
         {
             friend class VulkanDevice;
+            friend class VulkanCommandBuffer;
             friend class VulkanFramebufferCache;
 
         public:

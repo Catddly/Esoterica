@@ -139,6 +139,11 @@ namespace EE::Render
             return nullptr;
         }
 
+        EE::RHI::RHICommandQueue* VulkanDevice::GetMainGraphicCommandQueue()
+        {
+            return m_pGlobalGraphicQueue;
+        }
+
 		//-------------------------------------------------------------------------
 
         RHI::RHITexture* VulkanDevice::CreateTexture( RHI::RHITextureCreateDesc const& createDesc )
@@ -906,7 +911,7 @@ namespace EE::Render
             {
                 VkCommandPoolCreateInfo poolCI = {};
                 poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetQueueFamilyIndex();
+                poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetDeviceIndex();
 
                 VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(commandPool.m_pHandle) ) );
             }

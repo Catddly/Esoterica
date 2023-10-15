@@ -34,7 +34,7 @@ namespace EE::Render
 
 	public:
 
-		PipelineHandle() = default;
+        PipelineHandle() = default;
 
 		inline bool IsValid() const
 		{
@@ -45,6 +45,11 @@ namespace EE::Render
 		{
 			return m_ID;
 		}
+
+        inline PipelineType GetPipelineType() const
+        {
+            return m_type;
+        }
 
 	public:
 
@@ -149,8 +154,12 @@ namespace EE::Render
 		void Initialize( SystemRegistry const& systemRegistry );
 		void Shutdown();
 
-		[[nodiscard]] PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
-		[[nodiscard]] PipelineHandle RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc );
+		[[nodiscard]] inline PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
+		[[nodiscard]] inline PipelineHandle RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc );
+
+        bool IsPipelineReady( PipelineHandle const& pipelineHandle ) const;
+
+        RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
 
 		void LoadAndUpdatePipelines( RHI::RHIDevice* pDevice );
         void DestroyAllPipelineState( RHI::RHIDevice* pDevice );
@@ -175,7 +184,7 @@ namespace EE::Render
 		Resource::ResourceSystem*										    m_pResourceSystem = nullptr;
 
         // TODO: may be extract to single pipeline cache class
-		TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>		    m_rasterPipelineStatesCache;
+		mutable TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>  m_rasterPipelineStatesCache;
 		THashMap<RHI::RHIRasterPipelineStateCreateDesc, PipelineHandle>     m_rasterPipelineHandlesCache;
 
         TIDVector<PipelineHandle, ComputePipelineEntry>					    m_computePipelineStates;

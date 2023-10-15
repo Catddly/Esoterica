@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h" />
+    <ClInclude Include="RenderGraph\RenderGraphNodeRef.h" />
     <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h" />
@@ -42,6 +43,7 @@
     <ClInclude Include="Types\List.h" />
     <ClInclude Include="Types\Map.h" />
     <ClInclude Include="Types\Optional.h" />
+    <ClInclude Include="Types\Tuple.h" />
     <ClInclude Include="Utils\Sort.h" />
     <ClInclude Include="Encoding\Hash.h" />
     <ClInclude Include="Encoding\Quantization.h" />

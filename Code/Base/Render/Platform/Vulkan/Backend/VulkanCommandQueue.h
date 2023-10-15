@@ -14,16 +14,6 @@ namespace EE::Render
         {
         public:
 
-            enum class Type : uint8_t
-            {
-                Graphic,
-                Compute,
-                Transfer,
-                Unknown
-            };
-
-        public:
-
             EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanCommandQueue()
@@ -36,12 +26,13 @@ namespace EE::Render
 
             inline bool IsValid() const { return m_pHandle != nullptr; }
 
-            uint32_t GetQueueFamilyIndex() const { return m_queueFamily.m_index; }
+            inline virtual uint32_t GetDeviceIndex() const override { return m_queueFamily.m_index; }
+            inline virtual RHI::CommandQueueType GetType() const override { return m_type; }
 
         private:
 
             VkQueue								m_pHandle = nullptr;
-            Type								m_type = Type::Unknown;
+            RHI::CommandQueueType               m_type = RHI::CommandQueueType::Unknown;
             QueueFamily							m_queueFamily;
         };
     }

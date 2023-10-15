@@ -74,6 +74,7 @@ namespace EE::RG
     public:
 
         inline void AttachToPipelineRegistry( Render::PipelineRegistry& pipelineRegistry ) { m_pRenderPipelineRegistry = &pipelineRegistry; }
+        inline Render::PipelineRegistry* GetPipelineRegistry() const { return m_pRenderPipelineRegistry; }
 
         inline ResourceState GetCurrentResourceState() const { return m_resourceState; }
 
@@ -88,6 +89,11 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
         template <typename RGDescType, typename RGDescCVType = typename std::add_lvalue_reference_t<std::add_const_t<RGDescType>>>
+        _Impl::RGResourceID ImportResource( RGDescCVType rgDesc, RGImportedResource importResource );
+
+        //-------------------------------------------------------------------------
+
+        template <typename RGDescType, typename RGDescCVType = typename std::add_lvalue_reference_t<std::add_const_t<RGDescType>>>
         _Impl::RGResourceID RegisterResource( RGDescCVType rgDesc );
 
         [[nodiscard]] inline Render::PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc ) const
@@ -96,14 +102,18 @@ namespace EE::RG
             return m_pRenderPipelineRegistry->RegisterRasterPipeline( rasterPipelineDesc );
         }
 
+        //-------------------------------------------------------------------------
+
         inline RGResource& GetRegisteredResource( _Impl::RGResourceID const& id )
         {
+            EE_ASSERT( m_resourceState == ResourceState::Registering );
             EE_ASSERT( id.IsValid() && id.m_id < m_registeredResources.size() );
             return m_registeredResources[id.m_id];
         }
 
         inline RGResource const& GetRegisteredResource( _Impl::RGResourceID const& id ) const
         {
+            EE_ASSERT( m_resourceState == ResourceState::Registering );
             EE_ASSERT( id.IsValid() && id.m_id < m_registeredResources.size() );
             return m_registeredResources[id.m_id];
         }
@@ -118,11 +128,35 @@ namespace EE::RG
             return GetRegisteredResource( nodeResource.m_slotID );
         }
 
-        template <RGResourceViewType View>
-        RHI::RHIBuffer* const& GetCompiledBufferResource( RGNodeResourceRef<RGResourceTagBuffer, View> const& nodeResourceRef ) const;
+        inline RGCompiledResource& GetCompiledResource( _Impl::RGResourceID const& id )
+        {
+            EE_ASSERT( m_resourceState == ResourceState::Compiled );
+            EE_ASSERT( id.IsValid() && id.m_id < m_compiledResources.size() );
+            return m_compiledResources[id.m_id];
+        }
+
+        inline RGCompiledResource const& GetCompiledResource( _Impl::RGResourceID const& id ) const
+        {
+            EE_ASSERT( m_resourceState == ResourceState::Compiled );
+            EE_ASSERT( id.IsValid() && id.m_id < m_compiledResources.size() );
+            return m_compiledResources[id.m_id];
+        }
+
+        inline RGCompiledResource& GetCompiledResource( RGNodeResource const& nodeResource )
+        {
+            return GetCompiledResource( nodeResource.m_slotID );
+        }
+
+        inline RGCompiledResource const& GetCompiledResource( RGNodeResource const& nodeResource ) const
+        {
+            return GetCompiledResource( nodeResource.m_slotID );
+        }
 
         template <RGResourceViewType View>
-        RHI::RHITexture* const& GetCompiledTextureResource( RGNodeResourceRef<RGResourceTagTexture, View> const& nodeResourceRef ) const;
+        RHI::RHIBuffer* GetCompiledBufferResource( RGNodeResourceRef<RGResourceTagBuffer, View> const& nodeResourceRef ) const;
+
+        template <RGResourceViewType View>
+        RHI::RHITexture* GetCompiledTextureResource( RGNodeResourceRef<RGResourceTagTexture, View> const& nodeResourceRef ) const;
 
     private:
 
@@ -133,6 +167,28 @@ namespace EE::RG
         TVector<RGResource>						m_registeredResources;
         TVector<RGCompiledResource>             m_compiledResources;
     };
+
+    template <typename RGDescType, typename RGDescCVType>
+    _Impl::RGResourceID RGResourceRegistry::ImportResource( RGDescCVType rgDesc, RGImportedResource importResource )
+    {
+        size_t slotID = m_registeredResources.size();
+        EE_ASSERT( slotID >= 0 && slotID < std::numeric_limits<uint32_t>::max() );
+
+        // check the type of import resource matches the description
+        if constexpr ( std::is_base_of<decltype( importResource.m_pImportedResource ), RHI::RHIBuffer>::value )
+        {
+            EE_STATIC_ASSERT( ( std::is_same<typename RGDescType, RGBufferDesc>::value ), "Expect the import resource to be the same rhi resource type as the render graph resource description!" );
+        }
+
+        if constexpr ( std::is_base_of<decltype( importResource.m_pImportedResource ), RHI::RHITexture>::value )
+        {
+            EE_STATIC_ASSERT( ( std::is_same<typename RGDescType, RGTextureDesc>::value ), "Expect the import resource to be the same rhi resource type as the render graph resource description!" );
+        }
+
+        _Impl::RGResourceID id( static_cast<uint32_t>( slotID ) );
+        m_registeredResources.emplace_back( rgDesc, std::move( importResource ) );
+        return id;
+    }
 
     template <typename RGDescType, typename RGDescCVType>
     _Impl::RGResourceID RGResourceRegistry::RegisterResource( RGDescCVType rgDesc )
@@ -148,11 +204,11 @@ namespace EE::RG
     //-------------------------------------------------------------------------
 
     template <RGResourceViewType View>
-    RHI::RHITexture* const& RGResourceRegistry::GetCompiledTextureResource( RGNodeResourceRef<RGResourceTagTexture, View> const& nodeResourceRef ) const
+    RHI::RHIBuffer* RGResourceRegistry::GetCompiledBufferResource( RGNodeResourceRef<RGResourceTagBuffer, View> const& nodeResourceRef ) const
     {
         if ( m_resourceState == ResourceState::Compiled )
         {
-
+            return m_compiledResources[nodeResourceRef.m_slotID.m_id].GetResource<RGResourceTagBuffer>();
         }
 
         EE_LOG_WARNING( "RenderGraph", "", "Try to fetch compiled resource but resources are not in compiled state!" );
@@ -160,11 +216,11 @@ namespace EE::RG
     }
 
     template <RGResourceViewType View>
-    RHI::RHIBuffer* const& RGResourceRegistry::GetCompiledBufferResource( RGNodeResourceRef<RGResourceTagBuffer, View> const& nodeResourceRef ) const
+    RHI::RHITexture* RGResourceRegistry::GetCompiledTextureResource( RGNodeResourceRef<RGResourceTagTexture, View> const& nodeResourceRef ) const
     {
         if ( m_resourceState == ResourceState::Compiled )
         {
-
+            return m_compiledResources[nodeResourceRef.m_slotID.m_id].GetResource<RGResourceTagTexture>();
         }
 
         EE_LOG_WARNING( "RenderGraph", "", "Try to fetch compiled resource but resources are not in compiled state!" );

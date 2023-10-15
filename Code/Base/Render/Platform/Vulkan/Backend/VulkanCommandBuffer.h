@@ -9,7 +9,10 @@
 namespace EE::RHI
 {
     class RHIRenderPass;
+    class RHIFramebuffer;
     class RHIPipelineState;
+
+    class RHITextureView;
 }
 
 namespace EE::Render
@@ -76,7 +79,7 @@ namespace EE::Render
             // Pipeline Barrier
             //-------------------------------------------------------------------------
 
-            virtual bool BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RenderArea const& renderArea ) override;
+            virtual bool BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView*> textureViews ) override;
             virtual void EndRenderPass() override;
 
             virtual void PipelineBarrier( 
@@ -89,6 +92,12 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             virtual void BindPipelineState( RHI::RHIPipelineState* pRhiPipelineState ) override;
+
+            // State Settings
+            //-------------------------------------------------------------------------
+
+            virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
+            virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
 
 			inline VkCommandBuffer Raw() const { return m_pHandle; }
 
@@ -103,11 +112,11 @@ namespace EE::Render
 
 		private:
 
-            static TInlineVector<VkMemoryBarrier, 1> m_sGlobalBarriers;
-            static TInlineVector<VkBufferMemoryBarrier, 32> m_sBufferBarriers;
-            static TInlineVector<VkImageMemoryBarrier, 32> m_sTextureBarriers;
+            static TInlineVector<VkMemoryBarrier, 1>                    m_sGlobalBarriers;
+            static TInlineVector<VkBufferMemoryBarrier, 32>             m_sBufferBarriers;
+            static TInlineVector<VkImageMemoryBarrier, 32>              m_sTextureBarriers;
 			
-            VkCommandBuffer					m_pHandle = nullptr;
+            VkCommandBuffer					                            m_pHandle = nullptr;
 		};
     }
 }

@@ -1,11 +1,9 @@
 #pragma once
 
+#include "Base/_Module/API.h"
 #include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
-#include "RenderGraphContext.h"
 #include "RenderGraphResourceRegistry.h"
-#include "Base/_Module/API.h"
-#include "Base/Types/Function.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RG
@@ -50,7 +48,7 @@ namespace EE::RG
         // Node Render Command
         //-------------------------------------------------------------------------
 
-        void Execute( TFunction<void( RGRenderCommandContext& context )> executionCallback );
+        void Execute( RGNode::ExecutionCallbackFunc executionCallback );
 
     private:
 

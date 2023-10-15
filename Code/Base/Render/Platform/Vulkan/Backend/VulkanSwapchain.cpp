@@ -195,40 +195,40 @@ namespace EE::Render
                 pImage->m_pHandle = swapchainImages[i];
                 pImage->m_desc = std::move( desc );
 
-				m_images.push_back( pImage );
+				m_presentTextures.push_back( pImage );
 			}
 
-			EE_ASSERT( m_images.size() == swapchainImages.size() );
+			EE_ASSERT( m_presentTextures.size() == swapchainImages.size() );
 
 			// create semaphores
 			//-------------------------------------------------------------------------
 
-			m_imageAcquireSemaphores.resize( swapchainImageCount );
+			m_textureAcquireSemaphores.resize( swapchainImageCount );
 			m_renderCompleteSemaphores.resize( swapchainImageCount );
 			for ( uint32_t i = 0; i < swapchainImageCount; ++i )
 			{
-                m_imageAcquireSemaphores[i] = static_cast<VulkanSemaphore*>( pDevice->CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc{} ) );
+                m_textureAcquireSemaphores[i] = static_cast<VulkanSemaphore*>( pDevice->CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc{} ) );
                 m_renderCompleteSemaphores[i] = static_cast<VulkanSemaphore*>( pDevice->CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc{} ) );
 			}
 
-			EE_ASSERT( m_imageAcquireSemaphores.size() == swapchainImages.size() );
+			EE_ASSERT( m_textureAcquireSemaphores.size() == swapchainImages.size() );
 			EE_ASSERT( m_renderCompleteSemaphores.size() == swapchainImages.size() );
 		}
 
 		VulkanSwapchain::~VulkanSwapchain()
 		{
-			for ( int i = (int)m_imageAcquireSemaphores.size() - 1; i >= 0; i-- )
+			for ( int i = (int)m_textureAcquireSemaphores.size() - 1; i >= 0; i-- )
 			{
-                m_pDevice->DestroySyncSemaphore( m_imageAcquireSemaphores[i] );
+                m_pDevice->DestroySyncSemaphore( m_textureAcquireSemaphores[i] );
                 m_pDevice->DestroySyncSemaphore( m_renderCompleteSemaphores[i] );
 			}
 
-			m_imageAcquireSemaphores.clear();
+			m_textureAcquireSemaphores.clear();
 			m_renderCompleteSemaphores.clear();
 
-            for ( int i = (int) m_images.size() - 1; i >= 0; i-- )
+            for ( int i = (int) m_presentTextures.size() - 1; i >= 0; i-- )
             {
-                auto* pVkTexture = m_images[i];
+                auto* pVkTexture = m_presentTextures[i];
                 EE::Delete( pVkTexture );
             }
 
@@ -238,6 +238,14 @@ namespace EE::Render
 			m_loadFuncs.m_pDestroySwapchainKHRFunc( m_pDevice->m_pHandle, m_pHandle, nullptr );
 			m_pHandle = nullptr;
 		}
+
+        //-------------------------------------------------------------------------
+
+		RHI::RHITextureCreateDesc VulkanSwapchain::GetPresentTextureDesc() const
+        {
+            EE_ASSERT( !m_presentTextures.empty() );
+            return m_presentTextures[0]->m_desc;
+        }
 	}
 }
 

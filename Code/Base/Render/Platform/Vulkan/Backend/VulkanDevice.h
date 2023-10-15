@@ -23,6 +23,7 @@ namespace EE::RHI
     class RHISemaphore;
 
     class RHICommandBuffer;
+    class RHICommandQueue;
 }
 
 //-------------------------------------------------------------------------
@@ -76,9 +77,10 @@ namespace EE::Render
             virtual size_t BeginFrame() override;
             virtual void   EndFrame() override;
 
-            inline virtual size_t GetCurrentDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFrameCount; }
+            inline virtual size_t GetDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFrameCount; }
 
             virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
+            inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
 
             //-------------------------------------------------------------------------
 
@@ -156,10 +158,10 @@ namespace EE::Render
 			VulkanPhysicalDevice				            m_physicalDevice;
 
             size_t                                          m_deviceFrameCount;
-            // During BeginFrame() and EndFrame(), this must be true.
-            bool                                            m_frameExecuting = false;
+            bool                                            m_frameExecuting = false; // During BeginFrame() and EndFrame(), this must be true.
 			VulkanCommandQueue*							    m_pGlobalGraphicQueue = nullptr;
             VulkanCommandBufferPool                         m_commandBufferPool[NumDeviceFrameCount];
+
             VulkanMemoryAllocator                           m_globalMemoryAllcator;
 
             THashMap<VulkanStaticSamplerDesc, VkSampler>    m_immutableSamplers;

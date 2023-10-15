@@ -2,7 +2,6 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Types/Arrays.h"
-
 #include "Base/RHI/RHISwapchain.h"
 
 #include <vulkan/vulkan_core.h>
@@ -40,10 +39,16 @@ namespace EE::Render
 
 		public:
 
-			VulkanSwapchain( VulkanDevice* pDevice );
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+			
+            VulkanSwapchain( VulkanDevice* pDevice );
 			VulkanSwapchain( InitConfig config, VulkanDevice* pDevice );
 
 			~VulkanSwapchain();
+
+        public:
+
+            virtual RHI::RHITextureCreateDesc GetPresentTextureDesc() const override;
 
 		private:
 
@@ -53,8 +58,8 @@ namespace EE::Render
 			VkSwapchainKHR							m_pHandle;
 			LoadFuncs								m_loadFuncs;
 
-			TVector<VulkanTexture*>					m_images;
-			TVector<VulkanSemaphore*>				m_imageAcquireSemaphores;
+			TVector<VulkanTexture*>					m_presentTextures;
+			TVector<VulkanSemaphore*>				m_textureAcquireSemaphores;
 			TVector<VulkanSemaphore*>				m_renderCompleteSemaphores;
 		};
 	}

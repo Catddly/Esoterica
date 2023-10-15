@@ -129,4 +129,22 @@ namespace EE::RHI
             }
         }
     }
+
+    TBitFlags<TextureAspectFlags> PixelFormatToAspectFlags( EPixelFormat format )
+    {
+        switch ( format )
+        {
+            case EPixelFormat::RGBA8Unorm:
+            case EPixelFormat::BGRA8Unorm:
+            {
+                return TextureAspectFlags::Color;
+            }
+            default:
+            EE_UNREACHABLE_CODE();
+            break;
+        }
+
+        EE_UNREACHABLE_CODE();
+        return TextureAspectFlags::Color;
+    }
 }

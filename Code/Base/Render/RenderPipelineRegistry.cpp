@@ -334,5 +334,66 @@ namespace EE::Render
 
         return false;
     }
+
+    bool PipelineRegistry::IsPipelineReady( PipelineHandle const& pipelineHandle ) const
+    {
+        if ( pipelineHandle.IsValid() )
+        {
+            switch ( pipelineHandle.m_type )
+            {
+                case PipelineType::Raster:
+                {
+                    auto const& rasterEntry = m_rasterPipelineStatesCache.Get( pipelineHandle );
+                    return ( *rasterEntry )->IsVisible();
+                }
+                case PipelineType::Compute:
+                {
+                    EE_UNIMPLEMENTED_FUNCTION();
+                    return false;
+                }
+                case PipelineType::Transfer:
+                case PipelineType::RayTracing:
+                default:
+                EE_UNIMPLEMENTED_FUNCTION();
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    EE::RHI::RHIPipelineState* PipelineRegistry::GetPipeline( PipelineHandle const& pipelineHandle ) const
+    {
+        if ( pipelineHandle.IsValid() )
+        {
+            switch ( pipelineHandle.m_type )
+            {
+                case PipelineType::Raster:
+                {
+                    auto& rasterEntry = *m_rasterPipelineStatesCache.Get( pipelineHandle );
+                    if ( rasterEntry->IsVisible() )
+                    {
+                        return rasterEntry->m_pPipelineState;
+                    }
+
+                    break;
+                }
+                case PipelineType::Compute:
+                {
+                    EE_UNIMPLEMENTED_FUNCTION();
+
+                    break;
+                }
+                case PipelineType::Transfer:
+                case PipelineType::RayTracing:
+                default:
+                EE_UNIMPLEMENTED_FUNCTION();
+                break;
+            }
+        }
+
+        return nullptr;
+    }
+
 }
 

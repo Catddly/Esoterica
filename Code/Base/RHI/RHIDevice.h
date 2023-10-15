@@ -22,6 +22,7 @@ namespace EE::RHI
     class RHIPipelineState;
 
     class RHICommandBuffer;
+    class RHICommandQueue;
 
     class RHIDevice : public RHITaggedType
     {
@@ -51,9 +52,10 @@ namespace EE::RHI
         virtual size_t BeginFrame() = 0;
         virtual void   EndFrame() = 0;
 
-        virtual size_t GetCurrentDeviceFrameIndex() const = 0;
+        virtual size_t GetDeviceFrameIndex() const = 0;
 
         virtual RHICommandBuffer* AllocateCommandBuffer() = 0;
+        virtual RHICommandQueue* GetMainGraphicCommandQueue() = 0;
 
         //-------------------------------------------------------------------------
 

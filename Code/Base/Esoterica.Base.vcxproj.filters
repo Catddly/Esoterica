@@ -1998,6 +1998,8 @@
     <ClInclude Include="Types\Optional.h" />
     <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h" />
     <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h" />
+    <ClInclude Include="RenderGraph\RenderGraphNodeRef.h" />
+    <ClInclude Include="Types\Tuple.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

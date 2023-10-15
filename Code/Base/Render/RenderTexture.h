@@ -20,14 +20,14 @@ namespace EE::Render
         Metadata, // Used as metadata to store information about other data.
     };
 
-    struct TextureSubresourceRange
-    {
-        TBitFlags<ImageAspectFlags>		m_aspectFlags;
-        uint32_t							m_baseMipLevel;
-        uint32_t							m_levelCount;
-        uint32_t							m_baseArrayLayer;
-        uint32_t							m_layerCount;
-    };
+    //struct TextureSubresourceRange
+    //{
+    //    TBitFlags<ImageAspectFlags>		    m_aspectFlags;
+    //    uint32_t							m_baseMipLevel;
+    //    uint32_t							m_levelCount;
+    //    uint32_t							m_baseArrayLayer;
+    //    uint32_t							m_layerCount;
+    //};
 
     enum class ImageMemoryLayout
     {

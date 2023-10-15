@@ -23,15 +23,18 @@ namespace EE::RG
                     auto* pBuffer = pDevice->CreateBuffer( desc.m_desc );
                     EE_ASSERT( pBuffer != nullptr );
                     compiled.m_resource = pBuffer;
-
+                    // Note: because this resource is created by the render graph within this frame, it doesn't matter it first barrier state is.
+                    compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
+;
                     EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Lazy created buffer resource:" );
                 }
                 else
                 {
-                    compiled.m_importedResource = std::move( eastl::get<_Impl::ImportedResourceVariantIndex>( m_resource ) );
+                    compiled.m_importedResource = eastl::exchange( eastl::get<_Impl::ImportedResourceVariantIndex>( m_resource ), {} );
                     // Safety: We make sure this shared pointer will be alive as long as this raw pointer alive.
-                    RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource.get();
+                    RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource;
                     compiled.m_resource = static_cast<RHI::RHIBuffer*>( pResource );
+                    compiled.m_currentAccessState = RHI::RenderResourceAccessState{ compiled.m_importedResource->m_currentAccess };
                     EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Import a buffer resource:" );
                 }
             }
@@ -49,15 +52,18 @@ namespace EE::RG
                     auto* pTexture = pDevice->CreateTexture( desc.m_desc );
                     EE_ASSERT( pTexture != nullptr );
                     compiled.m_resource = pTexture;
+                    // Note: because this resource is created by the render graph within this frame, it doesn't matter it first barrier state is.
+                    compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
 
                     EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Lazy created texture resource:" );
                 }
                 else
                 {
-                    compiled.m_importedResource = std::move( eastl::get<_Impl::ImportedResourceVariantIndex>( m_resource ) );
+                    compiled.m_importedResource = eastl::exchange( eastl::get<_Impl::ImportedResourceVariantIndex>( m_resource ), {} );
                     // Safety: We make sure this shared pointer will be alive as long as this raw pointer alive.
-                    RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource.get();
+                    RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource;
                     compiled.m_resource = static_cast<RHI::RHITexture*>( pResource );
+                    compiled.m_currentAccessState = RHI::RenderResourceAccessState{ compiled.m_importedResource->m_currentAccess };
                     EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Import a texture resource:" );
                 }
             }
@@ -70,7 +76,7 @@ namespace EE::RG
             break;
         }
 
-        compiled.m_desc = std::move( m_desc );
+        compiled.m_desc = eastl::exchange( m_desc, {} );
         return compiled;
     }
 

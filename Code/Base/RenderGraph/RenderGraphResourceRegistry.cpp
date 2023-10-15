@@ -10,9 +10,10 @@ namespace EE::RG
         EE_ASSERT( m_resourceState == ResourceState::Registering );
 
         m_compiledResources.reserve( m_registeredResources.size() );
+
         for ( auto& rgResource : m_registeredResources )
         {
-            m_compiledResources.emplace_back( std::move( rgResource ).Compile( pDevice ) );
+            m_compiledResources.emplace_back( eastl::exchange( rgResource, {} ).Compile( pDevice ) );
         }
 
         m_registeredResources.clear();
