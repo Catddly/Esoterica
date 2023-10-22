@@ -424,16 +424,42 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\RHIToVulkanSpecification.cpp">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClCompile>
-    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanRenderPass.cpp" />
-    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.cpp" />
-    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBuffer.cpp" />
-    <ClCompile Include="RHI\RHICommandBuffer.cpp" />
-    <ClCompile Include="RHI\Resource\RHIRenderPass.cpp" />
-    <ClCompile Include="RHI\Resource\RHITexture.cpp" />
-    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanTexture.cpp" />
-    <ClCompile Include="RenderGraph\RenderGraphResourceRegistry.cpp" />
-    <ClCompile Include="RenderGraph\RenderGraphNodeBuilder.cpp" />
-    <ClCompile Include="RenderGraph\RenderGraphResource.cpp" />
+    <ClCompile Include="RenderGraph\RenderGraphNodeBuilder.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderGraph\RenderGraphResolver.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderGraph\RenderGraphResource.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderGraph\RenderGraphResourceRegistry.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderGraph\RenderGraphTransientResourceCache.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHICommandBuffer.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\Resource\RHIRenderPass.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\Resource\RHITexture.cpp">
+      <Filter>RHI\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBuffer.cpp">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.cpp">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanRenderPass.cpp">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanTexture.cpp">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -1984,22 +2010,60 @@
     <ClInclude Include="RHI\Resource\RHIBuffer.h">
       <Filter>RHI\Resource</Filter>
     </ClInclude>
-    <ClInclude Include="Types\Map.h" />
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSampler.h" />
-    <ClInclude Include="Types\List.h" />
-    <ClInclude Include="RHI\Resource\RHIRenderPass.h" />
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanRenderPass.h" />
-    <ClInclude Include="RHI\RHIDowncastHelper.h" />
-    <ClInclude Include="RHI\RHITaggedType.h" />
-    <ClInclude Include="RHI\RHICommandBuffer.h" />
-    <ClInclude Include="RHI\RHICommandQueue.h" />
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h" />
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h" />
-    <ClInclude Include="Types\Optional.h" />
-    <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h" />
-    <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h" />
-    <ClInclude Include="RenderGraph\RenderGraphNodeRef.h" />
-    <ClInclude Include="Types\Tuple.h" />
+    <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderGraph\RenderGraphNodeRef.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderGraph\RenderGraphResolver.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderGraph\RenderGraphTransientResourceCache.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Types\List.h">
+      <Filter>Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Types\Map.h">
+      <Filter>Types</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHICommandBuffer.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHICommandQueue.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHIDowncastHelper.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Resource\RHIRenderPass.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHITaggedType.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Types\Optional.h">
+      <Filter>Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Types\Tuple.h">
+      <Filter>Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanRenderPass.h">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSampler.h">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

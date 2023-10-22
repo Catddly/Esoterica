@@ -32,7 +32,7 @@ namespace EE::Render
 
 		public:
 
-			VulkanSurface( TSharedPtr<VulkanInstance> pInstance );
+			VulkanSurface( TSharedPtr<VulkanInstance> pInstance, void* pActiveWindowHandle );
 
 			VulkanSurface( VulkanSurface const& ) = delete;
 			VulkanSurface& operator=( VulkanSurface const& ) = delete;
@@ -47,7 +47,7 @@ namespace EE::Render
 			void LoadVulkanFuncPointer();
 
 			#ifdef _WIN32
-			bool CreateWin32Surface();
+			bool CreateWin32Surface( HWND activeWindow );
 			#else
 			#error Unsupport platform surface create function!
 			#endif

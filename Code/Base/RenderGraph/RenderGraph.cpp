@@ -1,4 +1,5 @@
 #include "RenderGraph.h"
+#include "RenderGraphResolver.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Logging/Log.h"
 #include "Base/Threading/Threading.h"
@@ -7,8 +8,6 @@
 #include "Base/RHI/RHICommandQueue.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
 #include "Base/RHI/Resource/RHITexture.h"
-
-#include "EASTL/algorithm.h"
 
 namespace EE
 {
@@ -83,8 +82,8 @@ namespace EE
             EE_ASSERT( m_frameExecuting );
 			EE_ASSERT( Threading::IsMainThread() );
 
-            auto nextID = static_cast<uint32_t>( m_graph.size() );
-			auto& newNode = m_graph.emplace_back( nodeName, nextID );
+            auto nextID = static_cast<uint32_t>( m_renderGraph.size() );
+			auto& newNode = m_renderGraph.emplace_back( nodeName, nextID );
 
 			return RGNodeBuilder( m_resourceRegistry, newNode );
 		}
@@ -95,13 +94,13 @@ namespace EE
             EE_ASSERT( m_frameExecuting );
 			EE_ASSERT( Threading::IsMainThread() );
 
-			size_t const count = m_graph.size();
+			size_t const count = m_renderGraph.size();
 
 			EE_LOG_MESSAGE( "Render Graph", "Graph", "Node Count: %u", count );
 
 			for ( size_t i = 0; i < count; ++i )
 			{
-				EE_LOG_MESSAGE( "Render Graph", "Graph", "\tNode (%s)", m_graph[i].m_passName.c_str() );
+				EE_LOG_MESSAGE( "Render Graph", "Graph", "\tNode (%s)", m_renderGraph[i].m_passName.c_str() );
 			}
 		}
         #endif
@@ -109,7 +108,7 @@ namespace EE
         // Compilation Stage
         //-------------------------------------------------------------------------
 
-        void RenderGraph::Compile( RHI::RHIDevice* pRhiDevice )
+        bool RenderGraph::Compile( RHI::RHIDevice* pRhiDevice )
         {
             EE_ASSERT( Threading::IsMainThread() );
             EE_ASSERT( m_frameExecuting );
@@ -117,22 +116,38 @@ namespace EE
             if ( pRhiDevice == nullptr )
             {
                 EE_LOG_WARNING("RenderGraph", "RenderGraph::Compile()", "RHI Device missing! Cannot compile render graph!");
-                return;
+                return false;
             }
+
+            // Graph dependency analysis
+            //-------------------------------------------------------------------------
+
+            RenderGraphResolver resolver( m_renderGraph, m_resourceRegistry );
+            RGResolveResult resolvedResult = resolver.Resolve();
 
             // Create actual RHI Resources
             //-------------------------------------------------------------------------
 
-            m_resourceRegistry.Compile( pRhiDevice );
+            bool result = m_resourceRegistry.Compile( pRhiDevice, resolvedResult );
+
+            if ( !result )
+            {
+                return false;
+            }
 
             // Compile and Analyze graph nodes to populate an execution sequence
             //-------------------------------------------------------------------------
 
             bool allNodesAreReady = true;
             
-            for ( auto& node : m_graph )
+            for ( auto& node : m_renderGraph )
             {
-                if ( !node.ReadyToExecute( &m_resourceRegistry ) )
+                if ( !node.m_pipelineHandle.IsValid() )
+                {
+                    EE_LOG_FATAL_ERROR( "RenderGraph", "RenderGraph::Compile()", "No pipeline had been registered in node [%s], did you forget to register a pipeline ?", node.m_passName.c_str() );
+                }
+
+                if ( !node.IsReadyToExecute( &m_resourceRegistry ) )
                 {
                     allNodesAreReady = false;
                     break;
@@ -142,19 +157,47 @@ namespace EE
             // Note: we can only change m_executionSequence when all nodes are ready to be executed.
             if ( allNodesAreReady )
             {
-                m_executionSequence.clear();
+                // Compile render graph into executable render graph
+                //-------------------------------------------------------------------------
+                
+                m_executeNodesSequence.clear();
+                m_presentNodesSequence.clear();
 
-                for ( auto& node : m_graph )
+                TVector<RGExecutableNode> executeSequences;
+                executeSequences.reserve( m_renderGraph.size() );
+                for ( auto& node : m_renderGraph )
                 {
-                    m_executionSequence.emplace_back( eastl::exchange( node, {} ).IntoExecutableNode( &m_resourceRegistry ) );
+                    executeSequences.emplace_back( eastl::exchange( node, {} ).IntoExecutableNode( &m_resourceRegistry ) );
                 }
 
-                m_graph.clear();
+                m_renderGraph.clear();
+
+                // Split execute nodes and present nodes
+                //-------------------------------------------------------------------------
+
+                int32_t firstPresentNodeIndex = FindPresentNodeIndex( executeSequences );
+
+                if ( firstPresentNodeIndex < 0 )
+                {
+                    EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RenderGraph has no presentable node!" );
+                    return false;
+                }
+
+                size_t const presentNodeCount = executeSequences.size() - firstPresentNodeIndex;
+                eastl::move( executeSequences.rend(), executeSequences.rend() + presentNodeCount, m_presentNodesSequence.begin() );
+
+                executeSequences.erase( executeSequences.rend(), executeSequences.rend() + presentNodeCount );
+                m_executeNodesSequence = eastl::move( executeSequences );
+
+                executeSequences.clear();
             }
             else
             {
-                m_graph.clear();
+                EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RenderGraph is not ready to be executed." );
+                return false;
             }
+        
+            return true;
         }
 
         // Execution Stage
@@ -166,7 +209,7 @@ namespace EE
             EE_ASSERT( m_frameExecuting );
             EE_ASSERT( m_resourceRegistry.GetCurrentResourceState() == RGResourceRegistry::ResourceState::Compiled );
 
-            if ( !m_executionSequence.empty() )
+            if ( !m_executeNodesSequence.empty() )
             {
                 // Transition all resources used in execution nodes ahead to reduce some pipeline bubbles.
                 //-------------------------------------------------------------------------
@@ -174,9 +217,9 @@ namespace EE
                 // TODO: Count for total transition resource ahead, to avoid frequently memory allocation.
                 TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
 
-                for ( RGExecutableNode& node : m_executionSequence )
+                for ( RGExecutableNode& node : m_executeNodesSequence )
                 {
-                    for ( RGNodeResource& input : node.m_pInputs )
+                    for ( RGNodeResource& input : node.m_inputs )
                     {
                         transitionResources.emplace_back(
                             m_resourceRegistry.GetCompiledResource( input ),
@@ -188,7 +231,7 @@ namespace EE
                         input.m_passAccess.SetSkipSyncIfContinuous( true );
                     }
 
-                    for ( RGNodeResource& output : node.m_pOutputs )
+                    for ( RGNodeResource& output : node.m_outputs )
                     {
                         transitionResources.emplace_back(
                             m_resourceRegistry.GetCompiledResource( output ),
@@ -209,9 +252,9 @@ namespace EE
                 // Execute render graph
                 //-------------------------------------------------------------------------
 
-                for ( RGExecutableNode& executionNode : m_executionSequence )
+                for ( RGExecutableNode& executionNode : m_executeNodesSequence )
                 {
-                    
+                    ExecuteNode( executionNode );
                 }
             }
             else
@@ -222,42 +265,64 @@ namespace EE
 
         void RenderGraph::Present( RHI::RHISwapchain* pSwapchain )
         {
+            EE_ASSERT( Threading::IsMainThread() );
+            EE_ASSERT( m_frameExecuting );
+            EE_ASSERT( m_resourceRegistry.GetCurrentResourceState() == RGResourceRegistry::ResourceState::Compiled );
 
+            if ( !m_presentNodesSequence.empty() )
+            {
+                // Execute render graph
+                //-------------------------------------------------------------------------
+
+                for ( RGExecutableNode& executionNode : m_presentNodesSequence )
+                {
+                    ExecuteNode( executionNode );
+                }
+            }
+            else
+            {
+                EE_LOG_MESSAGE( "RenderGraph", "", "RenderGraph waiting for all nodes to be ready..." );
+            }
+        }
+
+        void RenderGraph::ReleaseResources()
+        {
+            m_resourceRegistry.ReleaseAllResources();
         }
 
         // Cleanup Stage
         //-------------------------------------------------------------------------
 
-        void RenderGraph::ClearAllResources( RHI::RHIDevice* pRhiDevice )
+        void RenderGraph::DestroyAllResources( RHI::RHIDevice* pRhiDevice )
         {
-            m_resourceRegistry.ClearAll( pRhiDevice );
+            m_resourceRegistry.Shutdown( pRhiDevice );
         }
 
         //-------------------------------------------------------------------------
 
-        int32_t RenderGraph::FindPresentNodeIndex() const
+        int32_t RenderGraph::FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const
         {
             EE_ASSERT( Threading::IsMainThread() );
 
-            if ( m_executionSequence.empty() )
+            if ( executionSequence.empty() )
             {
                 return -1;
             }
 
             int32_t result = -1;
-            int32_t currentNode = static_cast<int32_t>( m_executionSequence.size() - 1 );
+            int32_t currentNode = static_cast<int32_t>( executionSequence.size() - 1 );
             // For now, this node.m_id is the index inside m_executionSequence.
-            for ( auto beg = m_executionSequence.end(); beg != m_executionSequence.begin(); --beg )
+            for ( auto beg = executionSequence.end(); beg != executionSequence.begin(); --beg )
             {
                 auto& node = *beg;
-                for ( auto const& output : node.m_pOutputs )
+                for ( auto const& output : node.m_outputs )
                 {
                     auto& compiledResource = m_resourceRegistry.GetCompiledResource( output );
                     if ( compiledResource.IsImportedResource() && compiledResource.GetResourceType() == RGResourceType::Texture )
                     {
-                        if ( compiledResource.m_importedResource->m_pImportedResource == nullptr )
+                        if ( compiledResource.IsSwapchainImportedResource() )
                         {
-                            result = currentNode;
+                            result = static_cast<int32_t>(currentNode);
                             break;
                         }
                     }
@@ -452,13 +517,11 @@ namespace EE
 
         void RenderGraph::ExecuteNode( RGExecutableNode& node )
         {
-            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
-
-            size_t totalResourceCount = node.m_pInputs.size() + node.m_pOutputs.size();
+            size_t totalResourceCount = node.m_inputs.size() + node.m_outputs.size();
             TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
             transitionResources.reserve( totalResourceCount );
 
-            for ( RGNodeResource& input : node.m_pInputs )
+            for ( RGNodeResource& input : node.m_inputs )
             {
                 transitionResources.emplace_back(
                     m_resourceRegistry.GetCompiledResource( input ),
@@ -466,7 +529,7 @@ namespace EE
                 );
             }
 
-            for ( RGNodeResource& output : node.m_pOutputs )
+            for ( RGNodeResource& output : node.m_outputs )
             {
                 transitionResources.emplace_back(
                     m_resourceRegistry.GetCompiledResource( output ),
@@ -477,6 +540,46 @@ namespace EE
             TransitionResourceBatched( transitionResources );
 
             // execute node callback
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            node.m_executionCallback( commandContext );
+        }
+
+        void RenderGraph::PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture )
+        {
+            EE_ASSERT( pSwapchainTexture != nullptr );
+
+            size_t totalResourceCount = node.m_inputs.size() + node.m_outputs.size();
+            TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
+            transitionResources.reserve( totalResourceCount );
+
+            for ( RGNodeResource& input : node.m_inputs )
+            {
+                transitionResources.emplace_back(
+                    m_resourceRegistry.GetCompiledResource( input ),
+                    input.m_passAccess
+                );
+            }
+
+            for ( RGNodeResource& output : node.m_outputs )
+            {
+                // swapchain texture resource importation
+                auto& compiledOutput = m_resourceRegistry.GetCompiledResource( output );
+                if ( compiledOutput.IsSwapchainImportedResource() )
+                {
+                    compiledOutput.m_importedResource->m_pImportedResource = pSwapchainTexture;
+                    compiledOutput.GetResource<RGResourceTagTexture>() = pSwapchainTexture;
+                }
+
+                transitionResources.emplace_back(
+                    compiledOutput,
+                    output.m_passAccess
+                );
+            }
+
+            TransitionResourceBatched( transitionResources );
+
+            // execute node callback
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
             node.m_executionCallback( commandContext );
         }
     }

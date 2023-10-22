@@ -217,56 +217,6 @@ namespace EE::Render
 			m_waitToSubmitRasterPipelines.clear();
 		}
 
-		// Update shader load status
-		//-------------------------------------------------------------------------
-
-		//if ( false && m_pTaskSystem ) // multi-threading
-		//{
-		//	EE_UNIMPLEMENTED_FUNCTION();
-		//	struct PipelineShaderLoadTask final : ITaskSet
-		//	{
-		//		PipelineShaderLoadTask( TVector<TSharedPtr<RasterPipelineEntry>>& rasterPipelineEntries )
-		//			: m_waitToLoadRasterPipelines( rasterPipelineEntries )
-		//		{
-		//			m_SetSize = static_cast<uint32_t>( rasterPipelineEntries.size() );
-		//		}
-
-		//		virtual void ExecuteRange( TaskSetPartition range, uint32_t threadnum ) override final
-		//		{
-		//			for ( uint64_t i = range.start; i < range.end; ++i )
-		//			{
-		//				//auto pEntity = m_updateList[i];
-
-		//				//// Ignore any entities with spatial parents, these will be updated by their parents
-		//				//if ( pEntity->HasSpatialParent() )
-		//				//{
-		//				//	continue;
-		//				//}
-
-		//				////-------------------------------------------------------------------------
-
-		//				//if ( pEntity->HasAttachedEntities() )
-		//				//{
-		//				//	EE_PROFILE_SCOPE_ENTITY( "Update Entity Chain" );
-		//				//	RecursiveEntityUpdate( pEntity );
-		//				//}
-		//				//else // Direct entity update
-		//				//{
-		//				//	EE_PROFILE_SCOPE_ENTITY( "Update Entity" );
-		//				//	pEntity->UpdateSystems( m_context );
-		//				//}
-		//			}
-		//		}
-
-		//	private:
-
-		//		TVector<TSharedPtr<RasterPipelineEntry>>& m_waitToLoadRasterPipelines;
-		//	};
-		//}
-
-        // Update all loading pipelines and check to see if loading has success
-        //-------------------------------------------------------------------------
-
 		if ( !m_waitToLoadRasterPipelines.empty() )
 		{
 			for ( auto beg = m_waitToLoadRasterPipelines.begin(); beg != m_waitToLoadRasterPipelines.end(); ++beg )
@@ -327,7 +277,7 @@ namespace EE::Render
             rasterEntry->m_pPipelineState = pPipelineState;
 
             // TODO: add render graph debug name
-            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%ull] Pipeline Visible.", rasterEntry->m_desc.GetHashCode() );
+            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%ull] Pipeline Visible.", rasterEntry->m_desc.GetHash() );
 
             return true;
         }
@@ -394,6 +344,5 @@ namespace EE::Render
 
         return nullptr;
     }
-
 }
 

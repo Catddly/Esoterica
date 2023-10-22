@@ -51,6 +51,7 @@ namespace EE::RHI
     {
         RGBA8Unorm,
         BGRA8Unorm,
+        Undefined
     };
 
     enum class ETextureType
@@ -99,6 +100,39 @@ namespace EE::RHI
         static RHITextureCreateDesc NewCubemap( uint32_t width, EPixelFormat format );
 
         bool IsValid() const;
+
+        size_t GetHash() const
+        {
+            size_t hash = 0;
+            Hash::HashCombine( hash, m_width );
+            Hash::HashCombine( hash, m_height );
+            Hash::HashCombine( hash, m_depth );
+
+            Hash::HashCombine( hash, m_array );
+            Hash::HashCombine( hash, m_mipmap );
+
+            Hash::HashCombine( hash, m_format );
+            Hash::HashCombine( hash, m_usage.Get() );
+            Hash::HashCombine( hash, m_tiling );
+            Hash::HashCombine( hash, m_sample.Get() );
+            Hash::HashCombine( hash, m_type );
+            Hash::HashCombine( hash, m_flag.Get() );
+
+            Hash::HashCombine( hash, m_memoryUsage );
+            return hash;
+        }
+
+        friend bool operator==( RHITextureCreateDesc const& lhs, RHITextureCreateDesc const& rhs )
+        {
+            return eastl::tie( lhs.m_width, lhs.m_height, lhs.m_depth,
+                               lhs.m_array, lhs.m_mipmap, lhs.m_format,
+                               lhs.m_usage, lhs.m_tiling, lhs.m_sample,
+                               lhs.m_type, lhs.m_flag, lhs.m_memoryUsage )
+                == eastl::tie( rhs.m_width, rhs.m_height, rhs.m_depth,
+                               rhs.m_array, rhs.m_mipmap, rhs.m_format,
+                               rhs.m_usage, rhs.m_tiling, rhs.m_sample,
+                               rhs.m_type, rhs.m_flag, rhs.m_memoryUsage );
+        }
 
     private:
 
@@ -201,8 +235,24 @@ namespace EE::RHI
 
         bool IsValid() const;
 
+        size_t GetHash() const
+        {
+            size_t hash = 0;
+            Hash::HashCombine( hash, m_desireSize );
+            Hash::HashCombine( hash, m_usage.Get() );
+            Hash::HashCombine( hash, m_memoryUsage );
+            return hash;
+        }
+
+        friend bool operator==( RHIBufferCreateDesc const& lhs, RHIBufferCreateDesc const& rhs )
+        {
+            return eastl::tie( lhs.m_desireSize, lhs.m_usage, lhs.m_memoryUsage )
+                == eastl::tie( rhs.m_desireSize, rhs.m_usage, rhs.m_memoryUsage );
+        }
+
     public:
 
+        // TODO: alignment
         // User requested size in byte.
         uint32_t                                m_desireSize;
         // The alignment of allocated memory in the GPU.
@@ -542,7 +592,7 @@ namespace EE::RHI
 
     public:
 
-        size_t GetHashCode() const
+        size_t GetHash() const
         {
             size_t hash = 0;
             for ( auto const& pipelineShader : m_pipelineShaders )
@@ -556,7 +606,7 @@ namespace EE::RHI
         friend bool operator==( RHIRasterPipelineStateCreateDesc const& lhs, RHIRasterPipelineStateCreateDesc const& rhs )
         {
             // TODO: this is not right for pipelines which share same set of shaders but have different pipeline states.
-            return lhs.GetHashCode() == rhs.GetHashCode();
+            return lhs.GetHash() == rhs.GetHash();
         }
 
     public:
@@ -606,6 +656,24 @@ namespace EE::RHI
 
 namespace eastl
 {
+    template <>
+    struct hash<EE::RHI::RHIBufferCreateDesc>
+    {
+        EE_FORCE_INLINE eastl_size_t operator()( EE::RHI::RHIBufferCreateDesc const& bufferCreateDesc ) const noexcept
+        {
+            return bufferCreateDesc.GetHash();
+        }
+    };
+
+    template <>
+    struct hash<EE::RHI::RHITextureCreateDesc>
+    {
+        EE_FORCE_INLINE eastl_size_t operator()( EE::RHI::RHITextureCreateDesc const& textureCreateDesc ) const noexcept
+        {
+            return textureCreateDesc.GetHash();
+        }
+    };
+
     template <>
     struct hash<EE::RHI::RHITextureViewCreateDesc>
     {
@@ -666,7 +734,7 @@ namespace eastl
     {
         EE_FORCE_INLINE eastl_size_t operator()( EE::RHI::RHIRasterPipelineStateCreateDesc const& pipelineDesc ) const noexcept
         {
-            return pipelineDesc.GetHashCode();
+            return pipelineDesc.GetHash();
         }
     };
 

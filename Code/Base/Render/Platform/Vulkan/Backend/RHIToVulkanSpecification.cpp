@@ -33,6 +33,7 @@ namespace EE::Render
             {
                 case RHI::EPixelFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
                 case RHI::EPixelFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
+                case RHI::EPixelFormat::Undefined: return VK_FORMAT_UNDEFINED;
                 default:
                 break;
             }

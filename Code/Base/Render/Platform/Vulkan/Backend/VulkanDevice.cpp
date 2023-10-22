@@ -28,6 +28,11 @@ namespace EE::Render
 			InitConfig config;
 			config.m_requiredLayers = GetEngineVulkanDeviceRequiredLayers( enableDebug );
 			config.m_requiredExtensions = GetEngineVulkanDeviceRequiredExtensions();
+            config.m_activeWindowHandle = nullptr;
+            #ifdef _WIN32
+            HWND hwnd = GetActiveWindow();
+            config.m_activeWindowHandle = reinterpret_cast<void*>( hwnd );
+            #endif
 			return config;
 		}
 
@@ -39,10 +44,10 @@ namespace EE::Render
             m_pInstance = MakeShared<VulkanInstance>();
             EE_ASSERT( m_pInstance != nullptr );
 
-            m_pSurface = MakeShared<VulkanSurface>( m_pInstance );
-            EE_ASSERT( m_pSurface != nullptr );
-
             InitConfig const config = InitConfig::GetDefault( m_pInstance->IsEnableDebug() );
+
+            m_pSurface = MakeShared<VulkanSurface>( m_pInstance, config.m_activeWindowHandle );
+            EE_ASSERT( m_pSurface != nullptr );
 
             PickPhysicalDeviceAndCreate( config );
 
@@ -57,7 +62,7 @@ namespace EE::Render
             m_pInstance = MakeShared<VulkanInstance>();
             EE_ASSERT( m_pInstance != nullptr );
 
-            m_pSurface = MakeShared<VulkanSurface>( m_pInstance );
+            m_pSurface = MakeShared<VulkanSurface>( m_pInstance, config.m_activeWindowHandle );
             EE_ASSERT( m_pSurface != nullptr );
 
             PickPhysicalDeviceAndCreate( config );

@@ -17,7 +17,9 @@
   <ItemGroup>
     <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h" />
     <ClInclude Include="RenderGraph\RenderGraphNodeRef.h" />
+    <ClInclude Include="RenderGraph\RenderGraphResolver.h" />
     <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h" />
+    <ClInclude Include="RenderGraph\RenderGraphTransientResourceCache.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h" />
     <ClInclude Include="RHI\RHICommandBuffer.h" />
@@ -558,8 +560,10 @@
     <ClCompile Include="Logging\Platform\Log_Win32.cpp" />
     <ClCompile Include="Math\Platform\Math_Win32.h" />
     <ClCompile Include="RenderGraph\RenderGraphNodeBuilder.cpp" />
+    <ClCompile Include="RenderGraph\RenderGraphResolver.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphResource.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphResourceRegistry.cpp" />
+    <ClCompile Include="RenderGraph\RenderGraphTransientResourceCache.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\RHIToVulkanSpecification.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBuffer.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.cpp" />

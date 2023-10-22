@@ -3,6 +3,7 @@
 
 #include "Base/Types/Arrays.h"
 #include "Base/RHI/RHISwapchain.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -25,6 +26,10 @@ namespace EE::Render
 				bool				m_enableVsync;
 				uint32_t			m_width;
 				uint32_t			m_height;
+                uint32_t            m_swapBufferCount;
+                RHI::EPixelFormat   m_format = RHI::EPixelFormat::Undefined;
+                RHI::ESampleCount   m_sample;
+
 			};
 
 			struct LoadFuncs

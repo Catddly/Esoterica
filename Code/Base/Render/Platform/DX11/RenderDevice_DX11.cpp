@@ -77,7 +77,7 @@ namespace EE::Render
         EE_ASSERT( iniFile.IsValid() );
 
         m_resolution.m_x = iniFile.GetIntOrDefault( "Render:ResolutionX", 1280 );
-        m_resolution.m_y = iniFile.GetIntOrDefault( "Render:ResolutionX", 720 );
+        m_resolution.m_y = iniFile.GetIntOrDefault( "Render:ResolutionY", 720 );
         m_refreshRate = iniFile.GetFloatOrDefault( "Render:RefreshRate", 60 );
         m_isFullscreen = iniFile.GetBoolOrDefault( "Render:Fullscreen", false );
 
@@ -111,12 +111,6 @@ namespace EE::Render
 
         CoreResources::Initialize( this );
 
-        #if defined(EE_VULKAN)
-        auto pVkRHIDevice = EE::New<Backend::VulkanDevice>();
-        m_pRHIDevice = pVkRHIDevice;
-        m_pRHISwapchain = EE::New<Backend::VulkanSwapchain>( pVkRHIDevice );
-        #endif
-
         return true;
     }
 
@@ -149,6 +143,24 @@ namespace EE::Render
         {
             return false;
         }
+
+        #if defined(EE_VULKAN)
+        Backend::VulkanDevice::InitConfig deviceConfig = Backend::VulkanDevice::InitConfig::GetDefault( true );
+        deviceConfig.m_activeWindowHandle = reinterpret_cast<void*>( pActiveWindow );
+
+        auto pVkRHIDevice = EE::New<Backend::VulkanDevice>( deviceConfig );
+        m_pRHIDevice = pVkRHIDevice;
+
+        Backend::VulkanSwapchain::InitConfig swapchainConfig;
+        swapchainConfig.m_width = static_cast<uint32_t>( m_resolution.m_x );
+        swapchainConfig.m_height = static_cast<uint32_t>( m_resolution.m_y );
+        swapchainConfig.m_enableVsync = true;
+        swapchainConfig.m_format = RHI::EPixelFormat::RGBA8Unorm;
+        swapchainConfig.m_swapBufferCount = 2;
+        swapchainConfig.m_sample = RHI::ESampleCount::SC1;
+
+        m_pRHISwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        #endif
 
         // Set buffer dimensions and format
         swapChainDesc.BufferCount = 2;

@@ -1,36 +1,74 @@
 #include "RenderGraphResourceRegistry.h"
+#include "RenderGraphResolver.h"
 #include "Base/Threading/Threading.h"
 
 namespace EE::RG
 {
-    void RGResourceRegistry::Compile( RHI::RHIDevice* pDevice )
+    bool RGResourceRegistry::Compile( RHI::RHIDevice* pDevice, RGResolveResult const& result )
     {
         EE_ASSERT( Threading::IsMainThread() );
-        EE_ASSERT( pDevice != nullptr );
         EE_ASSERT( m_resourceState == ResourceState::Registering );
+
+        if ( !pDevice )
+        {
+            return false;
+        }
 
         m_compiledResources.reserve( m_registeredResources.size() );
 
-        for ( auto& rgResource : m_registeredResources )
+        for ( uint32_t i = 0; i < static_cast<uint32_t>( m_registeredResources.size() ); ++i )
         {
-            m_compiledResources.emplace_back( eastl::exchange( rgResource, {} ).Compile( pDevice ) );
+            auto& rgResource = m_registeredResources[i];
+
+            auto iterator = result.m_resourceLifetimes.find( i );
+            if ( iterator != result.m_resourceLifetimes.end() )
+            {
+                auto& compiledResource = m_compiledResources.emplace_back( eastl::exchange( rgResource, {} ).Compile( pDevice, m_transientResourceCache ) );
+                compiledResource.m_lifetime = iterator->second;
+            }
+            else
+            {
+                // add a empty compiled resource, since this resource is not reference by any node,
+                // it will NOT be access by outer class.
+                m_compiledResources.emplace_back();
+            }
         }
+
+        EE_ASSERT( m_registeredResources.size() == m_compiledResources.size() );
 
         m_registeredResources.clear();
         m_resourceState = ResourceState::Compiled;
+
+        return true;
     }
 
-    void RGResourceRegistry::ClearAll( RHI::RHIDevice* pDevice )
+    void RGResourceRegistry::ReleaseAllResources()
     {
         EE_ASSERT( Threading::IsMainThread() );
-        EE_ASSERT( pDevice != nullptr );
+        EE_ASSERT( m_resourceState == ResourceState::Compiled );
 
         for ( auto& resource : m_compiledResources )
         {
-            resource.Retire( pDevice );
+            if ( resource.m_lifetime.HasValidLifetime() )
+            {
+                resource.Retire( m_transientResourceCache );
+            }
         }
 
-        m_registeredResources.clear();
         m_compiledResources.clear();
+        m_resourceState = ResourceState::Retire;
+    }
+
+    void RGResourceRegistry::Shutdown( RHI::RHIDevice* pDevice )
+    {
+        EE_ASSERT( Threading::IsMainThread() );
+        EE_ASSERT( pDevice != nullptr );
+        
+        if ( !m_compiledResources.empty() )
+        {
+            EE_LOG_FATAL_ERROR( "RenderGraph", "RGResourceRegistry", "Shutdown() had been called before ReleaseAllResources(), please release all resources before shutdown!" );
+        }
+
+        m_transientResourceCache.DestroyAllResource( pDevice );
     }
 }

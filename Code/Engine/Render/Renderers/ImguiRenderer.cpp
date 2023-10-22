@@ -379,10 +379,10 @@ namespace EE::Render
         float const B = pDrawData->DisplayPos.y + pDrawData->DisplaySize.y;
         float mvp[4][4] =
         {
-            { 2.0f / ( R - L ),   0.0f,           0.0f,       0.0f },
-            { 0.0f,         2.0f / ( T - B ),     0.0f,       0.0f },
-            { 0.0f,         0.0f,           0.5f,       0.0f },
-            { ( R + L ) / ( L - R ),  ( T + B ) / ( B - T ),    0.5f,       1.0f },
+            { 2.0f / ( R - L ),       0.0f,                  0.0f, 0.0f },
+            { 0.0f,                   2.0f / ( T - B ),      0.0f, 0.0f },
+            { 0.0f,                   0.0f,                  0.5f, 0.0f },
+            { ( R + L ) / ( L - R ),  ( T + B ) / ( B - T ), 0.5f, 1.0f },
         };
         renderContext.WriteToBuffer( m_vertexShader.GetConstBuffer( 0 ), &mvp, sizeof( float ) * 16 );
 

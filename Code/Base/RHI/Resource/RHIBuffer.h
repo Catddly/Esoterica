@@ -14,6 +14,8 @@ namespace EE::RHI
         {}
         virtual ~RHIBuffer() = default;
 
+        inline RHIBufferCreateDesc GetDesc() const { return m_desc; }
+
     protected:
 
         RHIBufferCreateDesc                m_desc;

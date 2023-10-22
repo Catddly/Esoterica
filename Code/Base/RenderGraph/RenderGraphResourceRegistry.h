@@ -2,6 +2,7 @@
 
 #include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
+#include "RenderGraphTransientResourceCache.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Render/RenderPipelineRegistry.h"
 
@@ -49,8 +50,12 @@ namespace EE::RG
         _Impl::RGResourceID			    m_slotID;
     };
 
+    struct RGResolveResult;
+
     class RGResourceRegistry
     {
+        friend class RenderGraphResolver;
+
     public:
 
         RGResourceRegistry() = default;
@@ -81,10 +86,12 @@ namespace EE::RG
         // Compile all registered resources into executable resources.
         // Use RGDescType to fetch internal RHIResourceDesc and create actual RHIResource.
         // Created transient rhi resources will be cached in transient resource cache.
-        void Compile( RHI::RHIDevice* pDevice );
+        bool Compile( RHI::RHIDevice* pDevice, RGResolveResult const& result );
 
-        // Clear and release all resources.
-        void ClearAll( RHI::RHIDevice* pDevice );
+        void ReleaseAllResources();
+
+        // Clear and destroy all resources.
+        void Shutdown( RHI::RHIDevice* pDevice );
 
         //-------------------------------------------------------------------------
 
@@ -160,12 +167,18 @@ namespace EE::RG
 
     private:
 
+        TVector<RGResource> const& GetRegisteredResources() const { return m_registeredResources; };
+
+    private:
+
         ResourceState                           m_resourceState = ResourceState::Registering;
 
         Render::PipelineRegistry*               m_pRenderPipelineRegistry = nullptr;
 
         TVector<RGResource>						m_registeredResources;
         TVector<RGCompiledResource>             m_compiledResources;
+
+        RGTransientResourceCache                m_transientResourceCache;
     };
 
     template <typename RGDescType, typename RGDescCVType>

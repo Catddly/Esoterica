@@ -15,7 +15,6 @@
 //-------------------------------------------------------------------------
 
 #include "Base/Render/RenderAPI.h"
-#include "Base/Render/RenderResourceBarrier.h"
 #include "Base/RenderGraph/RenderGraphResource.h"
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIRenderPass.h"
@@ -386,15 +385,15 @@ namespace EE
             EE_ASSERT( handle1_ref.GetDesc().m_desc.m_desireSize == 256 );
         }
 
-        {
-            auto node = m_renderGraph.AddNode( "Draw Shadow" );
-            auto handle1_ref = node.RasterRead( handle1, RHI::RenderResourceBarrierState::ColorAttachmentRead );
-            auto handle2_ref = node.CommonWrite( handle2, RHI::RenderResourceBarrierState::ColorAttachmentWrite );
+        //{
+        //    auto node = m_renderGraph.AddNode( "Draw Shadow" );
+        //    auto handle1_ref = node.RasterRead( handle1, RHI::RenderResourceBarrierState::ColorAttachmentRead );
+        //    auto handle2_ref = node.CommonWrite( handle2, RHI::RenderResourceBarrierState::ColorAttachmentWrite );
 
-            EE_ASSERT( handle2_ref.GetDesc().m_desc.m_width == 512 );
-            EE_ASSERT( handle2_ref.GetDesc().m_desc.m_height == 512 );
-            EE_ASSERT( handle2_ref.GetDesc().m_desc.m_format == RHI::EPixelFormat::BGRA8Unorm );
-        }
+        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_width == 512 );
+        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_height == 512 );
+        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_format == RHI::EPixelFormat::BGRA8Unorm );
+        //}
 
         //m_renderGraph.AddNode( "Draw Opache" );
         //m_renderGraph.AddNode( "Draw Transparent" );
@@ -403,8 +402,21 @@ namespace EE
 
         m_renderGraph.LogGraphNodes();
 
+        // force all loading and preparing ready at first frame
+        while ( m_renderPipelineRegistry.IsBusy() )
+        {
+            m_renderPipelineRegistry.LoadAndUpdatePipelines( pDevice );
+
+            while ( m_resourceSystem.IsBusy() )
+            {
+                Network::NetworkSystem::Update();
+                m_resourceSystem.Update( true );
+            }
+        }
+
         m_renderGraph.Compile( pDevice );
-        m_renderGraph.Execute();
+        //m_renderGraph.Execute();
+        //m_renderGraph.Present();
 
         m_renderGraph.EndFrame();
         pDevice->EndFrame();
@@ -426,7 +438,8 @@ namespace EE
         m_renderPipelineRegistry.DestroyAllPipelineState( m_pRenderDevice->GetRHIDevice() );
         m_pImguiRenderPass = nullptr;
 
-        m_renderGraph.ClearAllResources( m_pRenderDevice->GetRHIDevice() );
+        m_renderGraph.ReleaseResources();
+        m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
         m_renderPipelineRegistry.Shutdown();
 
         // Unregister resource loaders

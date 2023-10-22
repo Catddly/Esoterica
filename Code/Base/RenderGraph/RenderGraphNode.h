@@ -23,6 +23,7 @@ namespace EE::RG
 	{
         friend class RenderGraph;
         friend class RGResourceRegistry;
+        friend class RenderGraphResolver;
 
 	public:
 
@@ -45,6 +46,7 @@ namespace EE::RG
         friend class RenderGraph;
         friend class RGNodeBuilder;
         friend class RGExecutableNode;
+        friend class RenderGraphResolver;
 
         using ExecutionCallbackFunc = TFunction<void( RGRenderCommandContext& context )>;
 
@@ -56,15 +58,15 @@ namespace EE::RG
         RGNode( RGNode const& ) = delete;
         RGNode& operator=( RGNode const& ) = delete;
 
-        RGNode( RGNode&& rhs )
+        RGNode( RGNode&& rhs ) noexcept
         {
-            m_pInputs = eastl::exchange( rhs.m_pInputs, {} );
-            m_pOutputs = eastl::exchange( rhs.m_pOutputs, {} );
+            m_inputs = eastl::exchange( rhs.m_inputs, {} );
+            m_outputs = eastl::exchange( rhs.m_outputs, {} );
             m_passName = eastl::exchange( rhs.m_passName, {} );
             m_id = eastl::exchange( rhs.m_id, {} );
             m_pipelineHandle = eastl::exchange( rhs.m_pipelineHandle, {} );
         }
-        RGNode& operator=( RGNode&& rhs )
+        RGNode& operator=( RGNode&& rhs ) noexcept
         {
             RGNode copy( eastl::move( rhs ) );
             copy.swap( *this );
@@ -73,15 +75,15 @@ namespace EE::RG
 
     public:
 
-        friend void swap( RGNode& lhs, RGNode& rhs )
+        friend void swap( RGNode& lhs, RGNode& rhs ) noexcept
         {
             lhs.swap( rhs );
         }
 
-        void swap( RGNode& rhs )
+        void swap( RGNode& rhs ) noexcept
         {
-            eastl::swap( m_pInputs, rhs.m_pInputs );
-            eastl::swap( m_pOutputs, rhs.m_pOutputs );
+            eastl::swap( m_inputs, rhs.m_inputs );
+            eastl::swap( m_outputs, rhs.m_outputs );
             eastl::swap( m_passName, rhs.m_passName );
             eastl::swap( m_id, rhs.m_id );
             eastl::swap( m_pipelineHandle, rhs.m_pipelineHandle );
@@ -89,13 +91,13 @@ namespace EE::RG
 
     private:
 
-        inline bool ReadyToExecute( RG::RGResourceRegistry* pRGResourceRegistry ) const;
+        inline bool IsReadyToExecute( RG::RGResourceRegistry* pRGResourceRegistry ) const;
         RGExecutableNode IntoExecutableNode( RG::RGResourceRegistry* pRGResourceRegistry ) &&;
 
 	private:
 
-		TVector<RGNodeResource>					m_pInputs;
-		TVector<RGNodeResource>					m_pOutputs;
+		TVector<RGNodeResource>					m_inputs;
+		TVector<RGNodeResource>					m_outputs;
 
 		String									m_passName;
 		NodeID									m_id;
@@ -109,10 +111,50 @@ namespace EE::RG
         friend class RGNode;
         friend class RenderGraph;
 
+    public:
+
+        RGExecutableNode() = default;
+
+        RGExecutableNode( RGExecutableNode const& ) = delete;
+        RGExecutableNode& operator=( RGExecutableNode const& ) = delete;
+
+        RGExecutableNode( RGExecutableNode&& rhs ) noexcept
+        {
+            m_inputs = eastl::exchange( rhs.m_inputs, {} );
+            m_outputs = eastl::exchange( rhs.m_outputs, {} );
+            m_passName = eastl::exchange( rhs.m_passName, {} );
+            m_id = eastl::exchange( rhs.m_id, {} );
+            m_pPipelineState = eastl::exchange( rhs.m_pPipelineState, {} );
+            m_executionCallback = eastl::exchange( rhs.m_executionCallback, {} );
+        }
+        RGExecutableNode& operator=( RGExecutableNode&& rhs ) noexcept
+        {
+            RGExecutableNode copy( eastl::move( rhs ) );
+            copy.swap( *this );
+            return *this;
+        }
+
+    public:
+
+        friend void swap( RGExecutableNode& lhs, RGExecutableNode& rhs ) noexcept
+        {
+            lhs.swap( rhs );
+        }
+
+        void swap( RGExecutableNode& rhs ) noexcept
+        {
+            eastl::swap( m_inputs, rhs.m_inputs );
+            eastl::swap( m_outputs, rhs.m_outputs );
+            eastl::swap( m_passName, rhs.m_passName );
+            eastl::swap( m_id, rhs.m_id );
+            eastl::swap( m_pPipelineState, rhs.m_pPipelineState );
+            eastl::swap( m_executionCallback, rhs.m_executionCallback );
+        }
+
     private:
 
-        TVector<RGNodeResource>					m_pInputs;
-        TVector<RGNodeResource>					m_pOutputs;
+        TVector<RGNodeResource>					m_inputs;
+        TVector<RGNodeResource>					m_outputs;
 
         String									m_passName;
         NodeID									m_id;

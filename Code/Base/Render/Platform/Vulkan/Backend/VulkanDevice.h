@@ -51,6 +51,8 @@ namespace EE::Render
 			{
 				static InitConfig GetDefault( bool enableDebug );
 
+                void*                               m_activeWindowHandle = nullptr;
+
 				TVector<char const*>				m_requiredLayers;
 				TVector<char const*>				m_requiredExtensions;
 			};

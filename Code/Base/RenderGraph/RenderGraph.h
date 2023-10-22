@@ -4,6 +4,7 @@
 
 #include "RenderGraphContext.h"
 #include "RenderGraphResourceRegistry.h"
+#include "RenderGraphNode.h"
 #include "RenderGraphNodeBuilder.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Tuple.h"
@@ -16,6 +17,7 @@ namespace EE::RHI
 {
     class RHIDevice;
     class RHISwapchain;
+    class RHITexture;
 }
 
 namespace EE
@@ -59,7 +61,7 @@ namespace EE
             // Compilation Stage
             //-------------------------------------------------------------------------
 
-            void Compile( RHI::RHIDevice* pRhiDevice );
+            bool Compile( RHI::RHIDevice* pRhiDevice );
 
             // Execution Stage
             //-------------------------------------------------------------------------
@@ -71,7 +73,8 @@ namespace EE
             // Cleanup Stage
             //-------------------------------------------------------------------------
 
-            void ClearAllResources( RHI::RHIDevice* pRhiDevice );
+            void ReleaseResources();
+            void DestroyAllResources( RHI::RHIDevice* pRhiDevice );
 
         private:
 
@@ -79,28 +82,34 @@ namespace EE
             inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
 
             // Return -1 if failed to find the presentable node.
-            int32_t FindPresentNodeIndex() const;
+            int32_t FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const;
 
             void TransitionResource( RGCompiledResource& compiledResource, RHI::RenderResourceAccessState const& access );
             void TransitionResourceBatched( TSpan<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources );
 
             // All resources used in this node should be in positioned. (i.e. theirs resource barrier states is correct)
-            // This function will 
+            // This function will call the callback function of current node.
+            // User should know that any resources used in this callback should alive, (i.e. theirs lifetime should longer than the call time point
+            // of Execute() and Present() ) otherwise this will cause crashs.
             void ExecuteNode( RGExecutableNode& node );
 
+            void PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture );
+
 		private:
-        
 
 			String									m_name;
 
 			// TODO: use a real graph
-			TVector<RGNode>							m_graph;
+			TVector<RGNode>							m_renderGraph;
             RGResourceRegistry                      m_resourceRegistry;
 
-            TVector<RGExecutableNode>               m_executionSequence;
+            // TODO: pack this two into a separate class.
+            TVector<RGExecutableNode>               m_executeNodesSequence;
+            TVector<RGExecutableNode>               m_presentNodesSequence;
 
             // Note: this render command context will match exact the device frame index.
             RGRenderCommandContext                  m_renderCommandContexts[RHI::RHIDevice::NumDeviceFrameCount];
+            // This is just a copy of return value of RHIDevice::BeginFrame().
             size_t                                  m_currentDeviceFrameIndex;
             bool                                    m_frameExecuting = false;
 		};

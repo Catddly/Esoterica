@@ -17,7 +17,7 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        bool RGNode::ReadyToExecute( RG::RGResourceRegistry* pRGResourceRegistry ) const
+        bool RGNode::IsReadyToExecute( RG::RGResourceRegistry* pRGResourceRegistry ) const
         {
             EE_ASSERT( pRGResourceRegistry );
             EE_ASSERT( m_pipelineHandle.IsValid() );
@@ -39,8 +39,8 @@ namespace EE
             //EE_ASSERT( pPipelineState->GetPipelineType() == m_pipelineHandle.GetPipelineType() );
 
             RGExecutableNode executableNode;
-            executableNode.m_pInputs = eastl::exchange( m_pInputs, {} );
-            executableNode.m_pOutputs = eastl::exchange( m_pOutputs, {} );
+            executableNode.m_inputs = eastl::exchange( m_inputs, {} );
+            executableNode.m_outputs = eastl::exchange( m_outputs, {} );
             executableNode.m_passName = eastl::exchange( m_passName, {} );
             executableNode.m_id = eastl::exchange( m_id, {} );
             executableNode.m_pPipelineState = pPipelineState;

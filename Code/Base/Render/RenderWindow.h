@@ -3,6 +3,11 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI
+{
+    class RHISwapchain;
+}
+
 namespace EE::Render
 {
     class EE_BASE_API RenderWindow
@@ -16,15 +21,17 @@ namespace EE::Render
         ~RenderWindow() 
         { 
             EE_ASSERT( m_pSwapChain == nullptr );
+            EE_ASSERT( m_pRhiSwapchain == nullptr );
             EE_ASSERT( !m_renderTarget.IsValid() );
         }
 
         RenderTarget const* GetRenderTarget() const { return &m_renderTarget; }
-        inline bool IsValid() const { return m_pSwapChain != nullptr; }
+        inline bool IsValid() const { return m_pSwapChain != nullptr || m_pRhiSwapchain != nullptr; }
 
     protected:
 
-        void*               m_pSwapChain = nullptr;
-        RenderTarget        m_renderTarget;
+        void*                       m_pSwapChain = nullptr;
+        RHI::RHISwapchain*          m_pRhiSwapchain = nullptr;
+        RenderTarget                m_renderTarget;
     };
 }

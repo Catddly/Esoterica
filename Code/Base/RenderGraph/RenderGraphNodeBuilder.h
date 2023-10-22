@@ -118,7 +118,7 @@ namespace EE::RG
 
         // Note: only true to skip sync for read access
         EE::RHI::RenderResourceAccessState accessState( access, true );
-        m_node.m_pInputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
+        m_node.m_inputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
 
         // fetch graph resource from render graph
         DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
@@ -140,7 +140,7 @@ namespace EE::RG
 
         // Note: only true to skip sync for read access
         EE::RHI::RenderResourceAccessState accessState( access, false );
-        m_node.m_pOutputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
+        m_node.m_outputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
 
         // fetch graph resource from render graph
         DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();

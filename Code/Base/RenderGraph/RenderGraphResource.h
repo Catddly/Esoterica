@@ -38,6 +38,8 @@ namespace EE::RHI
 
 namespace EE::RG
 {
+    class RGTransientResourceCache;
+
 	enum class RGResourceType : uint8_t
 	{
 		Buffer = 0,
@@ -331,7 +333,7 @@ namespace EE::RG
 
         // This function only operates on rvalue.
         // You must give out the ownership of origin resource to get a compiled resource.
-        RGCompiledResource Compile( RHI::RHIDevice* pDevice ) &&;
+        RGCompiledResource Compile( RHI::RHIDevice* pDevice, RGTransientResourceCache& cache ) &&;
 
     public:
 
@@ -375,10 +377,24 @@ namespace EE::RG
 		return eastl::get<index>( m_desc ).GetDesc();
 	}
 
+    struct RGResourceLifetime
+    {
+        // TODO: this will be changed lately when we use a real graph
+        int32_t                             m_lifeStartTimePoint = -1;
+        int32_t                             m_lifeEndTimePoint = -1;
+
+        inline bool HasValidLifetime() const
+        {
+            return ( m_lifeStartTimePoint != -1 && m_lifeEndTimePoint != -1 )
+                && ( m_lifeStartTimePoint <= m_lifeEndTimePoint );
+        }
+    };
+
     class RGCompiledResource
     {
         friend class RGResource;
         friend class RenderGraph;
+        friend class RGResourceRegistry;
 
     public:
 
@@ -417,6 +433,7 @@ namespace EE::RG
         }
 
         inline bool IsImportedResource() const { return m_importedResource.has_value(); }
+        inline bool IsSwapchainImportedResource() const { return m_importedResource.has_value() && m_importedResource->m_pImportedResource == nullptr; }
 
         inline RHI::RenderResourceAccessState& GetCurrentAccessState() { return m_currentAccessState; }
         inline RHI::RenderResourceAccessState const& GetCurrentAccessState() const { return m_currentAccessState; }
@@ -424,7 +441,7 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
         // TODO: change RGCompiledResource into RGRetiredResource
-        void Retire( RHI::RHIDevice* pDevice );
+        void Retire( RGTransientResourceCache& cache );
 
     private:
 
@@ -442,6 +459,8 @@ namespace EE::RG
         //       It is our duty to keep this share pointer alive until finish using this imported resource.
         //       So after compile RGResource to RGCompiledResource, we should keep a copy of imported resource if it is.
         TOptional<RGImportedResource>                                   m_importedResource = {};
+
+        RGResourceLifetime                                              m_lifetime;
     };
 
     template <typename Tag, typename DescType, typename DescConstRefType>

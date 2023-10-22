@@ -29,6 +29,8 @@ namespace EE::RHI
 
     public:
 
+        inline RHITextureCreateDesc GetDesc() const { return m_desc; }
+
         RHITextureView* GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
         void ClearAllViews( RHIDevice* pDevice );
 

@@ -7,6 +7,7 @@
 #include "VulkanTexture.h"
 #include "VulkanSemaphore.h"
 #include "VulkanUtils.h"
+#include "RHIToVulkanSpecification.h"
 #include "Base/Logging/Log.h"
 #include "Base/RHI/Resource/RHISemaphore.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
@@ -35,6 +36,14 @@ namespace EE::Render
 		VulkanSwapchain::VulkanSwapchain( InitConfig config, VulkanDevice* pDevice )
 			: RHISwapchain( RHI::ERHIType::Vulkan ), m_pDevice( pDevice )
 		{
+            // platform specific
+            //-------------------------------------------------------------------------
+
+            if ( config.m_format == RHI::EPixelFormat::RGBA8Unorm )
+            {
+                config.m_format = RHI::EPixelFormat::BGRA8Unorm;
+            }
+
 			// load function
 			//-------------------------------------------------------------------------
 
@@ -62,6 +71,8 @@ namespace EE::Render
 			}
 
 			VkSurfaceFormatKHR pickFormat = {};
+            VkFormat desireFormat = ToVulkanFormat( config.m_format );
+            RHI::EPixelFormat pickedRhiFormat = config.m_format;
 
 			if ( surfaceFormatCount == 1 )
 			{
@@ -69,15 +80,17 @@ namespace EE::Render
 				{
 					pickFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 					pickFormat.colorSpace = surfaceFormats[0].colorSpace;
+                    pickedRhiFormat = RHI::EPixelFormat::BGRA8Unorm;
 				}
 			}
 			else
 			{
 				for ( auto const& format : surfaceFormats )
 				{
-					if ( format.format == VK_FORMAT_B8G8R8A8_UNORM )
+					if ( format.format == desireFormat )
 					{
-						pickFormat = format;
+						pickFormat.format = desireFormat;
+                        pickedRhiFormat = config.m_format;
 						break;
 					}
 				}
@@ -90,7 +103,7 @@ namespace EE::Render
 			EE_ASSERT( m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc != nullptr );
 			VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &surfaceCaps ) );
 		
-			uint32_t const imageCount = Math::Max( 3u, surfaceCaps.minImageCount );
+			uint32_t const imageCount = Math::Max( config.m_swapBufferCount, surfaceCaps.minImageCount );
 			if ( imageCount > surfaceCaps.maxImageCount )
 			{
 				EE_LOG_FATAL_ERROR( "Render", "Vulkan Backend", "Vulkan swapchain image count exceed max image count limit: %u", surfaceCaps.maxImageCount );
@@ -101,10 +114,12 @@ namespace EE::Render
 			if ( surfaceCaps.currentExtent.width != std::numeric_limits<uint32_t>::max() )
 			{
 				extent.m_x = surfaceCaps.currentExtent.width;
+                //extent.m_x = config.m_width;
 			}
 			if ( surfaceCaps.currentExtent.height != std::numeric_limits<uint32_t>::max() )
 			{
 				extent.m_y = surfaceCaps.currentExtent.height;
+                //extent.m_y = config.m_height;
 			}
 
 			EE_ASSERT( extent != Int2::Zero );
@@ -168,7 +183,7 @@ namespace EE::Render
 			swapchainCI.minImageCount = imageCount;
 
 			swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			swapchainCI.imageUsage = VK_IMAGE_USAGE_STORAGE_BIT;
+			swapchainCI.imageUsage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			swapchainCI.imageExtent = { (uint32_t) extent.m_x, (uint32_t) extent.m_y };
 			swapchainCI.imageFormat = pickFormat.format;
 			swapchainCI.imageColorSpace = pickFormat.colorSpace;
@@ -187,9 +202,8 @@ namespace EE::Render
 
 			for ( uint32_t i = 0; i < swapchainImageCount; ++i )
 			{
-                auto desc = RHI::RHITextureCreateDesc::New2D( extent.m_x, extent.m_y, RHI::EPixelFormat::RGBA8Unorm );
-                // TODO: fill in image usage flags
-				//desc.m_usage = swapchainCI.imageUsage;
+                auto desc = RHI::RHITextureCreateDesc::New2D( extent.m_x, extent.m_y, pickedRhiFormat );
+                desc.m_usage.SetMultipleFlags( RHI::ETextureUsage::Storage, RHI::ETextureUsage::Color );
 
 				auto* pImage = EE::New<VulkanTexture>();
                 pImage->m_pHandle = swapchainImages[i];

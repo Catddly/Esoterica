@@ -158,6 +158,13 @@ namespace EE::Render
 		[[nodiscard]] inline PipelineHandle RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc );
 
         bool IsPipelineReady( PipelineHandle const& pipelineHandle ) const;
+        inline bool IsBusy() const
+        {
+            return !m_waitToSubmitRasterPipelines.empty()
+                || !m_waitToLoadRasterPipelines.empty()
+                || !m_waitToRegisteredRasterPipelines.empty()
+                || !m_retryRasterPipelineCaches.empty();
+        }
 
         RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
 
