@@ -460,6 +460,8 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanTexture.cpp">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClCompile>
+    <ClCompile Include="RHI\RHIHelper.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -2064,6 +2066,7 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSampler.h">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClInclude>
+    <ClInclude Include="RHI\RHIHelper.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

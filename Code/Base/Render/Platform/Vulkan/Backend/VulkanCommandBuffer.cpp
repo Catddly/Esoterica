@@ -5,6 +5,9 @@
 #include "VulkanRenderPass.h"
 #include "VulkanFramebuffer.h"
 #include "VulkanPipelineState.h"
+#include "VulkanCommandBufferPool.h"
+#include "VulkanCommandQueue.h"
+#include "RHIToVulkanSpecification.h"
 
 #include "Base/Math/Math.h"
 #include "Base/RHI/RHIDowncastHelper.h"
@@ -181,30 +184,140 @@ namespace EE::Render
             vkCmdSetScissor( m_pHandle, 0, 1, &cullRect );
         }
 
+        void VulkanCommandBuffer::CopyBufferToTexture( RHI::RHITexture* pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef )
+        {
+            EE_ASSERT( pDstTexture );
+
+            for ( RHI::TextureSubresourceRangeUploadRef const& subresourceRef : uploadDataRef )
+            {
+                TInlineVector<VkBufferImageCopy, 12> subresourceLayers;
+
+                EE_ASSERT( subresourceRef.m_pStagingBuffer );
+
+                if ( subresourceRef.m_uploadAllMips )
+                {
+                    uint32_t const bufferSize = subresourceRef.m_pStagingBuffer->GetDesc().m_desireSize;
+
+                    auto& texDesc = pDstTexture->GetDesc();
+                    uint32_t remainingBufferSize = bufferSize;
+                    // upload from lowest mip to highest
+                    for ( uint32_t mip = 0; mip < texDesc.m_mipmap; ++mip )
+                    {
+                        uint32_t const width = Math::Max( texDesc.m_width >> mip, 1u );
+                        uint32_t const height = Math::Max( texDesc.m_height >> mip, 1u );
+                        uint32_t const depth = Math::Max( texDesc.m_depth >> mip, 1u );
+                              
+                        uint32_t const currentMipByteSize = width * height * depth * GetPixelFormatByteSize( texDesc.m_format );
+
+                        VkDeviceSize currentBufferOffset = 0;
+                        if ( remainingBufferSize >= currentMipByteSize )
+                        {
+                            currentBufferOffset = static_cast<VkDeviceSize>( bufferSize - remainingBufferSize );
+                            remainingBufferSize -= currentMipByteSize;
+                        }
+                        else // uint32_t overflow
+                        {
+                            // skip upload for this mip
+                            EE_LOG_WARNING( "Render", "CopyBufferToTexture", "Inconsist mip chain, failed to upload mip %u", mip );
+                            remainingBufferSize = 0;
+                            break;
+                        }
+
+                        auto& imageCopy = subresourceLayers.emplace_back();
+
+                        imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
+                        imageCopy.imageSubresource.layerCount = 1;
+                        imageCopy.imageSubresource.mipLevel = mip;
+                        imageCopy.imageSubresource.aspectMask = ToVkImageAspectFlags( subresourceRef.m_aspectFlags );
+
+                        imageCopy.bufferRowLength = 0;
+                        imageCopy.bufferImageHeight = 0;
+                        imageCopy.bufferOffset = currentBufferOffset;
+                        
+                        imageCopy.imageExtent.width = width;
+                        imageCopy.imageExtent.height = height;
+                        imageCopy.imageExtent.depth = depth;
+                        imageCopy.imageOffset.x = 0;
+                        imageCopy.imageOffset.y = 0;
+                        imageCopy.imageOffset.z = 0;
+                    }
+
+                    EE_ASSERT( remainingBufferSize == 0 );
+                }
+                else
+                {
+                    auto& texDesc = pDstTexture->GetDesc();
+                    auto& imageCopy = subresourceLayers.emplace_back();
+
+                    imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
+                    imageCopy.imageSubresource.layerCount = 1;
+                    imageCopy.imageSubresource.mipLevel = subresourceRef.m_baseMipLevel;
+                    imageCopy.imageSubresource.aspectMask = ToVkImageAspectFlags( subresourceRef.m_aspectFlags );
+
+                    imageCopy.bufferRowLength = 0;
+                    imageCopy.bufferImageHeight = 0;
+                    imageCopy.bufferOffset = 0;
+
+                    imageCopy.imageExtent.width = Math::Max( texDesc.m_width >> imageCopy.imageSubresource.mipLevel, 1u );
+                    imageCopy.imageExtent.height = Math::Max( texDesc.m_height >> imageCopy.imageSubresource.mipLevel, 1u );
+                    imageCopy.imageExtent.depth = Math::Max( texDesc.m_depth >> imageCopy.imageSubresource.mipLevel, 1u );
+                    imageCopy.imageOffset.x = 0;
+                    imageCopy.imageOffset.y = 0;
+                    imageCopy.imageOffset.z = 0;
+                }
+
+                // upload data for each layer
+                //-------------------------------------------------------------------------
+
+                RHI::RenderResourceBarrierState prevBarrierState = dstBarrier;
+                RHI::RenderResourceBarrierState nextBarrierState = RHI::RenderResourceBarrierState::TransferWrite;
+
+                RHI::TextureBarrier barrier;
+                barrier.m_discardContents = subresourceRef.m_layer == 0;
+                barrier.m_pRhiTexture = pDstTexture;
+                // for now, no queue resource transfer
+                barrier.m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
+                barrier.m_dstQueueFamilyIndex = barrier.m_srcQueueFamilyIndex;
+                barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
+                barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
+                barrier.m_previousAccessesCount = 1;
+                barrier.m_pPreviousAccesses = &prevBarrierState;
+                barrier.m_nextAccessesCount = 1;
+                barrier.m_pNextAccesses = &nextBarrierState;
+                barrier.m_subresourceRange = RHI::TextureSubresourceRange::AllSubresources( subresourceRef.m_aspectFlags );
+
+                PipelineBarrier(
+                    nullptr,
+                    0, nullptr,
+                    1, &barrier
+                );
+
+                auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( subresourceRef.m_pStagingBuffer );
+                EE_ASSERT( pVkBuffer );
+                auto* pVkDstTexture = RHI::RHIDowncast<VulkanTexture>( pDstTexture );
+                EE_ASSERT( pVkDstTexture );
+
+                vkCmdCopyBufferToImage(
+                    m_pHandle,
+                    pVkBuffer->m_pHandle, pVkDstTexture->m_pHandle,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    static_cast<uint32_t>( subresourceLayers.size() ), subresourceLayers.data()
+                );
+
+                barrier.m_discardContents = false;
+                barrier.m_pPreviousAccesses = &nextBarrierState;
+                barrier.m_pNextAccesses = &prevBarrierState;
+
+                PipelineBarrier(
+                    nullptr,
+                    0, nullptr,
+                    1, &barrier
+                );
+            }
+        }
+
         // Vulkan Pipeline Barrier Utility Functions
         //-------------------------------------------------------------------------
-
-        inline static VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> const& flags )
-        {
-            VkImageAspectFlags flag = 0;
-            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Color ) )
-            {
-                flag |= VK_IMAGE_ASPECT_COLOR_BIT;
-            }
-            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Depth ) )
-            {
-                flag |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            }
-            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Stencil ) )
-            {
-                flag |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            }
-            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Metadata ) )
-            {
-                flag |= VK_IMAGE_ASPECT_METADATA_BIT;
-            }
-            return flag;
-        }
 
         static bool IsWriteAccess( RHI::RenderResourceBarrierState const& access )
         {
@@ -579,17 +692,17 @@ namespace EE::Render
                 switch ( textureBarrier.m_nextLayout )
                 {
                     case ImageMemoryLayout::Optimal:
-                    barrier.m_barrier.oldLayout = accessInfo.m_imageLayout;
+                    barrier.m_barrier.newLayout = accessInfo.m_imageLayout;
                     break;
                     case ImageMemoryLayout::General:
                     {
                         if ( nextAccess == RHI::RenderResourceBarrierState::Present )
                         {
-                            barrier.m_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                            barrier.m_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                         }
                         else
                         {
-                            barrier.m_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+                            barrier.m_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
                         }
                     }
                     break;

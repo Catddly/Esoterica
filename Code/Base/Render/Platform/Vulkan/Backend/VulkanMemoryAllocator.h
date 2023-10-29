@@ -20,6 +20,7 @@ namespace EE::Render
 		class VulkanMemoryAllocator
 		{
             friend class VulkanDevice;
+            friend class VulkanBuffer;
 
 		public:
 

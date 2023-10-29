@@ -12,6 +12,7 @@ namespace EE::RHI
     class RHIFramebuffer;
     class RHIPipelineState;
 
+    class RHITexture;
     class RHITextureView;
 }
 
@@ -54,6 +55,8 @@ namespace EE::Render
         };
 
         //-------------------------------------------------------------------------
+
+        class VulkanCommandBufferPool;
 
 		class VulkanCommandBuffer : public RHI::RHICommandBuffer
 		{
@@ -99,6 +102,13 @@ namespace EE::Render
             virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
             virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
 
+            // Resource Copying
+            //-------------------------------------------------------------------------
+
+            virtual void CopyBufferToTexture( RHI::RHITexture* pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef ) override;
+
+            //-------------------------------------------------------------------------
+
 			inline VkCommandBuffer Raw() const { return m_pHandle; }
 
         private:
@@ -117,6 +127,7 @@ namespace EE::Render
             static TInlineVector<VkImageMemoryBarrier, 32>              m_sTextureBarriers;
 			
             VkCommandBuffer					                            m_pHandle = nullptr;
+            VulkanCommandBufferPool*                                    m_pCommandBufferPool = nullptr;
 		};
     }
 }

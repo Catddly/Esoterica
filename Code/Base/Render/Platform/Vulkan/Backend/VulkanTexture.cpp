@@ -1,14 +1,98 @@
 #if defined(EE_VULKAN)
 #include "VulkanTexture.h"
-#include "VulkanDevice.h"
 #include "VulkanCommon.h"
+#include "VulkanDevice.h"
+#include "VulkanBuffer.h"
 #include "RHIToVulkanSpecification.h"
+#include "Base/RHI/RHICommandBuffer.h"
+#include "Base/RHI/RHIHelper.h"
+#include "Base/Math/Math.h"
+#include "Base/Types/Arrays.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
 namespace EE::Render
 {
     namespace Backend
     {
+        void* VulkanTexture::MapSlice( RHI::RHIDevice* pDevice, uint32_t layer )
+        {
+            EE_ASSERT( layer < m_desc.m_array );
+            EE_ASSERT( pDevice );
+
+            auto iterator = m_waitToFlushMappedMemory.find( layer );
+            if ( iterator != m_waitToFlushMappedMemory.end() )
+            {
+                return iterator->second->Map( pDevice );
+            }
+
+            RHI::RHIBufferCreateDesc bufferDesc = RHI::RHIBufferCreateDesc::NewSize( GetLayerByteSize( layer ) );
+            bufferDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+            bufferDesc.m_usage = RHI::EBufferUsage::TransferSrc;
+            RHI::RHIBuffer* pStagingBuffer = pDevice->CreateBuffer( bufferDesc );
+            EE_ASSERT( pStagingBuffer );
+
+            m_waitToFlushMappedMemory.insert_or_assign( layer, pStagingBuffer );
+
+            return pStagingBuffer->Map( pDevice );
+        }
+
+        void VulkanTexture::UnmapSlice( RHI::RHIDevice* pDevice, uint32_t layer )
+        {
+            EE_ASSERT( layer < m_desc.m_array );
+            EE_ASSERT( pDevice );
+
+            auto iterator = m_waitToFlushMappedMemory.find( layer );
+            if ( iterator != m_waitToFlushMappedMemory.end() )
+            {
+                iterator->second->Unmap( pDevice );
+                return;
+            }
+
+            EE_UNREACHABLE_CODE();
+        }
+
+        bool VulkanTexture::UploadMappedData( RHI::RHIDevice* pDevice, RHI::RenderResourceBarrierState dstBarrierState )
+        {
+            if ( m_waitToFlushMappedMemory.empty() )
+            {
+                return true;
+            }
+
+            TInlineVector<RHI::TextureSubresourceRangeUploadRef, 6> uploadRefs;
+            for ( auto const& stagingBuffer : m_waitToFlushMappedMemory )
+            {
+                auto& uploadRef = uploadRefs.emplace_back();
+                uploadRef.m_pStagingBuffer = stagingBuffer.second;
+                uploadRef.m_aspectFlags.SetFlag( RHI::TextureAspectFlags::Color );
+                uploadRef.m_layer = stagingBuffer.first;
+                uploadRef.m_baseMipLevel = 0;
+                uploadRef.m_bufferBaseOffset = 0;
+                uploadRef.m_uploadAllMips = true;
+            }
+
+            DispatchImmediateCommandAndWait( pDevice, [this, &uploadRefs, dstBarrierState] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            {
+                pCommandBuffer->CopyBufferToTexture( this, dstBarrierState, uploadRefs );
+
+                return true;
+            } );
+
+            for ( auto stagingBuffer : m_waitToFlushMappedMemory )
+            {
+                pDevice->DestroyBuffer( stagingBuffer.second );
+            }
+
+            // Not use clear() here, we want to free all memory immediately
+            {
+                TMap<uint32_t, RHI::RHIBuffer*> emptyMap;
+                m_waitToFlushMappedMemory.swap( emptyMap );
+            }
+
+            return true;
+        }
+
+        //-------------------------------------------------------------------------
+
         RHI::RHITextureView* VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc )
         {
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
@@ -67,6 +151,25 @@ namespace EE::Render
             vkDestroyImageView( pVkDevice->m_pHandle, pVkTextureView->m_pHandle, nullptr );
 
             EE::Delete( pTextureView );
+        }
+
+        //-------------------------------------------------------------------------
+
+        uint32_t VulkanTexture::GetLayerByteSize( uint32_t layer )
+        {
+            EE_ASSERT( layer < m_desc.m_array );
+
+            uint32_t totalByteSize = 0;
+            uint32_t const pixelByteWidth = GetPixelFormatByteSize( m_desc.m_format );
+            for ( uint32_t mip = 0; mip < m_desc.m_mipmap; ++mip )
+            {
+                uint32_t const width = Math::Max( m_desc.m_width >> mip, 1u );
+                uint32_t const height = Math::Max( m_desc.m_height >> mip, 1u );
+                uint32_t const depth = Math::Max( m_desc.m_depth >> mip, 1u );
+
+                totalByteSize += width * height * depth * pixelByteWidth;
+            }
+            return totalByteSize;
         }
     }
 }

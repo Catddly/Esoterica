@@ -131,7 +131,7 @@ namespace EE::Render
         RenderContext                           m_immediateContext;
 
         RHI::RHIDevice*                         m_pRHIDevice = nullptr;
-        RHI::RHISwapchain*                      m_pRHISwapchain = nullptr;
+        //RHI::RHISwapchain*                      m_pRHISwapchain = nullptr;
 
         // Lock to allow loading resources while rendering across different threads
         Threading::RecursiveMutex               m_deviceMutex;

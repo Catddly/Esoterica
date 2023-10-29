@@ -38,6 +38,7 @@
     <ClInclude Include="RHI\Resource\RHISemaphore.h" />
     <ClInclude Include="RHI\Resource\RHIShader.h" />
     <ClInclude Include="RHI\Resource\RHITexture.h" />
+    <ClInclude Include="RHI\RHIHelper.h" />
     <ClInclude Include="RHI\RHISwapchain.h" />
     <ClInclude Include="RHI\Resource\RHIResource.h" />
     <ClInclude Include="RHI\RHIDevice.h" />
@@ -565,6 +566,7 @@
     <ClCompile Include="RenderGraph\RenderGraphResourceRegistry.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphTransientResourceCache.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\RHIToVulkanSpecification.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanBuffer.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBuffer.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanRenderPass.cpp" />
@@ -573,6 +575,7 @@
     <ClCompile Include="RHI\Resource\RHIResourceCreationCommons.cpp" />
     <ClCompile Include="RHI\Resource\RHITexture.cpp" />
     <ClCompile Include="RHI\RHICommandBuffer.cpp" />
+    <ClCompile Include="RHI\RHIHelper.cpp" />
     <ClCompile Include="ThirdParty\implot\implot.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_demo.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_items.cpp" />

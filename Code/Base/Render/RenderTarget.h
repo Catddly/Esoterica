@@ -5,6 +5,11 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI
+{
+    class RHITexture;
+}
+
 namespace EE::Render
 {
     struct PickingID
@@ -25,9 +30,9 @@ namespace EE::Render
     public:
 
         RenderTarget() = default;
-        ~RenderTarget() { EE_ASSERT( !m_RT.IsValid() ); }
+        ~RenderTarget() { EE_ASSERT( !m_RT.IsValid() || m_pRenderTarget == nullptr ); }
 
-        inline bool IsValid() const { return m_RT.IsValid(); }
+        inline bool IsValid() const { return m_RT.IsValid() || m_pRenderTarget != nullptr; }
         inline Int2 const& GetDimensions() const { EE_ASSERT( IsValid() ); return m_RT.GetDimensions(); }
         inline bool HasDepthStencil() const { return m_DS.IsValid(); }
         inline bool HasPickingRT() const { return m_pickingRT.IsValid(); }
@@ -41,6 +46,11 @@ namespace EE::Render
         inline ViewDSHandle const& GetDepthStencilHandle() const { EE_ASSERT( m_DS.IsValid() ); return m_DS.GetDepthStencilView(); }
 
     protected:
+
+        RHI::RHITexture*            m_pRenderTarget = nullptr;
+        RHI::RHITexture*            m_pDepthStencil = nullptr;
+        RHI::RHITexture*            m_pPickingRT = nullptr;
+        RHI::RHITexture*            m_pPickingStagingRT = nullptr;
 
         Texture                     m_RT;
         Texture                     m_DS;

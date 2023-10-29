@@ -1,8 +1,10 @@
 #pragma once
 
 #include "RHITaggedType.h"
+#include "RHICommandBuffer.h"
 #include "Resource/RHIResourceCreationCommons.h"
 #include "Base/Types/Arrays.h"
+#include "Base/Types/BitFlags.h"
 #include "Base/Math/Math.h"
 // TODO: remove this
 #include "Base/Render/RenderTexture.h"
@@ -263,6 +265,17 @@ namespace EE::RHI
         }
     };
 
+    // TextureSubresourceRangeUploadRef represent a mipmap of a set of mipmap chain in a texture as subresource.
+    struct TextureSubresourceRangeUploadRef
+    {
+        RHIBuffer*                              m_pStagingBuffer = nullptr;
+        TBitFlags<TextureAspectFlags>		    m_aspectFlags;
+        uint32_t                                m_bufferBaseOffset = 0;
+        uint32_t                                m_baseMipLevel = 0;
+        uint32_t                                m_layer = 0;
+        bool                                    m_uploadAllMips;
+    };
+
     struct TextureBarrier
     {
         bool									m_discardContents;
@@ -300,6 +313,26 @@ namespace EE::RHI
 
     class RHITextureView;
 
+    // Used to synchronize CPU and GPU.
+    class RHICPUGPUSync : public RHITaggedType
+    {
+    public:
+
+        RHICPUGPUSync( ERHIType rhiType )
+            : RHITaggedType( rhiType )
+        {
+        }
+        virtual ~RHICPUGPUSync() = default;
+
+        RHICPUGPUSync( RHICPUGPUSync const& ) = delete;
+        RHICPUGPUSync& operator=( RHICPUGPUSync const& ) = delete;
+
+        RHICPUGPUSync( RHICPUGPUSync&& ) = default;
+        RHICPUGPUSync& operator=( RHICPUGPUSync&& ) = default;
+
+    private:
+    };
+
     class RHICommandBuffer : public RHITaggedType
     {
     public:
@@ -335,8 +368,19 @@ namespace EE::RHI
         virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
         virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
 
+        // TSpan<TextureSubresourceRangeUploadRef> represent the corresponding layer of a textures.
+        // TSpan<TextureSubresourceRangeUploadRef>[0] is layer 0, and [1] is layer 1...
+        // if this texture has only one layer, the size of uploadDataRef should be one.
+        virtual void CopyBufferToTexture( RHITexture* pDstTexture, RenderResourceBarrierState dstBarrier, TSpan<TextureSubresourceRangeUploadRef> const uploadDataRef ) = 0;
+
+    protected:
+
+        inline void SetRecording( bool bIsRecording ) { m_bRecording = bIsRecording; }
+        inline bool IsRecording() const { return m_bRecording; }
+
     private:
         
+        bool                        m_bRecording = false;
     };
 
 }

@@ -5,7 +5,9 @@
 #include "Base/Render/RenderCoreResources.h"
 #include "Base/IniFile.h"
 #include "Base/Profiling.h"
+
 #include "Base/RHI/Resource/RHIShader.h"
+#include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #ifdef _WIN32
@@ -116,12 +118,6 @@ namespace EE::Render
 
     void RenderDevice::Shutdown()
     {
-        if ( m_pRHIDevice != nullptr )
-        {
-            EE::Delete( m_pRHISwapchain );
-            EE::Delete( m_pRHIDevice );
-        }
-
         CoreResources::Shutdown( this );
 
         m_immediateContext.m_pDeviceContext->ClearState();
@@ -159,7 +155,7 @@ namespace EE::Render
         swapchainConfig.m_swapBufferCount = 2;
         swapchainConfig.m_sample = RHI::ESampleCount::SC1;
 
-        m_pRHISwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        auto* pRHISwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
         #endif
 
         // Set buffer dimensions and format
@@ -214,6 +210,7 @@ namespace EE::Render
         }
 
         m_primaryWindow.m_pSwapChain = pSwapChain;
+        m_primaryWindow.m_pRhiSwapchain = pRHISwapchain;
         CreateWindowRenderTarget( m_primaryWindow, m_resolution );
 
         //-------------------------------------------------------------------------
@@ -246,10 +243,20 @@ namespace EE::Render
     {
         DestroyRenderTarget( m_primaryWindow.m_renderTarget );
 
+        for ( auto& rt : m_primaryWindow.m_RhiRenderTargets )
+        {
+            rt.m_pRenderTarget = nullptr;
+        }
+
         if ( m_primaryWindow.m_pSwapChain != nullptr )
         {
             reinterpret_cast<IDXGISwapChain*>( m_primaryWindow.m_pSwapChain )->Release();
             m_primaryWindow.m_pSwapChain = nullptr;
+        }
+
+        if ( m_primaryWindow.m_pRhiSwapchain != nullptr )
+        {
+            EE::Delete( m_primaryWindow.m_pRhiSwapchain );
         }
 
         if ( m_immediateContext.m_pDeviceContext != nullptr )
@@ -279,6 +286,11 @@ namespace EE::Render
                 pDebug->Release();
             }
             #endif
+        }
+
+        if ( m_pRHIDevice != nullptr )
+        {
+            EE::Delete( m_pRHIDevice );
         }
     }
 
@@ -428,7 +440,15 @@ namespace EE::Render
         window.m_renderTarget.m_RT.m_textureHandle.m_pData = pBackBuffer;
         window.m_renderTarget.m_RT.m_renderTargetView.m_pData = pRenderTargetView;
         window.m_renderTarget.m_RT.m_dimensions = dimensions;
-        CreateTexture( window.m_renderTarget.m_DS, DataFormat::Float_X32, dimensions, USAGE_RT_DS ) ;
+        CreateTexture( window.m_renderTarget.m_DS, DataFormat::Float_X32, dimensions, USAGE_RT_DS );
+
+        TVector<RHI::RHITexture const*> const swapchainColorTextures = window.m_pRhiSwapchain->GetPresentTextures();
+
+        window.m_RhiRenderTargets.resize( swapchainColorTextures.size() );
+        for ( size_t i = 0; i < window.m_RhiRenderTargets.size(); ++i )
+        {
+            rt.m_pRenderTarget = swapchainColorTextures[i];
+        }
 
         return true;
     }

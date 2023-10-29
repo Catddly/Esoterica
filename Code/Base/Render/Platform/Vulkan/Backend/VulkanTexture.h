@@ -2,6 +2,7 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Math/Math.h"
+#include "Base/Types/Map.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "VulkanCommon.h"
 
@@ -13,6 +14,7 @@
 namespace EE::RHI
 {
     class RHIDevice;
+    class RHIBuffer;
 }
 
 namespace EE::Render
@@ -54,19 +56,32 @@ namespace EE::Render
             {}
             virtual ~VulkanTexture() = default;
 
+        public:
+
+            virtual void* MapSlice( RHI::RHIDevice* pDevice, uint32_t layer ) override;
+            virtual void  UnmapSlice( RHI::RHIDevice* pDevice, uint32_t layer ) override;
+
+            // Upload mapped slice from CPU to GPU texture.
+            // Return true if no data to upload or update data successfully.
+            virtual bool UploadMappedData( RHI::RHIDevice* pDevice, RHI::RenderResourceBarrierState dstBarrierState ) override;
+
         private:
 
             virtual RHI::RHITextureView* CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) override;
             virtual void                 DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView* pTextureView ) override;
 
+            uint32_t GetLayerByteSize( uint32_t layer );
+
 		private:
 
-			VkImage							m_pHandle = nullptr;
+			VkImage							    m_pHandle = nullptr;
             #if VULKAN_USE_VMA_ALLOCATION
-            VmaAllocation                   m_allocation = nullptr;
+            VmaAllocation                       m_allocation = nullptr;
             #else
-            VkDeviceMemory                  m_allocation = nullptr;
+            VkDeviceMemory                      m_allocation = nullptr;
             #endif // VULKAN_USE_VMA_ALLOCATION
+
+            TMap<uint32_t, RHI::RHIBuffer*>     m_waitToFlushMappedMemory;
 		};
     }
 }

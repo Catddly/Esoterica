@@ -54,6 +54,7 @@ namespace EE::Render
         public:
 
             virtual RHI::RHITextureCreateDesc GetPresentTextureDesc() const override;
+            virtual TVector<RHI::RHITexture const*> const GetPresentTextures() const override;
 
 		private:
 

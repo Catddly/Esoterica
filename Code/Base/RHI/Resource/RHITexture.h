@@ -2,6 +2,7 @@
 
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
+#include "../RHICommandBuffer.h"
 #include "Base/Types/HashMap.h"
 
 namespace EE::RHI
@@ -29,10 +30,15 @@ namespace EE::RHI
 
     public:
 
-        inline RHITextureCreateDesc GetDesc() const { return m_desc; }
+        inline RHITextureCreateDesc const& GetDesc() const { return m_desc; }
 
         RHITextureView* GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
         void ClearAllViews( RHIDevice* pDevice );
+
+        virtual void* MapSlice( RHIDevice* pDevice, uint32_t layer ) = 0;
+        virtual void  UnmapSlice( RHIDevice* pDevice, uint32_t layer ) = 0;
+
+        virtual bool UploadMappedData( RHIDevice* pDevice, RenderResourceBarrierState dstBarrierState ) = 0;
 
     protected:
 

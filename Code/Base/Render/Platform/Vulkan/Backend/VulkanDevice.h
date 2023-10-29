@@ -4,7 +4,6 @@
 #include "VulkanPhysicalDevice.h"
 #include "VulkanMemoryAllocator.h"
 #include "VulkanSampler.h"
-#include "VulkanCommandBufferPool.h"
 #include "Base/Types/Map.h"
 #include "Base/Types/String.h"
 #include "Base/Types/HashMap.h"
@@ -34,6 +33,8 @@ namespace EE::Render
 	{
 		class VulkanInstance;
 		class VulkanSurface;
+        class VulkanCommandBuffer;
+        class VulkanCommandBufferPool;
         class VulkanCommandQueue;
         class VulkanPipelineState;
 
@@ -42,6 +43,7 @@ namespace EE::Render
             friend class VulkanMemoryAllocator;
             friend class VulkanCommandQueue;
             friend class VulkanSwapchain;
+            friend class VulkanBuffer;
             friend class VulkanTexture;
             friend class VulkanFramebufferCache;
 
@@ -79,10 +81,19 @@ namespace EE::Render
             virtual size_t BeginFrame() override;
             virtual void   EndFrame() override;
 
+            inline virtual void WaitUntilIdle() override;
+
             inline virtual size_t GetDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFrameCount; }
 
             virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
             inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
+
+            virtual RHI::RHICommandBuffer* GetImmediateCommandBuffer() override;
+
+            virtual bool BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
+            virtual void EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
+
+            virtual void SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer, RHI::RHICPUGPUSync* pSync ) override;
 
             //-------------------------------------------------------------------------
 
@@ -127,8 +138,15 @@ namespace EE::Render
 			bool CheckAndCollectDeviceExtensions( InitConfig const& config );
 			bool CreateDevice( InitConfig const& config );
 
+            // Resource
+            //-------------------------------------------------------------------------
+
+            void ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureCreateDesc const& createDesc );
+
             // Pipeline State
             //-------------------------------------------------------------------------
+
+            RHI::RHICommandBuffer* AllocateCommandBuffer( VulkanCommandBufferPool* pool );
 
             bool CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState );
             void DestroyRasterPipelineStateLayout( VulkanPipelineState* pPipelineState );
@@ -162,7 +180,9 @@ namespace EE::Render
             size_t                                          m_deviceFrameCount;
             bool                                            m_frameExecuting = false; // During BeginFrame() and EndFrame(), this must be true.
 			VulkanCommandQueue*							    m_pGlobalGraphicQueue = nullptr;
-            VulkanCommandBufferPool                         m_commandBufferPool[NumDeviceFrameCount];
+            VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFrameCount];
+
+            VulkanCommandBufferPool*                        m_immediateCommandBufferPool;
 
             VulkanMemoryAllocator                           m_globalMemoryAllcator;
 

@@ -9,6 +9,11 @@
 #include <vma/vk_mem_alloc.h>
 #endif
 
+namespace EE::RHI
+{
+    class RHIDevice;
+}
+
 namespace EE::Render
 {
     namespace Backend
@@ -26,6 +31,11 @@ namespace EE::Render
                 : RHIBuffer( RHI::ERHIType::Vulkan )
             {}
             virtual ~VulkanBuffer() = default;
+
+        public:
+
+            virtual void* Map( RHI::RHIDevice* pDevice ) override;
+            virtual void  Unmap( RHI::RHIDevice* pDevice ) override;
 
         private:
 

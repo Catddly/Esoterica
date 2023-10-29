@@ -7,9 +7,12 @@ namespace EE::Render
 {
     namespace Backend
     {
+        class VulkanCommandQueue;
+
         class VulkanCommandBufferPool
         {
             friend class VulkanDevice;
+            friend class VulkanCommandBuffer;
 
         public:
 
@@ -25,7 +28,8 @@ namespace EE::Render
 
         private:
 
-            VkCommandPool             m_pHandle = nullptr;
+            VkCommandPool               m_pHandle = nullptr;
+            VulkanCommandQueue*         m_pCommandQueue = nullptr;
         };
     }
 }

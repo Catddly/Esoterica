@@ -260,6 +260,19 @@ namespace EE::Render
             EE_ASSERT( !m_presentTextures.empty() );
             return m_presentTextures[0]->m_desc;
         }
+
+		TVector<RHI::RHITexture const*> const VulkanSwapchain::GetPresentTextures() const
+		{
+            TVector<RHI::RHITexture const*> textures;
+            textures.resize( m_presentTextures.size() );
+            
+            for ( uint32_t i = 0; i < m_presentTextures.size(); ++i )
+            {
+                textures[i] = m_presentTextures[i];
+            }
+
+            return textures;
+		}
 	}
 }
 

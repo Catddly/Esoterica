@@ -4,6 +4,33 @@
 
 namespace EE::RHI
 {
+    uint32_t GetPixelFormatByteSize( EPixelFormat format )
+    {
+        switch ( format )
+        {
+            case EE::RHI::EPixelFormat::RGBA8Unorm: return 4;
+            case EE::RHI::EPixelFormat::BGRA8Unorm: return 4;
+            case EE::RHI::EPixelFormat::Undefined:
+            default:
+            EE_UNIMPLEMENTED_FUNCTION();
+            break;
+        }
+        
+        EE_UNREACHABLE_CODE();
+        return 0;
+    }
+
+    //-------------------------------------------------------------------------
+
+    bool RHITextureBufferData::CanBeUsedBy( RHITextureCreateDesc const& textureCreateDesc ) const
+    {
+        return textureCreateDesc.m_width == m_textureWidth
+            && textureCreateDesc.m_height == m_textureHeight
+            && textureCreateDesc.m_depth == m_textureDepth;
+    }
+
+    //-------------------------------------------------------------------------
+
     RHITextureCreateDesc RHITextureCreateDesc::GetDefault()
     {
         RHITextureCreateDesc desc = {};
@@ -98,6 +125,22 @@ namespace EE::RHI
         desc.m_type = ETextureType::TCubemap;
         desc.m_array = 6;
         desc.m_flag = ETextureCreateFlag::CubeCompatible;
+        return desc;
+    }
+
+    RHITextureCreateDesc RHITextureCreateDesc::NewInitData( RHITextureBufferData texBufferData, EPixelFormat format )
+    {
+        EE_ASSERT( texBufferData.HasValidData() );
+        // TODO: assertion format must be compatitable with texBufferData
+
+        auto desc = RHITextureCreateDesc::GetDefault();
+        desc.m_width = texBufferData.m_textureWidth;
+        desc.m_height = texBufferData.m_textureHeight;
+        desc.m_depth = texBufferData.m_textureDepth;
+
+        desc.m_format = format;
+        desc.m_type = desc.m_depth == 1 ? ETextureType::T2D : ETextureType::T3D;
+        desc.m_bufferData = std::move( texBufferData );
         return desc;
     }
 

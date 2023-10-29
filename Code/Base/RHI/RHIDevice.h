@@ -21,6 +21,7 @@ namespace EE::RHI
     class RHIRenderPass;
     class RHIPipelineState;
 
+    class RHICPUGPUSync;
     class RHICommandBuffer;
     class RHICommandQueue;
 
@@ -52,10 +53,19 @@ namespace EE::RHI
         virtual size_t BeginFrame() = 0;
         virtual void   EndFrame() = 0;
 
+        virtual void   WaitUntilIdle() = 0;
+
         virtual size_t GetDeviceFrameIndex() const = 0;
 
         virtual RHICommandBuffer* AllocateCommandBuffer() = 0;
         virtual RHICommandQueue* GetMainGraphicCommandQueue() = 0;
+
+        virtual RHICommandBuffer* GetImmediateCommandBuffer() = 0;
+
+        virtual bool BeginCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
+        virtual void EndCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
+
+        virtual void SubmitCommandBuffer( RHICommandBuffer* pCommandBuffer, RHICPUGPUSync* pSync ) = 0;
 
         //-------------------------------------------------------------------------
 

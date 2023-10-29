@@ -2,6 +2,7 @@
 #if defined(EE_VULKAN)
 #include "VulkanCommon.h"
 #include "Base\RHI\Resource\RHIResourceCreationCommons.h"
+#include "Base\RHI\RHICommandBuffer.h"
 
 #include <vulkan/vulkan_core.h>
 #if VULKAN_USE_VMA_ALLOCATION
@@ -33,6 +34,8 @@ namespace EE::Render
         VkImageTiling ToVulkanImageTiling( RHI::ETextureMemoryTiling tiling );
         VkImageCreateFlagBits ToVulkanImageCreateFlags( TBitFlags<RHI::ETextureCreateFlag> createFlag );
         VkBufferUsageFlagBits ToVulkanBufferUsageFlags( TBitFlags<RHI::EBufferUsage> usage );
+
+        VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags );
 
         //-------------------------------------------------------------------------
 

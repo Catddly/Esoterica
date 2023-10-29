@@ -12,6 +12,9 @@ namespace EE::Render
     {
         class VulkanCommandQueue : public RHI::RHICommandQueue
         {
+            friend class VulkanDevice;
+            friend class VulkanCommandBuffer;
+
         public:
 
             EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )

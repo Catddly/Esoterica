@@ -11,6 +11,7 @@
 #include "VulkanRenderPass.h"
 #include "VulkanPipelineState.h"
 #include "VulkanCommandBuffer.h"
+#include "VulkanCommandBufferPool.h"
 #include "VulkanCommandQueue.h"
 #include "RHIToVulkanSpecification.h"
 #include "Base/RHI/RHIDowncastHelper.h"
@@ -76,9 +77,18 @@ namespace EE::Render
 		{
 			EE_ASSERT( m_pHandle != nullptr );
 
+            WaitUntilIdle();
+
+            if ( m_immediateCommandBufferPool )
+            {
+                vkDestroyCommandPool( m_pHandle, m_immediateCommandBufferPool->m_pHandle, nullptr );
+                EE::Delete( m_immediateCommandBufferPool );
+            }
+
             for ( auto& commandPool : m_commandBufferPool )
             {
-                vkDestroyCommandPool( m_pHandle, commandPool.m_pHandle, nullptr );
+                vkDestroyCommandPool( m_pHandle, commandPool->m_pHandle, nullptr );
+                EE::Delete( commandPool );
             }
 
             if ( m_pGlobalGraphicQueue )
@@ -119,34 +129,118 @@ namespace EE::Render
             m_frameExecuting = false;
         }
 
+        void VulkanDevice::WaitUntilIdle()
+        {
+            if ( m_pHandle )
+            {
+                VK_SUCCEEDED( vkDeviceWaitIdle( m_pHandle ) );
+            }
+        }
+
         RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer()
         {
             EE_ASSERT( m_frameExecuting );
 
             auto& commandPool = GetCurrentFrameCommandBufferPool();
-
-            VkCommandBufferAllocateInfo allocInfo = {};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandPool = commandPool.m_pHandle;
-            allocInfo.commandBufferCount = 1;
-
-            auto* pVkCommandBuffer = EE::New<VulkanCommandBuffer>();
-            if ( pVkCommandBuffer )
-            {
-                VK_SUCCEEDED( vkAllocateCommandBuffers( m_pHandle, &allocInfo, &(pVkCommandBuffer->m_pHandle) ) );
-            
-                return pVkCommandBuffer;
-            }
+            auto* pCommandBuffer = AllocateCommandBuffer( &commandPool );
 
             // TODO: remember to destroy delete command buffer
 
-            return nullptr;
+            return pCommandBuffer;
         }
 
-        EE::RHI::RHICommandQueue* VulkanDevice::GetMainGraphicCommandQueue()
+        RHI::RHICommandQueue* VulkanDevice::GetMainGraphicCommandQueue()
         {
             return m_pGlobalGraphicQueue;
+        }
+
+        RHI::RHICommandBuffer* VulkanDevice::GetImmediateCommandBuffer()
+        {
+            if ( !m_immediateCommandBufferPool )
+            {
+                m_immediateCommandBufferPool = EE::New<VulkanCommandBufferPool>();
+
+                VkCommandPoolCreateInfo poolCI = {};
+                poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetDeviceIndex();
+
+                VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(m_immediateCommandBufferPool->m_pHandle) ) );
+
+                m_immediateCommandBufferPool->m_pCommandQueue = m_pGlobalGraphicQueue;
+            }
+
+            return AllocateCommandBuffer( m_immediateCommandBufferPool );
+        }
+
+        bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
+        {
+            if ( !pCommandBuffer )
+            {
+                return false;
+            }
+
+            auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
+            EE_ASSERT( pVkCommandBuffer );
+
+            if ( pVkCommandBuffer->IsRecording() )
+            {
+                EE_LOG_WARNING( "Render", "VulkanDevice", "Try to begin recording a command buffer twice!" );
+                return false;
+            }
+
+            VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            VK_SUCCEEDED( vkBeginCommandBuffer( pVkCommandBuffer->m_pHandle, &beginInfo ) );
+            pVkCommandBuffer->SetRecording( true );
+
+            return true;
+        }
+
+        void VulkanDevice::EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
+        {
+            EE_ASSERT( pCommandBuffer );
+
+            auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
+            EE_ASSERT( pVkCommandBuffer );
+            EE_ASSERT( pVkCommandBuffer->IsRecording() );
+
+            VK_SUCCEEDED( vkEndCommandBuffer( pVkCommandBuffer->m_pHandle ) );
+            pVkCommandBuffer->SetRecording( false );
+        }
+
+        void VulkanDevice::SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer, RHI::RHICPUGPUSync* pSync )
+        {
+            // TODO: synchronization
+            (void)pSync;
+
+            if ( pCommandBuffer )
+            {
+                auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
+                EE_ASSERT( pVkCommandBuffer );
+                EE_ASSERT( !pVkCommandBuffer->IsRecording() );
+
+                auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
+                EE_ASSERT( pCommandBufferPool );
+                auto* pCommandQueue = pCommandBufferPool->m_pCommandQueue;
+                EE_ASSERT( pCommandQueue );
+
+                auto* pVkCommandQueue = RHI::RHIDowncast<VulkanCommandQueue>( pCommandQueue );
+                EE_ASSERT( pVkCommandQueue );
+
+                VkSubmitInfo submitInfo = {};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submitInfo.pCommandBuffers = &pVkCommandBuffer->m_pHandle;
+                submitInfo.commandBufferCount = 1;
+                submitInfo.pWaitSemaphores = nullptr;
+                submitInfo.waitSemaphoreCount = 0;
+                submitInfo.pSignalSemaphores = nullptr;
+                submitInfo.signalSemaphoreCount = 0;
+                submitInfo.pWaitDstStageMask = nullptr;
+
+                VK_SUCCEEDED( vkQueueSubmit( pVkCommandQueue->m_pHandle, 1, &submitInfo, nullptr ) );
+            }
         }
 
 		//-------------------------------------------------------------------------
@@ -172,6 +266,11 @@ namespace EE::Render
             // TODO: queue specified resource
             imageCreateInfo.pQueueFamilyIndices = nullptr;
             imageCreateInfo.queueFamilyIndexCount = 0;
+
+            if ( createDesc.m_bufferData.HasValidData() && createDesc.m_bufferData.CanBeUsedBy( createDesc ) )
+            {
+                imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            }
 
             bool bRequireDedicatedMemory = false;
             uint32_t allcatedMemorySize = 0;
@@ -237,6 +336,15 @@ namespace EE::Render
             }
             pVkTexture->m_desc.m_allocatedSize = allcatedMemorySize;
 
+            // upload texture initial data if exists
+            //-------------------------------------------------------------------------
+
+            if ( createDesc.m_bufferData.HasValidData() && createDesc.m_bufferData.CanBeUsedBy( createDesc ) )
+            {
+                pVkTexture->m_desc.m_usage.SetFlag( RHI::ETextureUsage::TransferDst );
+                ImmediateUploadTextureData( pVkTexture, createDesc );
+            }
+
             return pVkTexture;
         }
 
@@ -244,7 +352,7 @@ namespace EE::Render
         {
             EE_ASSERT( pTexture != nullptr );
             auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture );
-            EE_ASSERT( pVkTexture->m_pHandle != nullptr );
+            EE_ASSERT( pVkTexture && pVkTexture->m_pHandle != nullptr );
 
             pVkTexture->ClearAllViews( this );
         
@@ -914,17 +1022,69 @@ namespace EE::Render
 
             for ( auto& commandPool : m_commandBufferPool )
             {
+                commandPool = EE::New<VulkanCommandBufferPool>();
+                EE_ASSERT( commandPool );
+
                 VkCommandPoolCreateInfo poolCI = {};
                 poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
                 poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetDeviceIndex();
 
-                VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(commandPool.m_pHandle) ) );
+                VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(commandPool->m_pHandle) ) );
+
+                commandPool->m_pCommandQueue = m_pGlobalGraphicQueue;
             }
 
 			return true;
 		}
 
+        // Resource
         //-------------------------------------------------------------------------
+
+        void VulkanDevice::ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureCreateDesc const& createDesc )
+        {
+            if ( pTexture )
+            {
+                EE_ASSERT( pTexture->m_desc.m_usage.IsFlagSet(RHI::ETextureUsage::TransferDst) );
+
+                auto& bufferData = createDesc.m_bufferData;
+                if ( bufferData.HasValidData() && bufferData.CanBeUsedBy( createDesc ) )
+                {
+                    void* pMappedMemory = pTexture->MapSlice( this, 0 );
+                    memcpy( pMappedMemory, bufferData.m_binary.data(), bufferData.m_binary.size() );
+                    pTexture->UnmapSlice( this, 0 );
+
+                    pTexture->UploadMappedData( this, RHI::RenderResourceBarrierState::AnyShaderReadSampledImageOrUniformTexelBuffer );
+                }
+            }
+        }
+
+        // Pipeline State
+        //-------------------------------------------------------------------------
+
+        RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer( VulkanCommandBufferPool* pool )
+        {
+            if ( !pool || !pool->m_pHandle || !pool->m_pCommandQueue )
+            {
+                return nullptr;
+            }
+
+            VkCommandBufferAllocateInfo allocInfo = {};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandPool = pool->m_pHandle;
+            allocInfo.commandBufferCount = 1;
+
+            auto* pVkCommandBuffer = EE::New<VulkanCommandBuffer>();
+            if ( pVkCommandBuffer )
+            {
+                VK_SUCCEEDED( vkAllocateCommandBuffers( m_pHandle, &allocInfo, &(pVkCommandBuffer->m_pHandle) ) );
+
+                pVkCommandBuffer->m_pCommandBufferPool = pool;
+                return pVkCommandBuffer;
+            }
+
+            return nullptr;
+        }
 
         bool VulkanDevice::CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState )
         {
@@ -1408,7 +1568,7 @@ namespace EE::Render
         VulkanCommandBufferPool& VulkanDevice::GetCurrentFrameCommandBufferPool()
         {
             auto deviceFrameIndex = m_deviceFrameCount % VulkanDevice::NumDeviceFrameCount;
-            return m_commandBufferPool[deviceFrameIndex];
+            return *m_commandBufferPool[deviceFrameIndex];
         }
     }
 }

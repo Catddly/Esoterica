@@ -54,6 +54,8 @@ namespace EE::RHI
         Undefined
     };
 
+    uint32_t GetPixelFormatByteSize( EPixelFormat format );
+
     enum class ETextureType
     {
         T1D,
@@ -88,6 +90,26 @@ namespace EE::RHI
         CubeCompatible = 0,
     };
 
+    struct RHITextureCreateDesc;
+
+    struct RHITextureBufferData
+    {
+        Blob                m_binary;
+        uint32_t            m_textureWidth = 0;
+        uint32_t            m_textureHeight = 0;
+        uint32_t            m_textureDepth = 1;
+        uint32_t            m_pixelByteLength = 0;
+
+        inline bool HasValidData() const
+        {
+            return !m_binary.empty()
+                && m_binary.size() == m_textureWidth * m_textureHeight * m_textureDepth * m_pixelByteLength;
+        }
+
+        // Return whether this texture buffer data can be used(initialized) within a texture. 
+        bool CanBeUsedBy( RHITextureCreateDesc const& textureCreateDesc ) const;
+    };
+
     struct RHITextureCreateDesc
     {
     public:
@@ -98,6 +120,16 @@ namespace EE::RHI
         static RHITextureCreateDesc New2DArray( uint32_t width, uint32_t height, EPixelFormat format, uint32_t array );
         static RHITextureCreateDesc New3D( uint32_t width, uint32_t height, uint32_t depth, EPixelFormat format );
         static RHITextureCreateDesc NewCubemap( uint32_t width, EPixelFormat format );
+        static RHITextureCreateDesc NewInitData( RHITextureBufferData texBufferData, EPixelFormat format );
+
+        // Pass by value, accept both lvalue and rvalue
+        void WithInitialData( RHITextureBufferData initBufferData )
+        {
+            if ( initBufferData.HasValidData() && initBufferData.CanBeUsedBy( *this ) )
+            {
+                m_bufferData = initBufferData;
+            }
+        }
 
         bool IsValid() const;
 
@@ -158,6 +190,8 @@ namespace EE::RHI
         uint32_t                                m_allocatedSize;
         ERenderResourceMemoryUsage              m_memoryUsage;
         TBitFlags<ERenderResourceMemoryFlag>    m_memoryFlag;
+
+        RHITextureBufferData                    m_bufferData;
     };
 
     enum class ETextureViewType

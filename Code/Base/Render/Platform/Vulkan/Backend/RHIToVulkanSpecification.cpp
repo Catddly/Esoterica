@@ -312,6 +312,28 @@ namespace EE::Render
             return VkBufferUsageFlagBits( flag );
 		}
 
+        VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags )
+        {
+            VkFlags vkFlag = 0;
+            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Color ) )
+            {
+                vkFlag |= VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Depth ) )
+            {
+                vkFlag |= VK_IMAGE_ASPECT_DEPTH_BIT;
+            }
+            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Metadata ) )
+            {
+                vkFlag |= VK_IMAGE_ASPECT_METADATA_BIT;
+            }
+            if ( flags.IsFlagSet( RHI::TextureAspectFlags::Stencil ) )
+            {
+                vkFlag |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+            return VkImageAspectFlags( vkFlag );
+        }
+
         //-------------------------------------------------------------------------
 
         VkAttachmentLoadOp ToVulkanAttachmentLoadOp( RHI::ERenderPassAttachmentLoadOp loadOP )

@@ -35,12 +35,15 @@ namespace EE::Render
         void Shutdown();
         void RenderViewport( Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget ) override final;
 
+        // Render Graph
+        //void RenderViewport( Viewport const& viewport );
+
     private:
 
         void RenderImguiData( RenderContext const& renderContext, ImDrawData const* pDrawData );
 
     private:
-
+        
         RenderDevice*                   m_pRenderDevice = nullptr;
 
         VertexShader                    m_vertexShader;
