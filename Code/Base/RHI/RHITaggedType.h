@@ -1,6 +1,9 @@
 #pragma once
 
-#include <numeric>
+#include "Base/_Module/API.h"
+
+#include <limits>
+#include <stdint.h>
 
 // helper macro
 
@@ -18,7 +21,7 @@ namespace EE::RHI
         Invalid = std::numeric_limits<uint8_t>::max()
     };
 
-    class RHITaggedType
+    class EE_BASE_API RHITaggedType
     {
     public:
 

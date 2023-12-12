@@ -8,8 +8,12 @@ namespace EE::RHI
     // Pipeline State
     //-------------------------------------------------------------------------
 
-    class RHIPipelineState : public RHIResource
+    class EE_BASE_API RHIPipelineState : public RHIResource
     {
+    public:
+
+        using SetDescriptorLayout = TMap<uint32_t, EBindingResourceType>;
+
     public:
 
         RHIPipelineState( ERHIType rhiType = ERHIType::Invalid )
@@ -19,9 +23,10 @@ namespace EE::RHI
 
         virtual RHIPipelineType GetPipelineType() const = 0;
 
+        virtual TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const = 0;
     };
 
-    class RHIRasterPipelineState : public RHIPipelineState
+    class EE_BASE_API RHIRasterPipelineState : public RHIPipelineState
     {
     public:
 
@@ -37,7 +42,7 @@ namespace EE::RHI
         RHIRasterPipelineStateCreateDesc                m_desc;
     };
 
-    class RHIComputePipelineState : public RHIPipelineState
+    class EE_BASE_API RHIComputePipelineState : public RHIPipelineState
     {
     public:
 

@@ -61,7 +61,7 @@ namespace EE::RHI
         bool                                                m_bIsInitialized = false;
     };
 
-    class RHIRenderPass : public RHIResource
+    class EE_BASE_API RHIRenderPass : public RHIResource
     {
     public:
 

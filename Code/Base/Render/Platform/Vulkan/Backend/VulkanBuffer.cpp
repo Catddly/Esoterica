@@ -18,7 +18,6 @@ namespace EE::Render
 
             EE_ASSERT( pDevice );
             EE_ASSERT( m_pHandle );
-            EE_ASSERT( !m_pMappedMemory );
 
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             EE_ASSERT( pVkDevice );
@@ -33,8 +32,8 @@ namespace EE::Render
             VK_SUCCEEDED( vmaMapMemory( vmaAllocator, m_allocation, &m_pMappedMemory ) );
             #else
             VK_SUCCEEDED( vkMapMemory( pVkDevice->m_pHandle, m_allocation,
-                          0, static_cast<VkDeviceSize>( m_desc.m_desireSize ),
                           0, &m_pMappedMemory ));
+                          0, static_cast<VkDeviceSize>( m_desc.m_desireSize ),
             #endif
 
             return m_pMappedMemory;
@@ -57,7 +56,12 @@ namespace EE::Render
             vkUnmapMemory( pVkDevice->m_pHandle, m_allocation );
             #endif
 
-            m_pMappedMemory = nullptr;
+            #if VULKAN_USE_VMA_ALLOCATION
+            if ( !m_desc.m_memoryFlag.IsFlagSet( RHI::ERenderResourceMemoryFlag::PersistentMapping ) )
+            {
+                m_pMappedMemory = nullptr;
+            }
+            #endif
         }
     }
 }

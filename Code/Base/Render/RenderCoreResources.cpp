@@ -43,7 +43,7 @@ namespace EE::Render::CoreResources
         //-------------------------------------------------------------------------
 
         // Create default texture
-        Utils::CreateTextureFromBase64( pRenderDevice, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ), g_pDefaultResources->m_defaultTexture );
+        //Utils::CreateTextureFromBase64( pRenderDevice, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ), g_pDefaultResources->m_defaultTexture );
 
         RHI::RHITextureBufferData texData;
         Utils::FetchTextureBufferDataFromBase64( texData, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ) );
@@ -65,7 +65,7 @@ namespace EE::Render::CoreResources
 
         if ( g_pDefaultResources != nullptr )
         {
-            pRenderDevice->DestroyTexture( g_pDefaultResources->m_defaultTexture );
+            //pRenderDevice->DestroyTexture( g_pDefaultResources->m_defaultTexture );
             pRhiDevice->DestroyTexture( g_pDefaultResources->m_pDefaultTexture );
 
             //-------------------------------------------------------------------------

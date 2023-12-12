@@ -4,6 +4,7 @@
 #include "Base/Logging/Log.h"
 #include "Base/Types/Variant.h"
 #include "Base/Types/Optional.h"
+#include "Base/Types/Variant.h"
 #include "Base/Memory/Pointers.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
@@ -113,6 +114,8 @@ namespace EE::RG
         inline static BufferDesc NewDeviceAddressable( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewDeviceAddressable( sizeInByte ) }; }
         inline static BufferDesc NewVertexBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewVertexBuffer( sizeInByte ) }; }
         inline static BufferDesc NewIndexBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewIndexBuffer( sizeInByte ) }; }
+        inline static BufferDesc NewUniformBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewUniformBuffer( sizeInByte ) }; }
+        inline static BufferDesc NewStorageBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewStorageBuffer( sizeInByte ) }; }
 
         inline bool IsValid() const { return m_desc.IsValid(); }
 
@@ -254,7 +257,7 @@ namespace EE::RG
         // TODO: rhi resource reference counting
         // Note: Swapchain imported texture resource is nullptr when register into the RGResourceRegistry.
         //       Actual present texture fetch will be delayed to render graph execution stage.
-		RHI::RHIResource*       	    		m_pImportedResource;
+		RHI::RHIResource*       	    	    m_pImportedResource;
 		RHI::RenderResourceBarrierState			m_currentAccess;
 	};
 
@@ -489,4 +492,59 @@ namespace EE::RG
         constexpr size_t const index = static_cast<size_t>( Tag::GetRGResourceType() );
         return eastl::get<index>( m_resource );
     }
+
+    //-------------------------------------------------------------------------
+
+    struct RGPipelineBufferBinding
+    {
+        _Impl::RGResourceID                             m_resourceId;
+    };
+
+    struct RGPipelineDynamicBufferBinding
+    {
+        _Impl::RGResourceID                             m_resourceId;
+        uint32_t                                        m_dynamicOffset = 0;
+    };
+
+    struct RGPipelineTextureBinding
+    {
+        RHI::RHITextureViewCreateDesc                   m_viewDesc;
+        _Impl::RGResourceID                             m_resourceId;
+        RHI::ETextureLayout                             m_layout;
+    };
+
+    struct RGPipelineTextureArrayBinding
+    {
+        TInlineVector<RGPipelineTextureBinding, 16>     m_bindings;
+    };
+
+    struct RGPipelineStaticSamplerBinding
+    {
+    };
+
+    struct RGPipelineUnknownBinding
+    {
+    };
+
+    using RGPipelineResourceBinding = TVariant<
+        RGPipelineBufferBinding,
+        RGPipelineDynamicBufferBinding,
+        RGPipelineTextureBinding,
+        RGPipelineTextureArrayBinding,
+        RGPipelineStaticSamplerBinding,
+        RGPipelineUnknownBinding
+    >;
+
+    class EE_BASE_API RGPipelineBinding
+    {
+        friend class RGBoundPipeline;
+
+    public:
+
+        RGPipelineBinding( RGPipelineResourceBinding const& binding );
+
+    private:
+
+        RGPipelineResourceBinding                   m_binding = RGPipelineUnknownBinding{};
+    };
 }

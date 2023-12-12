@@ -4,7 +4,7 @@
 
 namespace EE::RHI
 {
-    class RHIShader : public RHIResource
+    class EE_BASE_API RHIShader : public RHIResource
     {
     public:
 

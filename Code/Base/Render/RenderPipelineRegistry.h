@@ -15,7 +15,7 @@
 namespace EE
 {
 	class TaskSystem;
-	namespace { class ResourceSystem; }
+    namespace Resource { class ResourceSystem; class ResourceServer; }
 }
 
 namespace EE::RHI
@@ -93,10 +93,8 @@ namespace eastl
 
 namespace EE::Render
 {
-	class RasterPipelineEntry
+	class EE_BASE_API RasterPipelineEntry
 	{
-		friend class PipelineRegistry;
-
 	public:
 
 		inline PipelineHandle GetID() const { return m_handle; }
@@ -106,7 +104,7 @@ namespace EE::Render
         // This function should only be called with PipelineRegistry.
         inline bool IsVisible() const { return m_pPipelineState != nullptr; }
 
-	private:
+	public:
 
 		// TODO: support more shader type
 		TResourcePtr<VertexShader>			    m_vertexShader;
@@ -118,7 +116,7 @@ namespace EE::Render
         PipelineHandle                          m_handle;
 	};
 
-	class ComputePipelineEntry
+	class EE_BASE_API ComputePipelineEntry
 	{
 		friend class PipelineRegistry;
 
@@ -141,7 +139,7 @@ namespace EE::Render
 	public:
 
 		PipelineRegistry() = default;
-		~PipelineRegistry();
+		virtual ~PipelineRegistry();
 
 		PipelineRegistry( PipelineRegistry const& ) = delete;
 		PipelineRegistry& operator=( PipelineRegistry const& ) = delete;
@@ -151,7 +149,9 @@ namespace EE::Render
 
 	public:
 
-		void Initialize( SystemRegistry const& systemRegistry );
+        // Initialize pipeline registry with remote compilation mode.
+        // If resource system doesn't exists, please provide a upper layer class which derive from this PipelineRegistry to get more functionality.
+		bool Initialize( Resource::ResourceSystem* pResourceSystem );
 		void Shutdown();
 
 		[[nodiscard]] inline PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
@@ -168,13 +168,25 @@ namespace EE::Render
 
         RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
 
-		void LoadAndUpdatePipelines( RHI::RHIDevice* pDevice );
+		void Update();
+		bool UpdatePipelines( RHI::RHIDevice* pDevice );
         void DestroyAllPipelineState( RHI::RHIDevice* pDevice );
+
+    protected:
+
+        // Submit pipeline shader load tasks
+        virtual void UpdateLoadPipelineShaders();
+
+        // Mark some raster pipeline entry is loading
+        void MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry );
 
 	private:
 
-        // Call once to update all the loading status of a shader.
-		void UpdateLoadPipelineShaders();
+        // Update pipeline load status
+        void UpdateLoadedPipelineShaders();
+
+        // Registered loaded pipelines to create actual RHI resources
+        bool TryCreatePipelineForLoadedPipelineShaders( RHI::RHIDevice* pDevice );
 
         // Create RHI raster pipeline state for certain RasterPipelineEntry.
         // This function can't have any side-effects, since it may be call for the same entry multiple time.
@@ -183,11 +195,14 @@ namespace EE::Render
         // Unload all pipeline shaders inside all registries.
 		void UnloadAllPipelineShaders();
 
+    protected:
+
+        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToSubmitRasterPipelines;
+
 	private:
 
 		bool															    m_isInitialized = false;
 
-		TaskSystem*														    m_pTaskSystem = nullptr;
 		Resource::ResourceSystem*										    m_pResourceSystem = nullptr;
 
         // TODO: may be extract to single pipeline cache class
@@ -197,8 +212,7 @@ namespace EE::Render
         TIDVector<PipelineHandle, ComputePipelineEntry>					    m_computePipelineStates;
         //THashMap<ComputePipelineDesc, PipelineHandle>					    m_computePipelineHandles;
 
-        // TODO: use state update pattern
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToSubmitRasterPipelines;
+        // TODO: state machine update pattern
         TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToLoadRasterPipelines;
         TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToRegisteredRasterPipelines;
         TVector<TSharedPtr<RasterPipelineEntry>>                            m_retryRasterPipelineCaches;

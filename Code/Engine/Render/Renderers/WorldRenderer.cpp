@@ -873,7 +873,7 @@ namespace EE::Render
 
         RenderSunShadows( viewport, pDirectionalLightComponent, renderData );
         {
-            immediateContext.SetRenderTarget( renderTarget );
+            //immediateContext.SetRenderTarget( renderTarget );
             RenderStaticMeshes( viewport, renderTarget, renderData );
             RenderSkeletalMeshes( viewport, renderTarget, renderData );
         }

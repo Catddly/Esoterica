@@ -2,20 +2,27 @@
 
 #include "ResourceServer.h"
 #include "ResourceServerUI.h"
+#include "Render/PipelineRegistryResourceServerAdapter.h"
+#include "Base/Resource/ResourceSystem.h"
+#include "Base/Threading/TaskSystem.h"
 #include "Engine/Render/Renderers/ImguiRenderer.h"
 #include "Engine/UpdateContext.h"
 #include "Base/Application/Platform/Application_Win32.h"
 #include "Base/Render/RenderDevice.h"
+#include "Base/RenderGraph/RenderGraph.h"
 #include "Base/Resource/ResourceSettings.h"
 #include "Base/Imgui/ImguiSystem.h"
 #include "Base/Render/RenderViewport.h"
 #include "Base/Types/String.h"
 #include "Base/Esoterica.h"
+#include "Engine/Render/ResourceLoaders/ResourceLoader_RenderShader.h"
 #include <shellapi.h>
 
 //-------------------------------------------------------------------------
 
 struct ITaskbarList3;
+
+namespace EE::Resource { class ResourceProvider; }
 
 //-------------------------------------------------------------------------
 
@@ -57,28 +64,38 @@ namespace EE
     private:
 
         // System Tray Icon
-        NOTIFYICONDATA                          m_systemTrayIconData;
-        bool                                    m_applicationWindowHidden = false;
-        int32_t                                 m_currentIconID = 0;
+        NOTIFYICONDATA                                      m_systemTrayIconData;
+        bool                                                m_applicationWindowHidden = false;
+        int32_t                                             m_currentIconID = 0;
 
         // Taskbar Icon
-        ITaskbarList3*                          m_pTaskbarInterface = nullptr;
-        HICON                                   m_busyOverlayIcon = nullptr;
-        bool                                    m_busyOverlaySet = false;
+        ITaskbarList3*                                      m_pTaskbarInterface = nullptr;
+        HICON                                               m_busyOverlayIcon = nullptr;
+        bool                                                m_busyOverlaySet = false;
 
         //-------------------------------------------------------------------------
 
-        Seconds                                 m_deltaTime = 0.0f;
+        Seconds                                             m_deltaTime = 0.0f;
 
-        ImGuiX::ImguiSystem                     m_imguiSystem;
+        ImGuiX::ImguiSystem                                 m_imguiSystem;
 
         // Rendering
-        Render::RenderDevice*                   m_pRenderDevice = nullptr;
-        Render::Viewport                        m_viewport;
-        Render::ImguiRenderer                   m_imguiRenderer;
+        Render::RenderDevice*                               m_pRenderDevice = nullptr;
+        RG::RenderGraph                                     m_renderGraph;
+
+        Render::PipelineRegistry                            m_pipelineRegistry;
+        TaskSystem                                          m_taskSystem = TaskSystem( Threading::GetProcessorInfo().m_numPhysicalCores - 1 );
+        Resource::ResourceProvider*                         m_pResourceProvider = nullptr;
+        Resource::ResourceSystem                            m_resourceSystem = Resource::ResourceSystem( m_taskSystem );
+
+        Render::Viewport                                    m_viewport;
+        Render::ImguiRenderer                               m_imguiRenderer;
 
         // Resource
-        Resource::ResourceServer                m_resourceServer;
-        Resource::ResourceServerUI              m_resourceServerUI;
+        Resource::ResourceServer                            m_resourceServer;
+        Resource::ResourceServerUI                          m_resourceServerUI;
+ 
+        // Loaders
+        Render::ShaderLoader                                m_shaderLoader;
     };
 }

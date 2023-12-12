@@ -1,4 +1,4 @@
-#if defined(_WIN32) && defined(EE_DX11)
+#if defined(_WIN32)
 
 #include "RenderContext_DX11.h"
 #include "Base/Types/Color.h"
@@ -388,29 +388,29 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    void RenderContext::SetRenderTarget( RenderTarget const& renderTarget ) const
-    {
-        EE_ASSERT( IsValid() && renderTarget.IsValid() );
+    //void RenderContext::SetRenderTarget( RenderTarget const& renderTarget ) const
+    //{
+    //    EE_ASSERT( IsValid() && renderTarget.IsValid() );
 
-        // Get render targets
-        int32_t const numViews = renderTarget.HasPickingRT() ? 2 : 1;
-        ID3D11RenderTargetView* renderTargetViews[2] =
-        {
-            (ID3D11RenderTargetView*) renderTarget.GetRenderTargetHandle().m_pData,
-            renderTarget.HasPickingRT() ? (ID3D11RenderTargetView*) renderTarget.GetPickingRenderTargetHandle().m_pData : nullptr,
-        };
+    //    // Get render targets
+    //    int32_t const numViews = renderTarget.HasPickingRT() ? 2 : 1;
+    //    ID3D11RenderTargetView* renderTargetViews[2] =
+    //    {
+    //        (ID3D11RenderTargetView*) renderTarget.GetRenderTargetHandle().m_pData,
+    //        renderTarget.HasPickingRT() ? (ID3D11RenderTargetView*) renderTarget.GetPickingRenderTargetHandle().m_pData : nullptr,
+    //    };
 
-        // Get depth stencil
-        ID3D11DepthStencilView* pDepthStencilView = nullptr;
-        if ( renderTarget.HasDepthStencil() )
-        {
-            pDepthStencilView = (ID3D11DepthStencilView*) renderTarget.GetDepthStencilHandle().m_pData;
-        }
+    //    // Get depth stencil
+    //    ID3D11DepthStencilView* pDepthStencilView = nullptr;
+    //    if ( renderTarget.HasDepthStencil() )
+    //    {
+    //        pDepthStencilView = (ID3D11DepthStencilView*) renderTarget.GetDepthStencilHandle().m_pData;
+    //    }
 
-        //-------------------------------------------------------------------------
+    //    //-------------------------------------------------------------------------
 
-        m_pDeviceContext->OMSetRenderTargets( numViews, renderTargetViews, pDepthStencilView );
-    }
+    //    m_pDeviceContext->OMSetRenderTargets( numViews, renderTargetViews, pDepthStencilView );
+    //}
 
     void RenderContext::SetRenderTarget( ViewDSHandle const& dsView ) const
     {
@@ -430,24 +430,24 @@ namespace EE::Render
         m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsView.m_pData, D3D10_CLEAR_DEPTH, depth, stencil );
     }
 
-    void RenderContext::ClearRenderTargetViews( RenderTarget const& renderTarget ) const
-    {
-        EE_ASSERT( IsValid() && renderTarget.IsValid() );
+    //void RenderContext::ClearRenderTargetViews( RenderTarget const& renderTarget ) const
+    //{
+    //    EE_ASSERT( IsValid() && renderTarget.IsValid() );
 
-        ViewRTHandle const& rtHandle = renderTarget.GetRenderTargetHandle();
-        m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) rtHandle.m_pData, &s_defaultClearColor.m_x );
+    //    ViewRTHandle const& rtHandle = renderTarget.GetRenderTargetHandle();
+    //    m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) rtHandle.m_pData, &s_defaultClearColor.m_x );
 
-        ViewDSHandle const& dsHandle = renderTarget.GetDepthStencilHandle();
-        m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsHandle.m_pData, D3D10_CLEAR_DEPTH, 1.0f, 0 );
+    //    ViewDSHandle const& dsHandle = renderTarget.GetDepthStencilHandle();
+    //    m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsHandle.m_pData, D3D10_CLEAR_DEPTH, 1.0f, 0 );
 
-        //-------------------------------------------------------------------------
+    //    //-------------------------------------------------------------------------
 
-        if ( renderTarget.HasPickingRT() )
-        {
-            ViewRTHandle const& pickingHandle = renderTarget.GetPickingRenderTargetHandle();
-            m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) pickingHandle.m_pData, &Float4::Zero.m_x );
-        }
-    }
+    //    if ( renderTarget.HasPickingRT() )
+    //    {
+    //        ViewRTHandle const& pickingHandle = renderTarget.GetPickingRenderTargetHandle();
+    //        m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) pickingHandle.m_pData, &Float4::Zero.m_x );
+    //    }
+    //}
 
     //-------------------------------------------------------------------------
 
@@ -506,8 +506,8 @@ namespace EE::Render
 
     void RenderContext::Present( RenderWindow& window ) const
     {
-        auto pSwapChain = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
-        pSwapChain->Present( 0, 0 );
+        //auto pSwapChain = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
+        //pSwapChain->Present( 0, 0 );
     }
 }
 

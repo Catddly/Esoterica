@@ -85,9 +85,9 @@ namespace EE::Resource
 
         // Resource Loaders
         //-------------------------------------------------------------------------
-
         void RegisterResourceLoader( ResourceLoader* pLoader );
         void UnregisterResourceLoader( ResourceLoader* pLoader );
+
 
         // Loading/Unloading
         //-------------------------------------------------------------------------

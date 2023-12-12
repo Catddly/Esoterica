@@ -56,7 +56,8 @@ namespace EE::RG
         }
 
         m_compiledResources.clear();
-        m_resourceState = ResourceState::Retire;
+        // one frame draw end, render graph go back to origin state
+        m_resourceState = ResourceState::Registering;
     }
 
     void RGResourceRegistry::Shutdown( RHI::RHIDevice* pDevice )

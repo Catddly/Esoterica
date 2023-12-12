@@ -9,6 +9,14 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI
+{
+    class RHIDevice;
+    class RHITexture;
+}
+
+//-------------------------------------------------------------------------
+
 namespace EE::Render
 {
     // Specified the texel usage aspect.
@@ -85,6 +93,8 @@ namespace EE::Render
         friend class TextureCompiler;
         friend class TextureLoader;
 
+        friend class RHI::RHIDevice;
+
         EE_RESOURCE( 'txtr', "Render Texture" );
         EE_SERIALIZE( m_format, m_rawData );
 
@@ -93,11 +103,13 @@ namespace EE::Render
         Texture() = default;
         Texture( Int2 const& dimensions ) : m_dimensions( dimensions ) {}
 
-        virtual bool IsValid() const override { return m_textureHandle.IsValid(); }
+        virtual bool IsValid() const override { return m_pTexture != nullptr || m_textureHandle.IsValid(); }
         inline Int2 const& GetDimensions() const { return m_dimensions; }
 
-        inline bool operator==( Texture const& rhs ) const { return m_shaderResourceView == m_shaderResourceView; }
-        inline bool operator!=( Texture const& rhs ) const { return m_shaderResourceView != m_shaderResourceView; }
+        inline bool operator==( Texture const& rhs ) const { return m_pTexture == m_pTexture; }
+        inline bool operator!=( Texture const& rhs ) const { return m_pTexture != m_pTexture; }
+
+        inline RHI::RHITexture const* GetRHITexture() const { return m_pTexture; }
 
         // Resource Views
         //-------------------------------------------------------------------------
@@ -117,6 +129,7 @@ namespace EE::Render
     protected:
 
         TextureHandle           m_textureHandle;
+        RHI::RHITexture*        m_pTexture = nullptr;
         ViewSRVHandle           m_shaderResourceView;
         ViewUAVHandle           m_unorderedAccessView;
         ViewRTHandle            m_renderTargetView;

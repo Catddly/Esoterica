@@ -4,7 +4,7 @@
 
 namespace EE::RHI
 {
-    class RHIResource : public RHITaggedType
+    class EE_BASE_API RHIResource : public RHITaggedType
     {
     public:
 
@@ -20,35 +20,39 @@ namespace EE::RHI
         RHIResource& operator=( RHIResource&& ) = default;
     };
 
-    class RHIResourceView : public RHITaggedType
+    class RHIDevice;
+
+    class IRHIResourceWrapper
     {
     public:
 
-        RHIResourceView( ERHIType rhiType = ERHIType::Invalid )
-            : RHITaggedType( rhiType )
-        {}
-        virtual ~RHIResourceView() = default;
-
-        RHIResourceView( RHIResourceView const& ) = delete;
-        RHIResourceView& operator=( RHIResourceView const& ) = delete;
-
-        RHIResourceView( RHIResourceView&& ) = default;
-        RHIResourceView& operator=( RHIResourceView&& ) = default;
-    };
-
-    class RHISynchronazationPrimitive : public RHIResource
-    {
-    public:
-
-        RHISynchronazationPrimitive( ERHIType rhiType = ERHIType::Invalid )
-            : RHIResource( rhiType )
-        {}
-        virtual ~RHISynchronazationPrimitive() = default;
+        virtual ~IRHIResourceWrapper() = default;
 
     public:
 
+        struct ResourceCreateParameters
+        {
+        };
 
+    public:
+
+        // Release resources own by this resource wrapper.
+        virtual void Release( RHIDevice* pDevice ) = 0;
+
+        inline bool IsInitialized() const { return m_isInitialized; }
+
+    protected:
+
+        // Initialize resources by pass unique create parameters.
+        // Ensure type safety by using wrapper functions sush as Initialize( RHIDevice* pDevice, MyResourceCreateParameters const& createParams )
+        // which MyResourceCreateParameters is derived from ResourceCreateParameters.
+        virtual bool InitializeBase( RHIDevice* pDevice, ResourceCreateParameters const& createParams ) = 0;
+
+    protected:
+
+        bool                            m_isInitialized = false;
     };
+
 }
 
 

@@ -290,7 +290,7 @@ namespace EE::Render
         Shader::ReflectedBindingCount bindingCount;
         if ( spirvType.array.empty() )
         {
-            bindingCount.m_type = Shader::BindingCountType::One;
+            bindingCount.m_type = Shader::EBindingCountType::One;
             bindingCount.m_count = 1;
         }
         else
@@ -299,12 +299,12 @@ namespace EE::Render
 
             if ( count != 0 )
             {
-                bindingCount.m_type = Shader::BindingCountType::Static;
+                bindingCount.m_type = Shader::EBindingCountType::Static;
                 bindingCount.m_count = count;
             }
             else
             {
-                bindingCount.m_type = Shader::BindingCountType::Dynamic;
+                bindingCount.m_type = Shader::EBindingCountType::Dynamic;
                 bindingCount.m_count = std::numeric_limits<size_t>::max();
             }
         }
@@ -521,7 +521,7 @@ namespace EE::Render
             auto const& spirvType = spirvCompiler.get_type( ubo.type_id );
 
             auto bindingCount = GetBindingCount( spirvType );
-            Shader::ReflectedBindingResourceType resourceType = Shader::ReflectedBindingResourceType::UniformBuffer;
+            Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::UniformBuffer;
 
             bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" });
         }
@@ -534,7 +534,7 @@ namespace EE::Render
             auto const& spirvType = spirvCompiler.get_type( sbo.type_id );
 
             auto bindingCount = GetBindingCount( spirvType );
-            Shader::ReflectedBindingResourceType resourceType = Shader::ReflectedBindingResourceType::StorageBuffer;
+            Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::StorageBuffer;
 
             bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
         }
@@ -547,7 +547,7 @@ namespace EE::Render
             auto const& spirvType = spirvCompiler.get_type( img.type_id );
 
             auto bindingCount = GetBindingCount( spirvType );
-            Shader::ReflectedBindingResourceType resourceType = Shader::ReflectedBindingResourceType::CombinedImageSampler;
+            Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::CombinedTextureSampler;
 
             bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
         }
@@ -561,14 +561,14 @@ namespace EE::Render
 
             auto bindingCount = GetBindingCount( spirvType );
 
-            Shader::ReflectedBindingResourceType resourceType;
+            Shader::EReflectedBindingResourceType resourceType;
             if ( spirvType.image.dim == spv::DimBuffer )
             {
-                resourceType = Shader::ReflectedBindingResourceType::UniformTexelBuffer;
+                resourceType = Shader::EReflectedBindingResourceType::UniformTexelBuffer;
             }
             else
             {
-                resourceType = Shader::ReflectedBindingResourceType::SampledImage;
+                resourceType = Shader::EReflectedBindingResourceType::SampleTexture;
             }
             
             bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
@@ -581,15 +581,15 @@ namespace EE::Render
             auto const binding = spirvCompiler.get_decoration( img.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( img.type_id );
 
-            Shader::ReflectedBindingResourceType resourceType;
+            Shader::EReflectedBindingResourceType resourceType;
             auto bindingCount = GetBindingCount( spirvType );
             if ( spirvType.image.dim == spv::DimBuffer )
             {
-                resourceType = Shader::ReflectedBindingResourceType::StorageTexelBuffer;
+                resourceType = Shader::EReflectedBindingResourceType::StorageTexelBuffer;
             }
             else
             {
-                resourceType = Shader::ReflectedBindingResourceType::StorageImage;
+                resourceType = Shader::EReflectedBindingResourceType::StorageTexture;
             }
 
             bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
@@ -603,7 +603,7 @@ namespace EE::Render
             auto const& spirvType = spirvCompiler.get_type( sampler.type_id );
 
             auto bindingCount = GetBindingCount( spirvType );
-            Shader::ReflectedBindingResourceType resourceType = Shader::ReflectedBindingResourceType::Sampler;
+            Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::Sampler;
 
             size_t const underscorePos = name.find_first_of( '_' ) + 1;
             String const nameSuffix = name.substr( underscorePos, name.size() - underscorePos );

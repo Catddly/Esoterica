@@ -1,5 +1,5 @@
 #pragma once
-#if defined(_WIN32) && defined(EE_DX11)
+#if defined(_WIN32)
 
 #include "RenderContext_DX11.h"
 #include "Base/Types/Color.h"
@@ -49,11 +49,11 @@ namespace EE::Render
         void LockDevice() { m_deviceMutex.lock(); }
         void UnlockDevice() { m_deviceMutex.unlock(); }
 
-        // Swap Chains
+        // Swapchain
         //-------------------------------------------------------------------------
 
-        RenderTarget const* GetPrimaryWindowRenderTarget() const { return &m_primaryWindow.m_renderTarget; }
-        RenderTarget* GetPrimaryWindowRenderTarget() { return &m_primaryWindow.m_renderTarget; }
+        SwapchainRenderTarget const* GetPrimaryWindowRenderTarget() const { return &m_primaryWindow.m_renderTarget; }
+        inline SwapchainRenderTarget* GetPrimaryWindowRenderTarget() { return &m_primaryWindow.m_renderTarget; }
         inline Int2 GetPrimaryWindowDimensions() const { return m_resolution; }
 
         void CreateSecondaryRenderWindow( RenderWindow& window, HWND platformWindowHandle );
@@ -92,7 +92,7 @@ namespace EE::Render
         void CreateDataTexture( Texture& texture, TextureFormat format, uint8_t const* rawData, size_t size );
         inline void CreateDataTexture( Texture& texture, TextureFormat format, Blob const& rawData ) { CreateDataTexture( texture, format, rawData.data(), rawData.size() ); }
         void CreateTexture( Texture& texture, DataFormat format, Int2 dimensions, uint32_t usage );
-        void DestroyTexture( Texture& texture );
+        inline void DestroyTexture( Texture& texture );
 
         void CreateSamplerState( SamplerState& state );
         void DestroySamplerState( SamplerState& state );
@@ -109,8 +109,6 @@ namespace EE::Render
 
         bool CreateDeviceAndSwapchain();
         void DestroyDeviceAndSwapchain();
-
-        bool CreateWindowRenderTarget( RenderWindow& renderWindow, Int2 dimensions );
 
         bool CreateDefaultDepthStencilStates();
         void DestroyDefaultDepthStencilStates();

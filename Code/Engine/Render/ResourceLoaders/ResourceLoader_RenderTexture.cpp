@@ -1,5 +1,7 @@
 #include "ResourceLoader_RenderTexture.h"
 #include "Base/Serialization/BinarySerialization.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
+#include "Base/RHI/Resource/RHITexture.h"
 
 
 //-------------------------------------------------------------------------
@@ -43,10 +45,14 @@ namespace EE::Render
 
     Resource::InstallResult TextureLoader::Install( ResourceID const& resourceID, Resource::ResourceRecord* pResourceRecord, Resource::InstallDependencyList const& installDependencies ) const
     {
-        auto pTextureResource = pResourceRecord->GetResourceData<Texture>();
+        auto* pTextureResource = pResourceRecord->GetResourceData<Texture>();
         
         m_pRenderDevice->LockDevice();
-        m_pRenderDevice->CreateDataTexture( *pTextureResource, pTextureResource->m_format, pTextureResource->m_rawData );
+
+        RHI::RHITextureBufferData bufferData;
+        bufferData.m_binary = pTextureResource->m_rawData;
+
+        //m_pRenderDevice->CreateDataTexture( *pTextureResource, pTextureResource->m_format, pTextureResource->m_rawData );
         m_pRenderDevice->UnlockDevice();
 
         ResourceLoader::Install( resourceID, pResourceRecord, installDependencies );
@@ -55,7 +61,7 @@ namespace EE::Render
 
     void TextureLoader::Uninstall( ResourceID const& resourceID, Resource::ResourceRecord* pResourceRecord ) const
     {
-        auto pTextureResource = pResourceRecord->GetResourceData<Texture>();
+        auto* pTextureResource = pResourceRecord->GetResourceData<Texture>();
         if ( pTextureResource != nullptr && pTextureResource->IsValid() )
         {
             m_pRenderDevice->LockDevice();

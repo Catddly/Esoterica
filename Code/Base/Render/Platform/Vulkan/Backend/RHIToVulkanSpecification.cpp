@@ -33,6 +33,11 @@ namespace EE::Render
             {
                 case RHI::EPixelFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
                 case RHI::EPixelFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
+
+                case RHI::EPixelFormat::RGBA32UInt: return VK_FORMAT_R32G32B32A32_UINT;
+
+                case RHI::EPixelFormat::Depth32: return VK_FORMAT_D32_SFLOAT;
+
                 case RHI::EPixelFormat::Undefined: return VK_FORMAT_UNDEFINED;
                 default:
                 break;
@@ -169,6 +174,26 @@ namespace EE::Render
                 flag = VK_IMAGE_ASPECT_NONE;
             }
             return VkImageAspectFlagBits( flag );
+        }
+
+        VkImageLayout ToVulkanImageLayout( RHI::ETextureLayout layout )
+        {
+            switch ( layout )
+            {
+                case RHI::ETextureLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
+                case RHI::ETextureLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
+                case RHI::ETextureLayout::ColorOptimal: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                case RHI::ETextureLayout::DepthStencilOptimal: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                case RHI::ETextureLayout::DepthStencilReadOnlyOptimal: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+                case RHI::ETextureLayout::ShaderReadOnlyOptimal: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                case RHI::ETextureLayout::TransferSrcOptimal: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                case RHI::ETextureLayout::TransferDstOptimal: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                case RHI::ETextureLayout::Preinitialized: return VK_IMAGE_LAYOUT_PREINITIALIZED;
+                default:
+                break;
+            }
+            EE_UNREACHABLE_CODE();
+            return VK_IMAGE_LAYOUT_MAX_ENUM;
         }
 
         VkSampleCountFlagBits ToVulkanSampleCountFlags( TBitFlags<RHI::ESampleCount> sample )
@@ -379,29 +404,6 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-		VkDescriptorType ToVulkanDescriptorType( Render::Shader::ReflectedBindingResourceType reflectedBindingType )
-		{
-            // TODO: support dynamic uniform buffer and storage buffer
-            switch ( reflectedBindingType )
-            {
-                case EE::Render::Shader::ReflectedBindingResourceType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-                case EE::Render::Shader::ReflectedBindingResourceType::CombinedImageSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                case EE::Render::Shader::ReflectedBindingResourceType::SampledImage: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                case EE::Render::Shader::ReflectedBindingResourceType::StorageImage: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                case EE::Render::Shader::ReflectedBindingResourceType::UniformTexelBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-                case EE::Render::Shader::ReflectedBindingResourceType::StorageTexelBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-                case EE::Render::Shader::ReflectedBindingResourceType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                case EE::Render::Shader::ReflectedBindingResourceType::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                case EE::Render::Shader::ReflectedBindingResourceType::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-                default:
-                break;
-            }
-            EE_UNREACHABLE_CODE();
-            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		}
-
-        //-------------------------------------------------------------------------
-
 		VkShaderStageFlagBits ToVulkanShaderStageFlags( TBitFlags<Render::PipelineStage> pipelineStage )
 		{
             if ( pipelineStage.IsFlagSet( PipelineStage::None ) )
@@ -541,7 +543,80 @@ namespace EE::Render
             EE_UNREACHABLE_CODE();
             return VK_BLEND_OP_MAX_ENUM;
         }
-    }
+
+        //-------------------------------------------------------------------------
+
+        RHI::EBindingResourceType ToBindingResourceType( Render::Shader::EReflectedBindingResourceType ty )
+        {
+            switch ( ty )
+            {
+                case EE::Render::Shader::EReflectedBindingResourceType::Sampler: return RHI::EBindingResourceType::Sampler;
+                case EE::Render::Shader::EReflectedBindingResourceType::CombinedTextureSampler: return RHI::EBindingResourceType::CombinedTextureSampler;
+                case EE::Render::Shader::EReflectedBindingResourceType::UniformTexelBuffer: return RHI::EBindingResourceType::UniformTexelBuffer;
+                case EE::Render::Shader::EReflectedBindingResourceType::StorageTexelBuffer: return RHI::EBindingResourceType::StorageTexelBuffer;
+                case EE::Render::Shader::EReflectedBindingResourceType::SampleTexture: return RHI::EBindingResourceType::SampleTexture;
+                case EE::Render::Shader::EReflectedBindingResourceType::StorageTexture: return RHI::EBindingResourceType::StorageTexture;
+                case EE::Render::Shader::EReflectedBindingResourceType::UniformBuffer: return RHI::EBindingResourceType::UniformBuffer;
+                case EE::Render::Shader::EReflectedBindingResourceType::StorageBuffer: return RHI::EBindingResourceType::StorageBuffer;
+                case EE::Render::Shader::EReflectedBindingResourceType::InputAttachment: return RHI::EBindingResourceType::InputAttachment;
+                default:
+                break;
+            }            
+            EE_UNREACHABLE_CODE();
+            return RHI::EBindingResourceType::InputAttachment;
+        }
+
+		RHI::EBindingResourceType ToBindingResourceType( VkDescriptorType ty )
+		{
+            switch ( ty )
+            {
+                case VK_DESCRIPTOR_TYPE_SAMPLER: return RHI::EBindingResourceType::Sampler;
+                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return RHI::EBindingResourceType::CombinedTextureSampler;
+                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return RHI::EBindingResourceType::SampleTexture;
+                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return RHI::EBindingResourceType::StorageTexture;
+                case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return RHI::EBindingResourceType::UniformTexelBuffer;
+                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return RHI::EBindingResourceType::StorageTexelBuffer;
+                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return RHI::EBindingResourceType::UniformBuffer;
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: return RHI::EBindingResourceType::StorageBuffer;
+                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return RHI::EBindingResourceType::UniformBufferDynamic;
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return RHI::EBindingResourceType::StorageBufferDynamic;
+                case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return RHI::EBindingResourceType::InputAttachment;
+                case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+                case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+                case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+                case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+                case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+                case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
+                case VK_DESCRIPTOR_TYPE_MAX_ENUM:
+                default:
+                break;
+            }
+            EE_UNREACHABLE_CODE();
+            return RHI::EBindingResourceType::InputAttachment;
+		}
+
+        VkDescriptorType ToVulkanBindingResourceType( RHI::EBindingResourceType ty )
+        {
+            switch ( ty )
+            {
+                case RHI::EBindingResourceType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+                case RHI::EBindingResourceType::CombinedTextureSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                case RHI::EBindingResourceType::SampleTexture: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                case RHI::EBindingResourceType::StorageTexture: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                case RHI::EBindingResourceType::UniformTexelBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+                case RHI::EBindingResourceType::StorageTexelBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                case RHI::EBindingResourceType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                case RHI::EBindingResourceType::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                case RHI::EBindingResourceType::UniformBufferDynamic: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+                case RHI::EBindingResourceType::StorageBufferDynamic: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+                case RHI::EBindingResourceType::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+                default:
+                break;
+            }
+            EE_UNREACHABLE_CODE();
+            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        }
+	}
 }
 
 #endif

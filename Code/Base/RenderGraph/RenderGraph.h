@@ -13,125 +13,181 @@
 // TODO: may be decouple pipeline barrier from command buffer 
 #include "Base/RHI/RHICommandBuffer.h"
 
+namespace EE::Render
+{
+    class RenderTarget;
+    class SwapchainRenderTarget;
+}
+
 namespace EE::RHI
 {
     class RHIDevice;
     class RHISwapchain;
+    class RHIResource;
     class RHITexture;
+    class RHIBuffer;
 }
 
-namespace EE
+namespace EE::RG
 {
-	namespace RG
+    class RGCompiledResource;
+
+	class EE_BASE_API RenderGraph
 	{
-        class RGCompiledResource;
+		friend class RGNodeBuilder;
+        friend class RGRenderCommandContext;
+        friend class RGBoundPipeline;
 
-		class EE_BASE_API RenderGraph
-		{
-			friend class RGNodeBuilder;
-            friend class RGRenderCommandContext;
+	public:
 
-		public:
-
-			RenderGraph();
-			RenderGraph( String const& graphName );
+		RenderGraph();
+		RenderGraph( String const& graphName );
             
-            inline void AttachToPipelineRegistry( Render::PipelineRegistry& pipelineRegistry ) { m_resourceRegistry.AttachToPipelineRegistry( pipelineRegistry ); }
+        inline void AttachToPipelineRegistry( Render::PipelineRegistry& pipelineRegistry ) { m_resourceRegistry.AttachToPipelineRegistry( pipelineRegistry ); }
 
-		public:
+	public:
 
-            // Build Stage
-            //-------------------------------------------------------------------------
+        // Build Stage
+        //-------------------------------------------------------------------------
 
-            void BeginFrame( RHI::RHIDevice* pRhiDevice );
-            void EndFrame();
+		template <typename DescType, typename RTTag = typename DescType::RGResourceTypeTag>
+		RGResourceHandle<RTTag> CreateResource( DescType const& desc );
 
-			template <typename DescType, typename RTTag = typename DescType::RGResourceTypeTag>
-			RGResourceHandle<RTTag> CreateResource( DescType const& desc );
+        RGResourceHandle<RGResourceTagBuffer> ImportResource( RHI::RHIBuffer* pBuffer, RHI::RenderResourceBarrierState access );
+        RGResourceHandle<RGResourceTagTexture> ImportResource( RHI::RHITexture* pTexture, RHI::RenderResourceBarrierState access );
 
-            // TODO: support multiple swapchain (multiple render window)
-            RGResourceHandle<RGResourceTagTexture> FetchPresentTextureResource( RHI::RHISwapchain* pSwapchain );
+        RGResourceHandle<RGResourceTagTexture> ImportResource( Render::RenderTarget const& renderTarget, RHI::RenderResourceBarrierState access );
 
-			[[nodiscard]] RGNodeBuilder AddNode( String const& nodeName );
+		[[nodiscard]] RGNodeBuilder AddNode( String const& nodeName );
 
-			#if EE_DEVELOPMENT_TOOLS
-			void LogGraphNodes() const;
-			#endif
+		#if EE_DEVELOPMENT_TOOLS
+		void LogGraphNodes() const;
+		#endif
 
-            // Compilation Stage
-            //-------------------------------------------------------------------------
+        // Compilation Stage
+        //-------------------------------------------------------------------------
 
-            bool Compile( RHI::RHIDevice* pRhiDevice );
+        bool Compile( RHI::RHIDevice* pRhiDevice );
 
-            // Execution Stage
-            //-------------------------------------------------------------------------
+        // Execution Stage
+        //-------------------------------------------------------------------------
 
-            void Execute();
+        void Execute( RHI::RHIDevice* pRhiDevice );
 
-            void Present( RHI::RHISwapchain* pSwapchain );
+        void Present( RHI::RHIDevice* pRhiDevice, Render::SwapchainRenderTarget& swapchainRt );
 
-            // Cleanup Stage
-            //-------------------------------------------------------------------------
+        // Cleanup Stage
+        //-------------------------------------------------------------------------
 
-            void ReleaseResources();
-            void DestroyAllResources( RHI::RHIDevice* pRhiDevice );
+        void Retire();
+        void DestroyAllResources( RHI::RHIDevice* pRhiDevice );
 
-        private:
+    private:
 
-            inline RGResourceRegistry&       GetResourceRegistry() { return m_resourceRegistry; };
-            inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
+        RGResourceHandle<RGResourceTagTexture> ImportSwapchainTextureResource( Render::RenderTarget const& swapchainRenderTarget );
 
-            // Return -1 if failed to find the presentable node.
-            int32_t FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const;
+        inline RGResourceRegistry&       GetResourceRegistry() { return m_resourceRegistry; };
+        inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
 
-            void TransitionResource( RGCompiledResource& compiledResource, RHI::RenderResourceAccessState const& access );
-            void TransitionResourceBatched( TSpan<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources );
+        void AllocateCommandContext( RHI::RHIDevice* pRhiDevice );
+        void FlushCommandContext( RHI::RHIDevice* pRhiDevice );
 
-            // All resources used in this node should be in positioned. (i.e. theirs resource barrier states is correct)
-            // This function will call the callback function of current node.
-            // User should know that any resources used in this callback should alive, (i.e. theirs lifetime should longer than the call time point
-            // of Execute() and Present() ) otherwise this will cause crashs.
-            void ExecuteNode( RGExecutableNode& node );
+        // Return -1 if failed to find the presentable node.
+        int32_t FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const;
 
-            void PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture );
+        void TransitionResource( RGCompiledResource& compiledResource, RHI::RenderResourceAccessState const& access );
+        void TransitionResourceBatched( TSpan<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources );
 
-		private:
+        // All resources used in this node should be in positioned. (i.e. theirs resource barrier states is correct)
+        // This function will call the callback function of current node.
+        // User should know that any resources used in this callback should alive, (i.e. theirs lifetime should longer than the call time point
+        // of Execute() and Present() ) otherwise this will cause crashs.
+        void ExecuteNode( RGExecutableNode& node );
 
-			String									m_name;
+        void PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture );
 
-			// TODO: use a real graph
-			TVector<RGNode>							m_renderGraph;
-            RGResourceRegistry                      m_resourceRegistry;
+	private:
 
-            // TODO: pack this two into a separate class.
-            TVector<RGExecutableNode>               m_executeNodesSequence;
-            TVector<RGExecutableNode>               m_presentNodesSequence;
+		String									m_name;
 
-            // Note: this render command context will match exact the device frame index.
-            RGRenderCommandContext                  m_renderCommandContexts[RHI::RHIDevice::NumDeviceFrameCount];
-            // This is just a copy of return value of RHIDevice::BeginFrame().
-            size_t                                  m_currentDeviceFrameIndex;
-            bool                                    m_frameExecuting = false;
-		};
+		// TODO: use a real graph
+		TVector<RGNode>							m_renderGraph;
+        RGResourceRegistry                      m_resourceRegistry;
 
-		//-------------------------------------------------------------------------
+        // TODO: pack this two into a separate class.
+        TVector<RGExecutableNode>               m_executeNodesSequence;
+        TVector<RGExecutableNode>               m_presentNodesSequence;
 
-		template <typename DescType, typename RTTag>
-		RGResourceHandle<RTTag> RenderGraph::CreateResource( DescType const& desc )
-		{
-			static_assert( std::is_base_of<RGResourceTagTypeBase<RTTag>, RTTag>::value, "Invalid render graph resource tag!" );
-			typedef typename RTTag::RGDescType RGDescType;
+        // Note: this render command context will match exact the device frame index.
+        RGRenderCommandContext                  m_renderCommandContexts[RHI::RHIDevice::NumDeviceFramebufferCount];
+        size_t                                  m_currentDeviceFrameIndex;
+	};
 
-			EE_ASSERT( Threading::IsMainThread() );
+	//-------------------------------------------------------------------------
 
-			RGDescType rgDesc = {};
-			rgDesc.m_desc = desc;
+	template <typename DescType, typename RTTag>
+	RGResourceHandle<RTTag> RenderGraph::CreateResource( DescType const& desc )
+	{
+		static_assert( std::is_base_of<RGResourceTagTypeBase<RTTag>, RTTag>::value, "Invalid render graph resource tag!" );
+		typedef typename RTTag::RGDescType RGDescType;
 
-			_Impl::RGResourceID const id = m_resourceRegistry.RegisterResource<RGDescType>( rgDesc );
-			RGResourceHandle<RTTag> handle;
-			handle.m_slotID = id;
-			handle.m_desc = desc;
-			return handle;
-		}
+		EE_ASSERT( Threading::IsMainThread() );
+
+		RGDescType rgDesc = {};
+		rgDesc.m_desc = desc;
+
+		_Impl::RGResourceID const id = m_resourceRegistry.RegisterResource<RGDescType>( rgDesc );
+		RGResourceHandle<RTTag> handle;
+		handle.m_slotID = id;
+		handle.m_desc = desc;
+		return handle;
 	}
+
+    //template <typename RTTag>
+    //RGResourceHandle<RTTag> RenderGraph::ImportResource( RHI::RHIResource* pResource, RHI::RenderResourceBarrierState access )
+    //{
+    //    EE_ASSERT( Threading::IsMainThread() );
+
+    //    if ( pResource->IsBuffer() )
+    //    {
+    //        RHI::RHIBuffer* pBuffer = static_cast<RHI::RHIBuffer*>( pResource );
+
+    //        _Impl::RGBufferDesc rgDesc = {};
+    //        EE::RG::BufferDesc bufferDesc;
+    //        bufferDesc.m_desc = pBuffer->GetDesc();
+    //        rgDesc.m_desc = bufferDesc;
+
+    //        RGImportedResource importResource;
+    //        importResource.m_pImportedResource = pResource;
+    //        importResource.m_currentAccess = access;
+
+    //        _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGBufferDesc>( std::move( rgDesc ), std::move( importResource ) );
+    //        RGResourceHandle<RGResourceTagBuffer> handle;
+    //        handle.m_slotID = id;
+    //        handle.m_desc = bufferDesc;
+    //        return handle;
+    //    }
+    //    else if ( pResource->IsTexture() )
+    //    {
+    //        RHI::RHITexture* pTexture = static_cast<RHI::RHITexture*>( pResource );
+
+    //        _Impl::RGTextureDesc rgDesc = {};
+    //        EE::RG::TextureDesc textureDesc;
+    //        textureDesc.m_desc = pTexture->GetDesc();
+    //        rgDesc.m_desc = textureDesc;
+
+    //        RGImportedResource importResource;
+    //        importResource.m_pImportedResource = pResource;
+    //        importResource.m_currentAccess = access;
+
+    //        _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( std::move( rgDesc ), std::move( importResource ) );
+    //        RGResourceHandle<RGResourceTagTexture> handle;
+    //        handle.m_slotID = id;
+    //        handle.m_desc = textureDesc;
+    //        return handle;
+    //    }
+
+    //    EE_UNIMPLEMENTED_FUNCTION();
+    //    return {};
+    //}
 }

@@ -21,24 +21,15 @@ namespace EE::Render
 {
 	namespace Backend
     {
-        class VulkanTextureView : public RHI::RHITextureView
+        class VulkanTextureView
         {
             friend class VulkanDevice;
             friend class VulkanTexture;
             friend class VulkanCommandBuffer;
 
-        public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
-
-            VulkanTextureView()
-                : RHITextureView( RHI::ERHIType::Vulkan )
-            {}
-            virtual ~VulkanTextureView() = default;
-
         private:
 
-            VkImageView						m_pHandle = nullptr;
+            VkImageView						        m_pHandle = nullptr;
         };
 
 		class VulkanTexture : public RHI::RHITexture
@@ -67,8 +58,10 @@ namespace EE::Render
 
         private:
 
-            virtual RHI::RHITextureView* CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) override;
-            virtual void                 DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView* pTextureView ) override;
+            void ForceDiscardAllUploadedData( RHI::RHIDevice* pDevice );
+
+            virtual RHI::RHITextureView  CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) override;
+            virtual void                 DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView& textureView ) override;
 
             uint32_t GetLayerByteSize( uint32_t layer );
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Base/_Module/API.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Set.h"
@@ -27,7 +28,7 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    enum class ERenderResourceMemoryUsage
+    enum class ERenderResourceMemoryUsage : uint8_t
     {
         CPUToGPU,
         GPUToCPU,
@@ -47,16 +48,21 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    enum class EPixelFormat
+    enum class EPixelFormat : uint8_t
     {
         RGBA8Unorm,
         BGRA8Unorm,
+
+        RGBA32UInt,
+
+        Depth32,
+
         Undefined
     };
 
     uint32_t GetPixelFormatByteSize( EPixelFormat format );
 
-    enum class ETextureType
+    enum class ETextureType : uint8_t
     {
         T1D,
         T1DArray,
@@ -79,7 +85,20 @@ namespace EE::RHI
         Input,
     };
 
-    enum class ETextureMemoryTiling
+    enum class ETextureLayout : uint8_t
+    {
+        Undefined,
+        General,
+        ColorOptimal,
+        DepthStencilOptimal,
+        DepthStencilReadOnlyOptimal,
+        ShaderReadOnlyOptimal,
+        TransferSrcOptimal,
+        TransferDstOptimal,
+        Preinitialized
+    };
+
+    enum class ETextureMemoryTiling : uint8_t
     {
         Optimal,
         Linear,
@@ -194,7 +213,7 @@ namespace EE::RHI
         RHITextureBufferData                    m_bufferData;
     };
 
-    enum class ETextureViewType
+    enum class ETextureViewType : uint8_t
     {
         TV1D,
         TV2D,
@@ -205,7 +224,7 @@ namespace EE::RHI
         TVCubemapArray,
     };
 
-    enum class ETextureViewAspect
+    enum class ETextureViewAspect : uint8_t
     {
         Color = 0,
         Depth,
@@ -227,9 +246,9 @@ namespace EE::RHI
         TBitFlags<ETextureViewAspect>                 m_viewAspect = TBitFlags<ETextureViewAspect>( ETextureViewAspect::Color );
         // If this is not set, the level count will always be the left mipmaps.
         // (i.e. m_levelCount = RHITextureCreateDesc::m_mipmap - m_baseMipmap)
-        TOptional<uint32_t>                           m_levelCount = {};
+        TOptional<uint16_t>                           m_levelCount = {};
 
-        uint32_t                                      m_baseMipmap = 0;
+        uint16_t                                      m_baseMipmap = 0;
 
         friend bool operator==( RHITextureViewCreateDesc const& lhs, RHITextureViewCreateDesc const& rhs )
         {
@@ -257,7 +276,7 @@ namespace EE::RHI
         ShaderDeviceAddress,
     };
 
-    struct RHIBufferCreateDesc
+    struct EE_BASE_API RHIBufferCreateDesc
     {
     public:
 
@@ -266,6 +285,8 @@ namespace EE::RHI
         static RHIBufferCreateDesc NewDeviceAddressable( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewVertexBuffer( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewIndexBuffer( uint32_t sizeInByte );
+        static RHIBufferCreateDesc NewUniformBuffer( uint32_t sizeInByte );
+        static RHIBufferCreateDesc NewStorageBuffer( uint32_t sizeInByte );
 
         bool IsValid() const;
 
@@ -275,6 +296,7 @@ namespace EE::RHI
             Hash::HashCombine( hash, m_desireSize );
             Hash::HashCombine( hash, m_usage.Get() );
             Hash::HashCombine( hash, m_memoryUsage );
+            Hash::HashCombine( hash, m_memoryFlag.Get() );
             return hash;
         }
 
@@ -300,14 +322,14 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    enum class ERenderPassAttachmentLoadOp
+    enum class ERenderPassAttachmentLoadOp : uint8_t
     {
         Load,
         Clear,
         DontCare,
     };
 
-    enum class ERenderPassAttachmentStoreOp
+    enum class ERenderPassAttachmentStoreOp : uint8_t
     {
         Store,
         DontCare,
@@ -427,7 +449,7 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    enum class RHIPipelineType
+    enum class RHIPipelineType : uint8_t
     {
         Raster,
         Compute,
@@ -473,7 +495,7 @@ namespace EE::RHI
         bool                            m_blendEnable = false;
     };
 
-    enum class ERHIPipelinePirmitiveTopology
+    enum class ERHIPipelinePirmitiveTopology : uint8_t
     {
         PointList = 0,
         LineList,
@@ -659,6 +681,25 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
+    enum class EBindingResourceType : uint8_t
+    {
+        Sampler,
+        CombinedTextureSampler,
+        SampleTexture,
+        StorageTexture,
+        UniformTexelBuffer,
+        StorageTexelBuffer,
+        UniformBuffer,
+        StorageBuffer,
+        UniformBufferDynamic,
+        StorageBufferDynamic,
+        InputAttachment
+    };
+
+    static constexpr uint32_t NumMaxResourceBindingSet = 4;
+
+    //-------------------------------------------------------------------------
+
     struct RHIShaderCreateDesc
     {
     public:
@@ -682,6 +723,74 @@ namespace EE::RHI
 
     public:
 
+    };
+
+    class RHIDevice;
+
+    struct IRHICPUGPUSyncImpl
+    {
+        virtual ~IRHICPUGPUSyncImpl() = default;
+
+        virtual void* Create( RHIDevice* pDevice, bool bSignaled = false ) = 0;
+        virtual void  Destroy( RHIDevice* pDevice, void*& pCPUGPUSync ) = 0;
+
+        virtual void  Reset( RHIDevice* pDevice, void* pCPUGPUSync ) = 0;
+        virtual void  WaitFor( RHIDevice* pDevice, void* pCPUGPUSync, uint64_t waitTime = std::numeric_limits<uint64_t>::max() ) = 0;
+    };
+
+    // Used to synchronize CPU and GPU.
+    class RHICPUGPUSync
+    {
+    public:
+
+        void*                           m_pHandle = nullptr;
+
+    public:
+
+        inline static RHICPUGPUSync Create( RHIDevice* pDevice, IRHICPUGPUSyncImpl* pImpl, bool bSignaled = false )
+        {
+            EE_ASSERT( pImpl );
+            RHICPUGPUSync sync;
+            sync.m_pImpl = pImpl;
+            sync.m_pHandle = pImpl->Create( pDevice, bSignaled );
+            return sync;
+        }
+        inline static void Destroy( RHIDevice* pDevice, RHICPUGPUSync& sync )
+        {
+            EE_ASSERT( sync.m_pImpl );
+            sync.m_pImpl->Destroy( pDevice, sync.m_pHandle );
+        }
+
+        inline void Reset( RHIDevice* pDevice )
+        {
+            EE_ASSERT( m_pImpl );
+            m_pImpl->Reset( pDevice, m_pHandle );
+        }
+
+        inline void WaitFor( RHIDevice* pDevice )
+        {
+            EE_ASSERT( m_pImpl );
+            m_pImpl->WaitFor( pDevice, m_pHandle );
+        }
+
+    public:
+
+        RHICPUGPUSync() = default;
+        ~RHICPUGPUSync() = default;
+
+        RHICPUGPUSync( RHICPUGPUSync const& ) = delete;
+        RHICPUGPUSync& operator=( RHICPUGPUSync const& ) = delete;
+
+        RHICPUGPUSync( RHICPUGPUSync&& ) = default;
+        RHICPUGPUSync& operator=( RHICPUGPUSync&& ) = default;
+
+    public:
+
+        inline bool IsValid() const { return m_pHandle != nullptr; }
+
+    private:
+
+        IRHICPUGPUSyncImpl*                         m_pImpl = nullptr;
     };
 }
 

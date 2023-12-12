@@ -9,7 +9,7 @@
 
 namespace EE::Render
 {
-    class ShaderLoader : public Resource::ResourceLoader
+    class EE_ENGINE_API ShaderLoader : public Resource::ResourceLoader
     {
     public:
 
@@ -34,6 +34,6 @@ namespace EE::Render
 
     private:
 
-        RenderDevice* m_pRenderDevice;
+        RenderDevice*                       m_pRenderDevice;
     };
 }

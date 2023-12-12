@@ -344,12 +344,12 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        m_renderPipelineRegistry.Initialize( m_systemRegistry );
+        m_renderPipelineRegistry.Initialize( &m_resourceSystem );
         m_renderGraph.AttachToPipelineRegistry( m_renderPipelineRegistry );
         RHI::RHIDevice* pDevice = m_pRenderDevice->GetRHIDevice();
 
-        auto const frameIndex = pDevice->BeginFrame();
-        m_renderGraph.BeginFrame( pDevice );
+        //pDevice->BeginFrame();
+        //m_renderGraph.AllocateCommandContext( pDevice );
 
         auto bufferDesc = RG::BufferDesc::NewSize( 512 );
         auto handle0 = m_renderGraph.CreateResource( bufferDesc );
@@ -405,7 +405,8 @@ namespace EE
         // force all loading and preparing ready at first frame
         while ( m_renderPipelineRegistry.IsBusy() )
         {
-            m_renderPipelineRegistry.LoadAndUpdatePipelines( pDevice );
+            m_renderPipelineRegistry.Update();
+            m_renderPipelineRegistry.UpdatePipelines( pDevice );
 
             while ( m_resourceSystem.IsBusy() )
             {
@@ -418,7 +419,7 @@ namespace EE
         //m_renderGraph.Execute();
         //m_renderGraph.Present();
 
-        m_renderGraph.EndFrame();
+        //m_renderGraph.FlushCommandContext();
         pDevice->EndFrame();
 
         //-------------------------------------------------------------------------
@@ -438,7 +439,7 @@ namespace EE
         m_renderPipelineRegistry.DestroyAllPipelineState( m_pRenderDevice->GetRHIDevice() );
         m_pImguiRenderPass = nullptr;
 
-        m_renderGraph.ReleaseResources();
+        m_renderGraph.Retire();
         m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
         m_renderPipelineRegistry.Shutdown();
 

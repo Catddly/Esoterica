@@ -4,12 +4,18 @@
 #include "VulkanPhysicalDevice.h"
 #include "VulkanMemoryAllocator.h"
 #include "VulkanSampler.h"
+#include "VulkanDescriptorSet.h"
+#include "VulkanSynchronization.h"
 #include "Base/Types/Map.h"
 #include "Base/Types/String.h"
+#include "Base/Types/Queue.h"
 #include "Base/Types/HashMap.h"
+#include "Base/Types/Event.h"
+#include "Base/Types/Function.h"
 #include "Base/Memory/Pointers.h"
 #include "Base/Resource/ResourcePtr.h"
 #include "Base/RHI/RHIDevice.h"
+#include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #include <vulkan/vulkan_core.h>
@@ -31,6 +37,12 @@ namespace EE::Render
 {
 	namespace Backend
 	{
+        namespace Vulkan
+        {
+            static VulkanDescriptorSetReleaseImpl gDescriptorSetReleaseImpl;
+            static VulkanCPUGPUSyncImpl gCPUGPUSyncImpl;
+        }
+
 		class VulkanInstance;
 		class VulkanSurface;
         class VulkanCommandBuffer;
@@ -41,11 +53,16 @@ namespace EE::Render
 		class VulkanDevice final : public RHI::RHIDevice
 		{
             friend class VulkanMemoryAllocator;
+            friend class VulkanCommandBuffer;
+            friend class VulkanCommandBufferPool;
             friend class VulkanCommandQueue;
             friend class VulkanSwapchain;
             friend class VulkanBuffer;
             friend class VulkanTexture;
             friend class VulkanFramebufferCache;
+
+            friend struct VulkanDescriptorSetReleaseImpl;
+            friend struct VulkanCPUGPUSyncImpl;
 
         public:
 
@@ -75,15 +92,18 @@ namespace EE::Render
 
 			~VulkanDevice();
 
+        public:
+
+            inline TEventHandle<RHI::RHITexture*> OnSwapchainImageDestroyed() { return m_onSwapchainImageDestroyedEvent; }
+
 		public:
 
-            // Begin a device frame. Return current device frame index.
-            virtual size_t BeginFrame() override;
-            virtual void   EndFrame() override;
+            virtual void BeginFrame() override;
+            virtual void EndFrame() override;
 
             inline virtual void WaitUntilIdle() override;
 
-            inline virtual size_t GetDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFrameCount; }
+            inline virtual size_t GetDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFramebufferCount; }
 
             virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
             inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
@@ -93,7 +113,7 @@ namespace EE::Render
             virtual bool BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
             virtual void EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
 
-            virtual void SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer, RHI::RHICPUGPUSync* pSync ) override;
+            virtual void SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
 
             //-------------------------------------------------------------------------
 
@@ -122,12 +142,12 @@ namespace EE::Render
 		private:
 
             using CombinedShaderBindingLayout = TMap<uint32_t, Render::Shader::ResourceBinding>;
-            using CombinedShaderSetLayout = TFixedMap<uint32_t, CombinedShaderBindingLayout, Render::Shader::NumMaxResourceBindingSet>;
+            using CombinedShaderSetLayout = TFixedMap<uint32_t, CombinedShaderBindingLayout, RHI::NumMaxResourceBindingSet>;
 
             struct VulkanDescriptorSetLayoutInfos
             {
-                TFixedVector<VkDescriptorSetLayout, Render::Shader::NumMaxResourceBindingSet>                  m_vkDescriptorSetLayouts;
-                TFixedVector<TMap<uint32_t, VkDescriptorType>, Render::Shader::NumMaxResourceBindingSet>       m_SetLayoutsVkDescriptorTypes;
+                TFixedVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>                  m_vkDescriptorSetLayouts;
+                TFixedVector<TMap<uint32_t, VkDescriptorType>, RHI::NumMaxResourceBindingSet>       m_SetLayoutsVkDescriptorTypes;
             };
 
             constexpr static uint32_t BindlessDescriptorSetDesiredSampledImageCount = 1024;
@@ -146,12 +166,10 @@ namespace EE::Render
             // Pipeline State
             //-------------------------------------------------------------------------
 
-            RHI::RHICommandBuffer* AllocateCommandBuffer( VulkanCommandBufferPool* pool );
-
             bool CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState );
             void DestroyRasterPipelineStateLayout( VulkanPipelineState* pPipelineState );
             CombinedShaderSetLayout CombinedAllShaderSetLayouts( CompiledShaderArray const& compiledShaders );
-            TPair<VkDescriptorSetLayout, TMap<uint32_t, VkDescriptorType>> CreateDescriptorSetLayout( uint32_t set, CombinedShaderBindingLayout const& combinedSetBindingLayout, VkShaderStageFlags stage );
+            TPair<VkDescriptorSetLayout, TMap<uint32_t, RHI::EBindingResourceType>> CreateDescriptorSetLayout( uint32_t set, CombinedShaderBindingLayout const& combinedSetBindingLayout, VkShaderStageFlags stage );
 
             // Static Resources
             //-------------------------------------------------------------------------
@@ -166,7 +184,7 @@ namespace EE::Render
             bool VulkanDevice::GetMemoryType( uint32_t typeBits, VkMemoryPropertyFlags properties, uint32_t& memTypeFound ) const;
             uint32_t GetMaxBindlessDescriptorSampledImageCount() const;
 
-            VulkanCommandBufferPool& GetCurrentFrameCommandBufferPool();
+            inline VulkanCommandBufferPool& GetCurrentFrameCommandBufferPool();
 
 		private:
 
@@ -176,11 +194,12 @@ namespace EE::Render
 			VkDevice							            m_pHandle = nullptr;
 			CollectedInfo						            m_collectInfos;
 			VulkanPhysicalDevice				            m_physicalDevice;
+            bool                                            m_frameExecuting = false;
 
-            size_t                                          m_deviceFrameCount;
-            bool                                            m_frameExecuting = false; // During BeginFrame() and EndFrame(), this must be true.
+            TEvent<RHI::RHITexture*>                        m_onSwapchainImageDestroyedEvent;
+
 			VulkanCommandQueue*							    m_pGlobalGraphicQueue = nullptr;
-            VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFrameCount];
+            VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFramebufferCount];
 
             VulkanCommandBufferPool*                        m_immediateCommandBufferPool;
 

@@ -4,12 +4,12 @@
 
 namespace EE::RHI
 {
-    class RHISemaphore : public RHISynchronazationPrimitive
+    class EE_BASE_API RHISemaphore : public RHIResource
     {
     public:
 
         RHISemaphore( ERHIType rhiType = ERHIType::Invalid )
-            : RHISynchronazationPrimitive( rhiType )
+            : RHIResource( rhiType )
         {}
         virtual ~RHISemaphore() = default;
     };

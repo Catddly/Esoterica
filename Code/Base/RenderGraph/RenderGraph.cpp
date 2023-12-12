@@ -3,6 +3,7 @@
 #include "Base/Types/Arrays.h"
 #include "Base/Logging/Log.h"
 #include "Base/Threading/Threading.h"
+#include "Base/Render/RenderTarget.h"
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/RHISwapchain.h"
 #include "Base/RHI/RHICommandQueue.h"
@@ -24,62 +25,96 @@ namespace EE
         // Build Stage
 		//-------------------------------------------------------------------------
 		
-        void RenderGraph::BeginFrame( RHI::RHIDevice* pRhiDevice )
+        void RenderGraph::AllocateCommandContext( RHI::RHIDevice* pRhiDevice )
         {
-            EE_ASSERT( !m_frameExecuting );
-            EE_ASSERT( pRhiDevice != nullptr );
+            EE_ASSERT( pRhiDevice );
 
             m_currentDeviceFrameIndex = pRhiDevice->GetDeviceFrameIndex();
-            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
 
+            auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
             commandContext.SetCommandContext( this, pRhiDevice, pRhiDevice->AllocateCommandBuffer() );
+
             if ( !commandContext.m_pCommandBuffer )
             {
                 EE_LOG_ERROR( "RenderGraph", "BeginFrame", "Failed to begin render graph frame!" );
+                EE_ASSERT( false );
             }
 
-            m_frameExecuting = true;
+            pRhiDevice->BeginCommandBuffer( commandContext.m_pCommandBuffer );
         }
 
-        void RenderGraph::EndFrame()
+        void RenderGraph::FlushCommandContext( RHI::RHIDevice* pRhiDevice )
         {
-            EE_ASSERT( m_frameExecuting );
-
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            EE_ASSERT( commandContext.m_pCommandBuffer );
 
-            // Temporary
-            EE::Delete( commandContext.m_pCommandBuffer );
+            pRhiDevice->EndCommandBuffer( commandContext.m_pCommandBuffer );
+            pRhiDevice->SubmitCommandBuffer( commandContext.m_pCommandBuffer );
 
             commandContext.Reset();
-
-            m_frameExecuting = false;
         }
 
-        RGResourceHandle<RGResourceTagTexture> RenderGraph::FetchPresentTextureResource( RHI::RHISwapchain* pSwapchain )
+        RGResourceHandle<RGResourceTagBuffer> RenderGraph::ImportResource( RHI::RHIBuffer* pBuffer, RHI::RenderResourceBarrierState access )
         {
             EE_ASSERT( Threading::IsMainThread() );
-            EE_ASSERT( pSwapchain );
-                
-            // Note: register swapchain texture resource as regular imported render graph texture resource.
+
+            _Impl::RGBufferDesc rgDesc = {};
+            EE::RG::BufferDesc bufferDesc;
+            bufferDesc.m_desc = pBuffer->GetDesc();
+            rgDesc.m_desc = bufferDesc;
+
+            RGImportedResource importResource;
+            importResource.m_pImportedResource = pBuffer;
+            importResource.m_currentAccess = access;
+
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGBufferDesc>( std::move( rgDesc ), std::move( importResource ) );
+            RGResourceHandle<RGResourceTagBuffer> handle;
+            handle.m_slotID = id;
+            handle.m_desc = bufferDesc;
+            return handle;
+        }
+
+        RGResourceHandle<RGResourceTagTexture> RenderGraph::ImportResource( RHI::RHITexture* pTexture, RHI::RenderResourceBarrierState access )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+
             _Impl::RGTextureDesc rgDesc = {};
             EE::RG::TextureDesc textureDesc;
-            textureDesc.m_desc = pSwapchain->GetPresentTextureDesc();
+            textureDesc.m_desc = pTexture->GetDesc();
             rgDesc.m_desc = textureDesc;
 
             RGImportedResource importResource;
-            importResource.m_pImportedResource = nullptr;
-            importResource.m_currentAccess = RHI::RenderResourceBarrierState::Undefined;
+            importResource.m_pImportedResource = pTexture;
+            importResource.m_currentAccess = access;
+            EE_ASSERT( importResource.m_pImportedResource );
 
-            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( rgDesc, std::move( importResource ) );
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( std::move( rgDesc ), std::move( importResource ) );
             RGResourceHandle<RGResourceTagTexture> handle;
             handle.m_slotID = id;
             handle.m_desc = textureDesc;
             return handle;
         }
 
+        RGResourceHandle<RGResourceTagTexture> RenderGraph::ImportResource( Render::RenderTarget const& renderTarget, RHI::RenderResourceBarrierState access )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+            // Note: renderTarget can be invalid, since it can be lazy swapchain present render target
+            EE_ASSERT( renderTarget.IsInitialized() );
+
+            if ( renderTarget.IsSwapchainRenderTarget() )
+            {
+                return ImportSwapchainTextureResource( renderTarget );
+            }
+            else
+            {
+                // Because it is NOT a swapchain render target, so it must be valid to continue
+                EE_ASSERT( renderTarget.IsValid() );
+                return ImportResource( renderTarget.GetRHIRenderTarget(), access );
+            }
+        }
+
         RGNodeBuilder RenderGraph::AddNode( String const& nodeName )
 		{
-            EE_ASSERT( m_frameExecuting );
 			EE_ASSERT( Threading::IsMainThread() );
 
             auto nextID = static_cast<uint32_t>( m_renderGraph.size() );
@@ -91,7 +126,6 @@ namespace EE
 		#if EE_DEVELOPMENT_TOOLS
 		void RenderGraph::LogGraphNodes() const
 		{
-            EE_ASSERT( m_frameExecuting );
 			EE_ASSERT( Threading::IsMainThread() );
 
 			size_t const count = m_renderGraph.size();
@@ -111,7 +145,6 @@ namespace EE
         bool RenderGraph::Compile( RHI::RHIDevice* pRhiDevice )
         {
             EE_ASSERT( Threading::IsMainThread() );
-            EE_ASSERT( m_frameExecuting );
 
             if ( pRhiDevice == nullptr )
             {
@@ -154,14 +187,10 @@ namespace EE
                 }
             }
 
-            // Note: we can only change m_executionSequence when all nodes are ready to be executed.
             if ( allNodesAreReady )
             {
                 // Compile render graph into executable render graph
                 //-------------------------------------------------------------------------
-                
-                m_executeNodesSequence.clear();
-                m_presentNodesSequence.clear();
 
                 TVector<RGExecutableNode> executeSequences;
                 executeSequences.reserve( m_renderGraph.size() );
@@ -169,8 +198,6 @@ namespace EE
                 {
                     executeSequences.emplace_back( eastl::exchange( node, {} ).IntoExecutableNode( &m_resourceRegistry ) );
                 }
-
-                m_renderGraph.clear();
 
                 // Split execute nodes and present nodes
                 //-------------------------------------------------------------------------
@@ -184,12 +211,11 @@ namespace EE
                 }
 
                 size_t const presentNodeCount = executeSequences.size() - firstPresentNodeIndex;
-                eastl::move( executeSequences.rend(), executeSequences.rend() + presentNodeCount, m_presentNodesSequence.begin() );
+                m_presentNodesSequence.resize( presentNodeCount );
+                eastl::move( executeSequences.rbegin(), executeSequences.rbegin() + presentNodeCount, m_presentNodesSequence.begin() );
 
-                executeSequences.erase( executeSequences.rend(), executeSequences.rend() + presentNodeCount );
+                executeSequences.erase( executeSequences.rbegin(), executeSequences.rbegin() + presentNodeCount );
                 m_executeNodesSequence = eastl::move( executeSequences );
-
-                executeSequences.clear();
             }
             else
             {
@@ -203,14 +229,16 @@ namespace EE
         // Execution Stage
         //-------------------------------------------------------------------------
 
-        void RenderGraph::Execute()
+        void RenderGraph::Execute( RHI::RHIDevice* pRhiDevice )
         {
             EE_ASSERT( Threading::IsMainThread() );
-            EE_ASSERT( m_frameExecuting );
+            EE_ASSERT( pRhiDevice );
             EE_ASSERT( m_resourceRegistry.GetCurrentResourceState() == RGResourceRegistry::ResourceState::Compiled );
 
             if ( !m_executeNodesSequence.empty() )
             {
+                AllocateCommandContext( pRhiDevice );
+
                 // Transition all resources used in execution nodes ahead to reduce some pipeline bubbles.
                 //-------------------------------------------------------------------------
             
@@ -256,6 +284,8 @@ namespace EE
                 {
                     ExecuteNode( executionNode );
                 }
+
+                FlushCommandContext( pRhiDevice );
             }
             else
             {
@@ -263,21 +293,30 @@ namespace EE
             }
         }
 
-        void RenderGraph::Present( RHI::RHISwapchain* pSwapchain )
+        void RenderGraph::Present( RHI::RHIDevice* pRhiDevice, Render::SwapchainRenderTarget& swapchainRt )
         {
             EE_ASSERT( Threading::IsMainThread() );
-            EE_ASSERT( m_frameExecuting );
+            EE_ASSERT( pRhiDevice );
             EE_ASSERT( m_resourceRegistry.GetCurrentResourceState() == RGResourceRegistry::ResourceState::Compiled );
 
             if ( !m_presentNodesSequence.empty() )
             {
+                // Acquire next frame before presenting
+                //-------------------------------------------------------------------------
+
+                swapchainRt.AcquireNextFrame();
+
                 // Execute render graph
                 //-------------------------------------------------------------------------
+
+                AllocateCommandContext( pRhiDevice );
 
                 for ( RGExecutableNode& executionNode : m_presentNodesSequence )
                 {
                     ExecuteNode( executionNode );
                 }
+
+                FlushCommandContext( pRhiDevice );
             }
             else
             {
@@ -285,8 +324,13 @@ namespace EE
             }
         }
 
-        void RenderGraph::ReleaseResources()
+        void RenderGraph::Retire()
         {
+            // clear up previos frame resources
+            m_renderGraph.clear();
+            m_executeNodesSequence.clear();
+            m_presentNodesSequence.clear();
+
             m_resourceRegistry.ReleaseAllResources();
         }
 
@@ -300,6 +344,31 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
+        RGResourceHandle<RGResourceTagTexture> RenderGraph::ImportSwapchainTextureResource( Render::RenderTarget const& swapchainRenderTarget )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+            EE_ASSERT( swapchainRenderTarget.IsInitialized() && swapchainRenderTarget.IsSwapchainRenderTarget() );
+
+            auto& rt = static_cast<Render::SwapchainRenderTarget const&>( swapchainRenderTarget );
+            EE_ASSERT( rt.GetRHISwapchain() );
+
+            // Note: register swapchain texture resource as regular imported render graph texture resource.
+            _Impl::RGTextureDesc rgDesc = {};
+            EE::RG::TextureDesc textureDesc;
+            textureDesc.m_desc = rt.GetRHISwapchain()->GetPresentTextureDesc();
+            rgDesc.m_desc = textureDesc;
+
+            RGImportedResource importResource;
+            importResource.m_pImportedResource = nullptr;
+            importResource.m_currentAccess = RHI::RenderResourceBarrierState::Undefined;
+
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( rgDesc, std::move( importResource ) );
+            RGResourceHandle<RGResourceTagTexture> handle;
+            handle.m_slotID = id;
+            handle.m_desc = textureDesc;
+            return handle;
+        }
+
         int32_t RenderGraph::FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const
         {
             EE_ASSERT( Threading::IsMainThread() );
@@ -312,7 +381,7 @@ namespace EE
             int32_t result = -1;
             int32_t currentNode = static_cast<int32_t>( executionSequence.size() - 1 );
             // For now, this node.m_id is the index inside m_executionSequence.
-            for ( auto beg = executionSequence.end(); beg != executionSequence.begin(); --beg )
+            for ( auto beg = executionSequence.rbegin(); beg != executionSequence.rend(); ++beg )
             {
                 auto& node = *beg;
                 for ( auto const& output : node.m_outputs )
@@ -541,7 +610,9 @@ namespace EE
 
             // execute node callback
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            commandContext.m_pExecutingNode = &node;
             node.m_executionCallback( commandContext );
+            commandContext.m_pExecutingNode = nullptr;
         }
 
         void RenderGraph::PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture )

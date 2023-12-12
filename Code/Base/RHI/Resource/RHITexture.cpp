@@ -14,7 +14,7 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    RHITextureView* RHITexture::GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc )
+    RHITextureView RHITexture::GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc )
     {
         auto iter = m_viewCache.find( desc );
         if ( iter != m_viewCache.end() )
@@ -24,17 +24,17 @@ namespace EE::RHI
 
         if ( !pDevice )
         {
-            return nullptr;
+            return {};
         }
 
-        auto* pTextureView = CreateView( pDevice, desc );
-        if ( pTextureView )
+        auto textureView = CreateView( pDevice, desc );
+        if ( textureView.IsValid() )
         {
-            m_viewCache.insert( { desc, pTextureView } );
-            return pTextureView;
+            m_viewCache.insert( { desc, textureView } );
+            return textureView;
         }
 
-        return nullptr;
+        return {};
     }
 
     void RHITexture::ClearAllViews( RHIDevice* pDevice )

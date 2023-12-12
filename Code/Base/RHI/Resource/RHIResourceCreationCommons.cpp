@@ -4,6 +4,8 @@
 
 namespace EE::RHI
 {
+    //-------------------------------------------------------------------------
+
     uint32_t GetPixelFormatByteSize( EPixelFormat format )
     {
         switch ( format )
@@ -246,7 +248,6 @@ namespace EE::RHI
         RHIBufferCreateDesc bufferDesc = {};
         bufferDesc.m_desireSize = sizeInByte;
         bufferDesc.m_usage.SetFlag( EBufferUsage::Vertex );
-        // default to vertex buffer
         bufferDesc.m_memoryUsage = ERenderResourceMemoryUsage::GPUOnly;
         return bufferDesc;
     }
@@ -258,7 +259,28 @@ namespace EE::RHI
         RHIBufferCreateDesc bufferDesc = {};
         bufferDesc.m_desireSize = sizeInByte;
         bufferDesc.m_usage.SetFlag( EBufferUsage::Index );
-        // default to vertex buffer
+        bufferDesc.m_memoryUsage = ERenderResourceMemoryUsage::GPUOnly;
+        return bufferDesc;
+    }
+
+    RHIBufferCreateDesc RHIBufferCreateDesc::NewUniformBuffer( uint32_t sizeInByte )
+    {
+        EE_ASSERT( sizeInByte > 0 );
+
+        RHIBufferCreateDesc bufferDesc = {};
+        bufferDesc.m_desireSize = sizeInByte;
+        bufferDesc.m_usage.SetFlag( EBufferUsage::Uniform );
+        bufferDesc.m_memoryUsage = ERenderResourceMemoryUsage::GPUOnly;
+        return bufferDesc;
+    }
+
+    RHIBufferCreateDesc RHIBufferCreateDesc::NewStorageBuffer( uint32_t sizeInByte )
+    {
+        EE_ASSERT( sizeInByte > 0 );
+
+        RHIBufferCreateDesc bufferDesc = {};
+        bufferDesc.m_desireSize = sizeInByte;
+        bufferDesc.m_usage.SetFlag( EBufferUsage::Storage );
         bufferDesc.m_memoryUsage = ERenderResourceMemoryUsage::GPUOnly;
         return bufferDesc;
     }

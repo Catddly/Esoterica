@@ -110,6 +110,7 @@ namespace EE::RG
     {
         friend class RGNode;
         friend class RenderGraph;
+        friend class RGRenderCommandContext;
 
     public:
 

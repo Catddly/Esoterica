@@ -127,7 +127,7 @@ namespace EE::Resource
             NetworkResourceRequest request;
 
             // Process all pending requests
-            for( auto pRequest : m_pendingRequests )
+            for ( auto pRequest : m_pendingRequests )
             {
                 request.m_resourceIDs.emplace_back( pRequest->GetResourceID() );
                 m_sentRequests.emplace_back( pRequest );

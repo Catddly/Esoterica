@@ -1,14 +1,14 @@
-#if defined(_WIN32) && defined(EE_DX11)
+#if defined(_WIN32)
 
 #include "RenderDevice_DX11.h"
-//#include "TextureLoader_Win32.h"
 #include "Base/Render/RenderCoreResources.h"
 #include "Base/IniFile.h"
 #include "Base/Profiling.h"
 
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/Resource/RHIShader.h"
 #include "Base/RHI/Resource/RHITexture.h"
-#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
+#include "Base/RHI/RHIDowncastHelper.h"
 
 #ifdef _WIN32
 #include "Base/Render/Platform/Windows/TextureLoader_Win32.h"
@@ -71,7 +71,7 @@ namespace EE::Render
 
     bool RenderDevice::IsInitialized() const
     {
-        return m_pDevice != nullptr;
+        return m_pRHIDevice != nullptr || m_pDevice != nullptr;
     }
 
     bool RenderDevice::Initialize( IniFile const& iniFile )
@@ -101,15 +101,15 @@ namespace EE::Render
             return false;
         }
 
-        if ( !CreateDefaultDepthStencilStates() )
-        {
-            return false;
-        }
+        //if ( !CreateDefaultDepthStencilStates() )
+        //{
+        //    return false;
+        //}
 
-        // Set OM default state
-        m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
-        m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
-        m_immediateContext.m_pDeviceContext->OMSetDepthStencilState( RenderContext::s_pDepthTestingOn, 0 );
+        //// Set OM default state
+        //m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.m_pDeviceContext->OMSetDepthStencilState( RenderContext::s_pDepthTestingOn, 0 );
 
         CoreResources::Initialize( this );
 
@@ -120,10 +120,10 @@ namespace EE::Render
     {
         CoreResources::Shutdown( this );
 
-        m_immediateContext.m_pDeviceContext->ClearState();
-        m_immediateContext.m_pDeviceContext->Flush();
+        //m_immediateContext.m_pDeviceContext->ClearState();
+        //m_immediateContext.m_pDeviceContext->Flush();
 
-        DestroyDefaultDepthStencilStates();
+        //DestroyDefaultDepthStencilStates();
         DestroyDeviceAndSwapchain();
     }
 
@@ -131,14 +131,16 @@ namespace EE::Render
 
     bool RenderDevice::CreateDeviceAndSwapchain()
     {
-        DXGI_SWAP_CHAIN_DESC swapChainDesc;
-        EE::Memory::MemsetZero( &swapChainDesc, sizeof( swapChainDesc ) );
+        //DXGI_SWAP_CHAIN_DESC swapChainDesc;
+        //EE::Memory::MemsetZero( &swapChainDesc, sizeof( swapChainDesc ) );
 
         HWND pActiveWindow = GetActiveWindow();
         if ( pActiveWindow == nullptr )
         {
             return false;
         }
+
+        RHI::RHISwapchain* pSwapchain = nullptr;
 
         #if defined(EE_VULKAN)
         Backend::VulkanDevice::InitConfig deviceConfig = Backend::VulkanDevice::InitConfig::GetDefault( true );
@@ -152,89 +154,95 @@ namespace EE::Render
         swapchainConfig.m_height = static_cast<uint32_t>( m_resolution.m_y );
         swapchainConfig.m_enableVsync = true;
         swapchainConfig.m_format = RHI::EPixelFormat::RGBA8Unorm;
-        swapchainConfig.m_swapBufferCount = 2;
+        swapchainConfig.m_swapBufferCount = RHI::RHIDevice::NumDeviceFramebufferCount;
         swapchainConfig.m_sample = RHI::ESampleCount::SC1;
 
-        auto* pRHISwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        pSwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
         #endif
 
+        EE_ASSERT( pSwapchain );
+
         // Set buffer dimensions and format
-        swapChainDesc.BufferCount = 2;
-        swapChainDesc.BufferDesc.Width = m_resolution.m_x;
-        swapChainDesc.BufferDesc.Height = m_resolution.m_y;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        swapChainDesc.BufferDesc.RefreshRate.Numerator = (uint32_t) m_refreshRate;
-        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-        swapChainDesc.SampleDesc.Count = 1;
-        swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-        swapChainDesc.OutputWindow = pActiveWindow;
-        swapChainDesc.Windowed = !m_isFullscreen;
+        //swapChainDesc.BufferCount = 2;
+        //swapChainDesc.BufferDesc.Width = m_resolution.m_x;
+        //swapChainDesc.BufferDesc.Height = m_resolution.m_y;
+        //swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        //swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        //swapChainDesc.BufferDesc.RefreshRate.Numerator = (uint32_t) m_refreshRate;
+        //swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
+        //swapChainDesc.SampleDesc.Count = 1;
+        //swapChainDesc.SampleDesc.Quality = 0;
+        //swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        //swapChainDesc.OutputWindow = pActiveWindow;
+        //swapChainDesc.Windowed = !m_isFullscreen;
 
         // Set debug flags on D3D device in debug build
         // If you get a failure with this flag, it likely means you dont have the "Windows Graphics Tools" feature installed (this is an optional windows component)
-        UINT flags = 0;
-        #if EE_ENABLE_RENDERDEVICE_DEBUG
-        flags |= D3D11_CREATE_DEVICE_DEBUG;
-        #endif
+        //UINT flags = 0;
+        //#if EE_ENABLE_RENDERDEVICE_DEBUG
+        //flags |= D3D11_CREATE_DEVICE_DEBUG;
+        //#endif
 
-        // Setup D3D feature levels
-        D3D_FEATURE_LEVEL featureLevelsRequested[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
-        D3D_FEATURE_LEVEL featureLevelSupported;
-        uint32_t const numLevelsRequested = 2;
+        //// Setup D3D feature levels
+        //D3D_FEATURE_LEVEL featureLevelsRequested[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
+        //D3D_FEATURE_LEVEL featureLevelSupported;
+        //uint32_t const numLevelsRequested = 2;
 
-        // Create the D3D device and swap chain
-        IDXGISwapChain* pSwapChain = nullptr;
-        HRESULT result = D3D11CreateDeviceAndSwapChain( nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, featureLevelsRequested, numLevelsRequested, D3D11_SDK_VERSION, &swapChainDesc, &pSwapChain, &m_pDevice, &featureLevelSupported, &m_immediateContext.m_pDeviceContext );
-        if ( FAILED( result ) )
-        {
-            if ( m_immediateContext.m_pDeviceContext != nullptr )
-            {
-                m_immediateContext.m_pDeviceContext->Release();
-                m_immediateContext.m_pDeviceContext = nullptr;
-            }
+        //// Create the D3D device and swap chain
+        //IDXGISwapChain* pSwapChain = nullptr;
+        //HRESULT result = D3D11CreateDeviceAndSwapChain( nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, featureLevelsRequested, numLevelsRequested, D3D11_SDK_VERSION, &swapChainDesc, &pSwapChain, &m_pDevice, &featureLevelSupported, &m_immediateContext.m_pDeviceContext );
+        //if ( FAILED( result ) )
+        //{
+        //    if ( m_immediateContext.m_pDeviceContext != nullptr )
+        //    {
+        //        m_immediateContext.m_pDeviceContext->Release();
+        //        m_immediateContext.m_pDeviceContext = nullptr;
+        //    }
 
-            if ( pSwapChain != nullptr )
-            {
-                pSwapChain->Release();
-            }
+        //    if ( pSwapChain != nullptr )
+        //    {
+        //        pSwapChain->Release();
+        //    }
 
-            #if EE_ENABLE_RENDERDEVICE_DEBUG
-            EE_LOG_ERROR( "Rendering", "Render Device", "Device Creation Failed (Note: DirectX Debug is enabled - this will fail if you dong have the 'Windows Graphhics Tools' feature installed!)" );
-            #else
-            EE_LOG_ERROR( "Rendering", "Render Device", "Device Creation Failed" );
-            #endif
+        //    #if EE_ENABLE_RENDERDEVICE_DEBUG
+        //    EE_LOG_ERROR( "Rendering", "Render Device", "Device Creation Failed (Note: DirectX Debug is enabled - this will fail if you dong have the 'Windows Graphhics Tools' feature installed!)" );
+        //    #else
+        //    EE_LOG_ERROR( "Rendering", "Render Device", "Device Creation Failed" );
+        //    #endif
 
-            return false;
-        }
+        //    return false;
+        //}
 
-        m_primaryWindow.m_pSwapChain = pSwapChain;
-        m_primaryWindow.m_pRhiSwapchain = pRHISwapchain;
-        CreateWindowRenderTarget( m_primaryWindow, m_resolution );
+        //m_primaryWindow.m_pSwapChain = pSwapChain;
+
+        m_primaryWindow.m_pSwapchain = pSwapchain;
+
+        SwapchainRenderTarget::SwapchainRenderTargetCreateParameters params;
+        params.m_pSwapchain = pSwapchain;
+        m_primaryWindow.m_renderTarget.Initialize( m_pRHIDevice, params );
 
         //-------------------------------------------------------------------------
 
-        IDXGIDevice* pDXGIDevice = nullptr;
-        IDXGIAdapter* pDXGIAdapter = nullptr;
+        //IDXGIDevice* pDXGIDevice = nullptr;
+        //IDXGIAdapter* pDXGIAdapter = nullptr;
 
-        if ( FAILED( m_pDevice->QueryInterface( IID_PPV_ARGS( &pDXGIDevice ) ) ) )
-        {
-            EE_HALT();
-        }
+        //if ( FAILED( m_pDevice->QueryInterface( IID_PPV_ARGS( &pDXGIDevice ) ) ) )
+        //{
+        //    EE_HALT();
+        //}
 
-        if ( FAILED( pDXGIDevice->GetParent( IID_PPV_ARGS( &pDXGIAdapter ) ) ) )
-        {
-            EE_HALT();
-        }
+        //if ( FAILED( pDXGIDevice->GetParent( IID_PPV_ARGS( &pDXGIAdapter ) ) ) )
+        //{
+        //    EE_HALT();
+        //}
 
-        if ( FAILED( pDXGIAdapter->GetParent( IID_PPV_ARGS( &m_pFactory ) ) ) )
-        {
-            EE_HALT();
-        }
+        //if ( FAILED( pDXGIAdapter->GetParent( IID_PPV_ARGS( &m_pFactory ) ) ) )
+        //{
+        //    EE_HALT();
+        //}
 
-        pDXGIAdapter->Release();
-        pDXGIDevice->Release();
+        //pDXGIAdapter->Release();
+        //pDXGIDevice->Release();
 
         return true;
     }
@@ -243,50 +251,50 @@ namespace EE::Render
     {
         DestroyRenderTarget( m_primaryWindow.m_renderTarget );
 
-        for ( auto& rt : m_primaryWindow.m_RhiRenderTargets )
+        //for ( auto& rt : m_primaryWindow.m_RhiRenderTargets )
+        //{
+        //    rt.m_pRenderTarget = nullptr;
+        //}
+
+        //if ( m_primaryWindow.m_pSwapChain != nullptr )
+        //{
+        //    reinterpret_cast<IDXGISwapChain*>( m_primaryWindow.m_pSwapChain )->Release();
+        //    m_primaryWindow.m_pSwapChain = nullptr;
+        //}
+
+        if ( m_primaryWindow.m_pSwapchain )
         {
-            rt.m_pRenderTarget = nullptr;
+            EE::Delete( m_primaryWindow.m_pSwapchain );
         }
 
-        if ( m_primaryWindow.m_pSwapChain != nullptr )
-        {
-            reinterpret_cast<IDXGISwapChain*>( m_primaryWindow.m_pSwapChain )->Release();
-            m_primaryWindow.m_pSwapChain = nullptr;
-        }
-
-        if ( m_primaryWindow.m_pRhiSwapchain != nullptr )
-        {
-            EE::Delete( m_primaryWindow.m_pRhiSwapchain );
-        }
-
-        if ( m_immediateContext.m_pDeviceContext != nullptr )
-        {
-            m_immediateContext.m_pDeviceContext->Release();
-            m_immediateContext.m_pDeviceContext = nullptr;
-        }
+        //if ( m_immediateContext.m_pDeviceContext != nullptr )
+        //{
+        //    m_immediateContext.m_pDeviceContext->Release();
+        //    m_immediateContext.m_pDeviceContext = nullptr;
+        //}
 
         //-------------------------------------------------------------------------
 
-        m_pFactory->Release();
+        //m_pFactory->Release();
 
-        if ( m_pDevice != nullptr )
-        {
-            #if EE_ENABLE_RENDERDEVICE_DEBUG
-            ID3D11Debug* pDebug = nullptr;
-            m_pDevice->QueryInterface( IID_PPV_ARGS( &pDebug ) );
-            #endif
+        //if ( m_pDevice != nullptr )
+        //{
+        //    #if EE_ENABLE_RENDERDEVICE_DEBUG
+        //    ID3D11Debug* pDebug = nullptr;
+        //    m_pDevice->QueryInterface( IID_PPV_ARGS( &pDebug ) );
+        //    #endif
 
-            m_pDevice->Release();
-            m_pDevice = nullptr;
+        //    m_pDevice->Release();
+        //    m_pDevice = nullptr;
 
-            #if EE_ENABLE_RENDERDEVICE_DEBUG
-            if ( pDebug != nullptr )
-            {
-                pDebug->ReportLiveDeviceObjects( D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL );
-                pDebug->Release();
-            }
-            #endif
-        }
+        //    #if EE_ENABLE_RENDERDEVICE_DEBUG
+        //    if ( pDebug != nullptr )
+        //    {
+        //        pDebug->ReportLiveDeviceObjects( D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL );
+        //        pDebug->Release();
+        //    }
+        //    #endif
+        //}
 
         if ( m_pRHIDevice != nullptr )
         {
@@ -348,17 +356,17 @@ namespace EE::Render
         EE_ASSERT( IsInitialized() );
 
         // Show rendered frame, and clear buffers
-        m_immediateContext.Present( m_primaryWindow );
-        m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
-        m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.Present( m_primaryWindow );
+        //m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
     }
 
     void RenderDevice::ResizePrimaryWindowRenderTarget( Int2 const& dimensions )
     {
         EE_ASSERT( dimensions.m_x > 0 && dimensions.m_y > 0 );
         ResizeWindow( m_primaryWindow, dimensions );
-        m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
-        m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
+        //m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
         m_resolution = dimensions;
     }
 
@@ -371,29 +379,51 @@ namespace EE::Render
         RECT rect;
         ::GetClientRect( platformWindowHandle, &rect );
 
-        DXGI_SWAP_CHAIN_DESC sd;
-        ZeroMemory( &sd, sizeof( sd ) );
-        sd.BufferDesc.Width = rect.right - rect.left;
-        sd.BufferDesc.Height = rect.bottom - rect.top;
-        sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        sd.SampleDesc.Count = 1;
-        sd.SampleDesc.Quality = 0;
-        sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        sd.BufferCount = 2;
-        sd.OutputWindow = platformWindowHandle;
-        sd.Windowed = TRUE;
-        sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        sd.Flags = 0;
+        //DXGI_SWAP_CHAIN_DESC sd;
+        //ZeroMemory( &sd, sizeof( sd ) );
+        //sd.BufferDesc.Width = rect.right - rect.left;
+        //sd.BufferDesc.Height = rect.bottom - rect.top;
+        //sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        //sd.SampleDesc.Count = 1;
+        //sd.SampleDesc.Quality = 0;
+        //sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        //sd.BufferCount = 2;
+        //sd.OutputWindow = platformWindowHandle;
+        //sd.Windowed = TRUE;
+        //sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        //sd.Flags = 0;
 
-        m_immediateContext.m_pDeviceContext->ClearState();
-        m_immediateContext.m_pDeviceContext->Flush();
+        //m_immediateContext.m_pDeviceContext->ClearState();
+        //m_immediateContext.m_pDeviceContext->Flush();
 
-        IDXGISwapChain* pSwapChain = nullptr;
-        m_pFactory->CreateSwapChain( m_pDevice, &sd, &pSwapChain );
-        EE_ASSERT( pSwapChain != nullptr );
+        //IDXGISwapChain* pSwapChain = nullptr;
+        //m_pFactory->CreateSwapChain( m_pDevice, &sd, &pSwapChain );
 
-        window.m_pSwapChain = pSwapChain;
-        CreateWindowRenderTarget( window, Int2( sd.BufferDesc.Width, sd.BufferDesc.Height ) );
+        RHI::RHISwapchain* pSwapchain = nullptr;
+
+        #if defined(EE_VULKAN)
+        Backend::VulkanSwapchain::InitConfig swapchainConfig;
+        swapchainConfig.m_width = static_cast<uint32_t>( rect.right - rect.left );
+        swapchainConfig.m_height = static_cast<uint32_t>( rect.bottom - rect.top );
+        swapchainConfig.m_enableVsync = true;
+        swapchainConfig.m_format = RHI::EPixelFormat::RGBA8Unorm;
+        swapchainConfig.m_swapBufferCount = RHI::RHIDevice::NumDeviceFramebufferCount;
+        swapchainConfig.m_sample = RHI::ESampleCount::SC1;
+
+        auto* pVkRHIDevice = RHI::RHIDowncast<Backend::VulkanDevice>( m_pRHIDevice );
+
+        pSwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        #endif
+        
+        EE_ASSERT( pSwapchain );
+
+        window.m_pSwapchain = pSwapchain;
+
+        SwapchainRenderTarget::SwapchainRenderTargetCreateParameters params;
+        params.m_pSwapchain = pSwapchain;
+        window.m_renderTarget.Initialize( m_pRHIDevice, params );
+
+        //CreateWindowRenderTarget( window, Int2( sd.BufferDesc.Width, sd.BufferDesc.Height ) );
     }
 
     void RenderDevice::DestroySecondaryRenderWindow( RenderWindow& window )
@@ -404,53 +434,19 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        auto pSC = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
-        pSC->Release();
-        window.m_pSwapChain = nullptr;
+        //auto pSC = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
+        //pSC->Release();
+        //window.m_pSwapChain = nullptr;
+
+        if ( window.m_pSwapchain )
+        {
+            EE::Delete( window.m_pSwapchain );
+        }
+
+        window.m_pSwapchain = nullptr;
 
         m_immediateContext.m_pDeviceContext->ClearState();
         m_immediateContext.m_pDeviceContext->Flush();
-    }
-
-    bool RenderDevice::CreateWindowRenderTarget( RenderWindow& window, Int2 dimensions )
-    {
-        EE_ASSERT( window.m_pSwapChain != nullptr );
-
-        // Get a render target view for the back buffer
-        //-------------------------------------------------------------------------
-
-        ID3D11Texture2D* pBackBuffer = nullptr;
-        if ( FAILED( reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain )->GetBuffer( 0, __uuidof( ID3D11Texture2D ), (LPVOID*) &pBackBuffer ) ) )
-        {
-            EE_LOG_ERROR( "Rendering", "Render Device", "Failed to get back buffer texture resource" );
-            return false;
-        }
-
-        ID3D11RenderTargetView* pRenderTargetView = nullptr;
-        HRESULT result = m_pDevice->CreateRenderTargetView( pBackBuffer, nullptr, &pRenderTargetView );
-
-        if ( FAILED( result ) )
-        {
-            EE_LOG_ERROR( "Rendering", "Render Device", "Failed to create render target" );
-            return false;
-        }
-
-        //-------------------------------------------------------------------------
-
-        window.m_renderTarget.m_RT.m_textureHandle.m_pData = pBackBuffer;
-        window.m_renderTarget.m_RT.m_renderTargetView.m_pData = pRenderTargetView;
-        window.m_renderTarget.m_RT.m_dimensions = dimensions;
-        CreateTexture( window.m_renderTarget.m_DS, DataFormat::Float_X32, dimensions, USAGE_RT_DS );
-
-        TVector<RHI::RHITexture const*> const swapchainColorTextures = window.m_pRhiSwapchain->GetPresentTextures();
-
-        window.m_RhiRenderTargets.resize( swapchainColorTextures.size() );
-        for ( size_t i = 0; i < window.m_RhiRenderTargets.size(); ++i )
-        {
-            rt.m_pRenderTarget = swapchainColorTextures[i];
-        }
-
-        return true;
     }
 
     void RenderDevice::ResizeWindow( RenderWindow& window, Int2 const& dimensions )
@@ -458,18 +454,29 @@ namespace EE::Render
         EE_ASSERT( window.IsValid() );
 
         // Release render target and depth stencil
-        m_immediateContext.SetRenderTarget( nullptr );
-        DestroyRenderTarget( window.m_renderTarget );
-        m_immediateContext.m_pDeviceContext->Flush();
+        //m_immediateContext.SetRenderTarget( nullptr );
+        //DestroyRenderTarget( window.m_renderTarget );
+        //m_immediateContext.m_pDeviceContext->Flush();
 
-        // Update buffer sizes
-        if ( FAILED( reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain )->ResizeBuffers( 2, dimensions.m_x, dimensions.m_y, DXGI_FORMAT_UNKNOWN, 0 ) ) )
+        if ( window.m_renderTarget.IsValid() )
         {
-            EE_LOG_ERROR( "Rendering", "Render Device", "Failed to resize swap chain buffers" );
-            EE_HALT();
+            window.m_renderTarget.Release( m_pRHIDevice );
         }
 
-        if ( !CreateWindowRenderTarget( window, dimensions ) )
+        //window.m_RhiRenderTargets.clear();
+        EE_ASSERT( window.m_pSwapchain->Resize( dimensions ) );
+
+        // Update buffer sizes
+        //if ( FAILED( reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain )->ResizeBuffers( 2, dimensions.m_x, dimensions.m_y, DXGI_FORMAT_UNKNOWN, 0 ) ) )
+        //{
+        //    EE_LOG_ERROR( "Rendering", "Render Device", "Failed to resize swap chain buffers" );
+        //    EE_HALT();
+        //}
+
+        SwapchainRenderTarget::SwapchainRenderTargetCreateParameters params;
+        params.m_pSwapchain = window.m_pSwapchain;
+        
+        if ( !window.m_renderTarget.Initialize( m_pRHIDevice, params ) )
         {
             EE_LOG_ERROR( "Rendering", "Render Device", "Failed to create render targets/depth stencil view" );
             EE_HALT();
@@ -942,28 +949,48 @@ namespace EE::Render
     void RenderDevice::CreateRawTexture( Texture& texture, uint8_t const* pRawData, size_t rawDataSize )
     {
         EE_ASSERT( IsInitialized() && !texture.IsValid() );
+        EE_ASSERT( texture.m_dimensions.m_x > 0 && texture.m_dimensions.m_y > 0 );
+        EE_ASSERT( pRawData );
 
         // Create texture
         //-------------------------------------------------------------------------
 
-        D3D11_TEXTURE2D_DESC texDesc;
-        Memory::MemsetZero( &texDesc, sizeof( texDesc ) );
-        texDesc.Width = texture.m_dimensions.m_x;
-        texDesc.Height = texture.m_dimensions.m_y;
-        texDesc.MipLevels = 1;
-        texDesc.ArraySize = 1;
-        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.Usage = D3D11_USAGE_DEFAULT;
-        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        texDesc.CPUAccessFlags = 0;
+        RHI::RHITextureBufferData bufferData;
 
-        ID3D11Texture2D* pTexture = nullptr;
-        D3D11_SUBRESOURCE_DATA subResource;
-        subResource.pSysMem = pRawData;
-        subResource.SysMemPitch = texDesc.Width * 4;
-        subResource.SysMemSlicePitch = 0;
-        if ( m_pDevice->CreateTexture2D( &texDesc, &subResource, &pTexture ) != S_OK )
+        bufferData.m_textureWidth = static_cast<uint32_t>( texture.m_dimensions.m_x );
+        bufferData.m_textureHeight = static_cast<uint32_t>( texture.m_dimensions.m_y );
+        bufferData.m_textureDepth = 1;
+        bufferData.m_binary.assign( pRawData, pRawData + rawDataSize );
+        //bufferData.m_binary.resize( rawDataSize );
+        bufferData.m_pixelByteLength = 4;
+
+        auto texDesc = RHI::RHITextureCreateDesc::NewInitData( bufferData, RHI::EPixelFormat::BGRA8Unorm );
+
+        //D3D11_TEXTURE2D_DESC texDesc;
+        //Memory::MemsetZero( &texDesc, sizeof( texDesc ) );
+        //texDesc.Width = texture.m_dimensions.m_x;
+        //texDesc.Height = texture.m_dimensions.m_y;
+        //texDesc.MipLevels = 1;
+        //texDesc.ArraySize = 1;
+        //texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        //texDesc.SampleDesc.Count = 1;
+        //texDesc.Usage = D3D11_USAGE_DEFAULT;
+        //texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        //texDesc.CPUAccessFlags = 0;
+
+        //ID3D11Texture2D* pTexture = nullptr;
+        //D3D11_SUBRESOURCE_DATA subResource;
+        //subResource.pSysMem = pRawData;
+        //subResource.SysMemPitch = texDesc.Width * 4;
+        //subResource.SysMemSlicePitch = 0;
+        //if ( m_pDevice->CreateTexture2D( &texDesc, &subResource, &pTexture ) != S_OK )
+        //{
+        //    EE_HALT();
+        //    return;
+        //}
+
+        auto* pTexture = m_pRHIDevice->CreateTexture( texDesc );
+        if ( !pTexture )
         {
             EE_HALT();
             return;
@@ -972,31 +999,32 @@ namespace EE::Render
         // Create texture view
         //-------------------------------------------------------------------------
 
-        ID3D11ShaderResourceView* pTextureSRV = nullptr;
+        //ID3D11ShaderResourceView* pTextureSRV = nullptr;
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-        Memory::MemsetZero( &srvDesc, sizeof( srvDesc ) );
-        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
-        srvDesc.Texture2D.MostDetailedMip = 0;
+        //D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        //Memory::MemsetZero( &srvDesc, sizeof( srvDesc ) );
+        //srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        //srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        //srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
+        //srvDesc.Texture2D.MostDetailedMip = 0;
 
-        if ( m_pDevice->CreateShaderResourceView( pTexture, &srvDesc, &pTextureSRV ) != S_OK )
-        {
-            EE_HALT();
-            return;
-        }
+        //if ( m_pDevice->CreateShaderResourceView( pTexture, &srvDesc, &pTextureSRV ) != S_OK )
+        //{
+        //    EE_HALT();
+        //    return;
+        //}
 
         // Update handle
         //-------------------------------------------------------------------------
 
-        texture.m_textureHandle.m_pData = pTexture;
-        texture.m_shaderResourceView.m_pData = pTextureSRV;
+        texture.m_pTexture = pTexture;
+        //texture.m_shaderResourceView.m_pData = pTextureSRV;
     }
 
     void RenderDevice::CreateDDSTexture( Texture& texture, uint8_t const* pRawData, size_t rawDataSize )
     {
         EE_ASSERT( IsInitialized() && !texture.IsValid() );
+        EE_UNIMPLEMENTED_FUNCTION();
 
         ID3D11Resource* pResource = nullptr;
         ID3D11ShaderResourceView* pTextureSRV = nullptr;
@@ -1143,37 +1171,40 @@ namespace EE::Render
     {
         EE_ASSERT( IsInitialized() && texture.IsValid() );
 
-        auto pTexture = (ID3D11Texture2D*) texture.m_textureHandle.m_pData;
-        pTexture->Release();
-        texture.m_textureHandle.Reset();
+        m_pRHIDevice->DestroyTexture( texture.m_pTexture );
+        texture.m_pTexture = nullptr;
 
-        auto pTextureSRV = (ID3D11ShaderResourceView*) texture.m_shaderResourceView.m_pData;
-        if ( pTextureSRV )
-        {
-            pTextureSRV->Release();
-            texture.m_shaderResourceView.Reset();
-        }
+        //auto pTexture = (ID3D11Texture2D*) texture.m_textureHandle.m_pData;
+        //pTexture->Release();
+        //texture.m_textureHandle.Reset();
 
-        auto pTextureUAV = (ID3D11UnorderedAccessView*) texture.m_unorderedAccessView.m_pData;
-        if ( pTextureUAV )
-        {
-            pTextureUAV->Release();
-            texture.m_unorderedAccessView.Reset();
-        }
+        //auto pTextureSRV = (ID3D11ShaderResourceView*) texture.m_shaderResourceView.m_pData;
+        //if ( pTextureSRV )
+        //{
+        //    pTextureSRV->Release();
+        //    texture.m_shaderResourceView.Reset();
+        //}
 
-        auto pRTV = (ID3D11RenderTargetView*) texture.m_renderTargetView.m_pData;
-        if ( pRTV )
-        {
-            pRTV->Release();
-            texture.m_renderTargetView.Reset();
-        }
+        //auto pTextureUAV = (ID3D11UnorderedAccessView*) texture.m_unorderedAccessView.m_pData;
+        //if ( pTextureUAV )
+        //{
+        //    pTextureUAV->Release();
+        //    texture.m_unorderedAccessView.Reset();
+        //}
 
-        auto pDSV = (ID3D11DepthStencilView*) texture.m_depthStencilView.m_pData;
-        if ( pDSV )
-        {
-            pDSV->Release();
-            texture.m_depthStencilView.Reset();
-        }
+        //auto pRTV = (ID3D11RenderTargetView*) texture.m_renderTargetView.m_pData;
+        //if ( pRTV )
+        //{
+        //    pRTV->Release();
+        //    texture.m_renderTargetView.Reset();
+        //}
+
+        //auto pDSV = (ID3D11DepthStencilView*) texture.m_depthStencilView.m_pData;
+        //if ( pDSV )
+        //{
+        //    pDSV->Release();
+        //    texture.m_depthStencilView.Reset();
+        //}
     }
 
     //-------------------------------------------------------------------------
@@ -1273,19 +1304,29 @@ namespace EE::Render
     {
         EE_ASSERT( IsInitialized() && !renderTarget.IsValid() );
         EE_ASSERT( dimensions.m_x >= 0 && dimensions.m_y >= 0 );
-        CreateTexture( renderTarget.m_RT, DataFormat::UNorm_R8G8B8A8, dimensions, USAGE_SRV | USAGE_RT_DS );
-        CreateTexture( renderTarget.m_DS, DataFormat::Float_X32, dimensions, USAGE_RT_DS );
 
-        if ( createPickingTarget )
-        {
-            CreateTexture( renderTarget.m_pickingRT, DataFormat::UInt_R32G32B32A32, dimensions, USAGE_SRV | USAGE_RT_DS );
-            CreateTexture( renderTarget.m_pickingStagingTexture, DataFormat::UInt_R32G32B32A32, Int2( 1, 1 ), USAGE_STAGING );
-        }
+        RenderTarget::RenderTargetCreateParameters params;
+        params.m_width = static_cast<uint32_t>( dimensions.m_x );
+        params.m_height = static_cast<uint32_t>( dimensions.m_y );
+        params.m_bNeedDepth = true;
+        params.m_bNeedIdPicking = createPickingTarget;
+
+        EE_ASSERT( renderTarget.Initialize( m_pRHIDevice, params ) );
+
+        //CreateTexture( renderTarget.m_RT, DataFormat::UNorm_R8G8B8A8, dimensions, USAGE_SRV | USAGE_RT_DS );
+        //CreateTexture( renderTarget.m_DS, DataFormat::Float_X32, dimensions, USAGE_RT_DS );
+
+        //if ( createPickingTarget )
+        //{
+        //    CreateTexture( renderTarget.m_pickingRT, DataFormat::UInt_R32G32B32A32, dimensions, USAGE_SRV | USAGE_RT_DS );
+        //    CreateTexture( renderTarget.m_pickingStagingTexture, DataFormat::UInt_R32G32B32A32, Int2( 1, 1 ), USAGE_STAGING );
+        //}
     }
 
     void RenderDevice::ResizeRenderTarget( RenderTarget& renderTarget, Int2 const& newDimensions )
     {
         EE_ASSERT( IsInitialized() && renderTarget.IsValid() );
+
         bool const createPickingRT = renderTarget.HasPickingRT();
         DestroyRenderTarget( renderTarget );
         CreateRenderTarget( renderTarget, newDimensions, createPickingRT );
@@ -1294,14 +1335,16 @@ namespace EE::Render
     void RenderDevice::DestroyRenderTarget( RenderTarget& renderTarget )
     {
         EE_ASSERT( IsInitialized() && renderTarget.IsValid() );
-        DestroyTexture( renderTarget.m_RT );
-        DestroyTexture( renderTarget.m_DS );
+        //DestroyTexture( renderTarget.m_RT );
+        //DestroyTexture( renderTarget.m_DS );
 
-        if ( renderTarget.m_pickingRT.IsValid() )
-        {
-            DestroyTexture( renderTarget.m_pickingRT );
-            DestroyTexture( renderTarget.m_pickingStagingTexture );
-        }
+        //if ( renderTarget.m_pickingRT.IsValid() )
+        //{
+        //    DestroyTexture( renderTarget.m_pickingRT );
+        //    DestroyTexture( renderTarget.m_pickingStagingTexture );
+        //}
+
+        renderTarget.Release( m_pRHIDevice );
     }
 
     PickingID RenderDevice::ReadBackPickingID( RenderTarget const& renderTarget, Int2 const& pixelCoords )

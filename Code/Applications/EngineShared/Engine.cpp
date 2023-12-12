@@ -328,6 +328,10 @@ namespace EE
                 #endif
 
                 //-------------------------------------------------------------------------
+                
+                m_pRenderPipelineResgistry->Update();
+
+                //-------------------------------------------------------------------------
 
                 {
                     EE_PROFILE_SCOPE_RESOURCE( "Resource System" );
@@ -360,13 +364,6 @@ namespace EE
                 {
                     EE_PROFILE_SCOPE_ENTITY( "World Loading" );
                     m_pEntityWorldManager->UpdateLoading();
-                }
-
-                // Temp
-                //-------------------------------------------------------------------------
-
-                {
-                    m_pRenderPipelineResgistry->LoadAndUpdatePipelines( m_pRenderDevice->GetRHIDevice() );
                 }
 
                 //-------------------------------------------------------------------------
@@ -456,6 +453,11 @@ namespace EE
                 #endif
 
                 m_pEntityWorldManager->EndFrame();
+
+                // TODO: device locking
+                //m_pRenderDevice->LockDevice();
+                m_pRenderPipelineResgistry->UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
+                //m_pRenderDevice->UnlockDevice();
 
                 m_renderingSystem.Update( m_updateContext );
                 m_pInputSystem->ClearFrameState();

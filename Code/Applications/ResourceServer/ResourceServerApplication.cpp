@@ -1,4 +1,5 @@
 #include "ResourceServerApplication.h"
+#include "LocalResourceProvider.h"
 #include "Resources/Resource.h"
 #include "Applications/Shared/LivePP/LivePP.h"
 
@@ -21,6 +22,7 @@ namespace EE
     ResourceServerApplication::ResourceServerApplication( HINSTANCE pInstance )
         : Win32Application( pInstance, "Esoterica Resource Server", IDI_RESOURCESERVER, TBitFlags<InitOptions>( Win32Application::InitOptions::StartMinimized, Win32Application::InitOptions::Borderless ) )
         , m_resourceServerUI( m_resourceServer, m_imguiSystem.GetImageCache() )
+        , m_renderGraph("Resource Server RenderGraph")
     {}
 
     LRESULT ResourceServerApplication::WindowMessageProcessor( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -268,6 +270,41 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
+        Resource::ResourceSettings settings;
+        if ( !settings.ReadSettings( iniFile ) )
+        {
+            EE_LOG_ERROR( "Resource Provider", nullptr, "Failed to read resource settings from ini file!" );
+            return false;
+        }
+
+        m_pResourceProvider = EE::New<Resource::LocalResourceProvider>( &m_resourceServer, settings );
+
+        if ( m_pResourceProvider == nullptr )
+        {
+            EE_LOG_ERROR( "Resource", nullptr, "Failed to create resource provider" );
+            return false;
+        }
+        
+        if ( !m_pResourceProvider->Initialize() )
+        {
+            EE_LOG_ERROR( "Resource", nullptr, "Failed to intialize resource provider" );
+            EE::Delete( m_pResourceProvider );
+            return false;
+        }
+
+        m_taskSystem.Initialize();
+        m_resourceSystem.Initialize( m_pResourceProvider );
+
+        m_shaderLoader.SetRenderDevicePtr( m_pRenderDevice );
+        m_resourceSystem.RegisterResourceLoader( &m_shaderLoader );
+
+        //-------------------------------------------------------------------------
+
+        m_pipelineRegistry.Initialize( &m_resourceSystem );
+        m_renderGraph.AttachToPipelineRegistry( m_pipelineRegistry );
+
+        //-------------------------------------------------------------------------
+
         m_imguiSystem.Initialize( m_pRenderDevice );
         m_imguiRenderer.Initialize( m_pRenderDevice );
         m_resourceServerUI.Initialize();
@@ -285,6 +322,10 @@ namespace EE
             m_imguiRenderer.Shutdown();
             m_imguiSystem.Shutdown();
         }
+
+        //-------------------------------------------------------------------------
+
+        m_pipelineRegistry.Shutdown();
 
         //-------------------------------------------------------------------------
 
@@ -311,6 +352,11 @@ namespace EE
         {
             ScopedTimer<PlatformClock> frameTimer( deltaTime );
 
+            // Update pipeline registry load requests
+            //-------------------------------------------------------------------------
+
+            m_pipelineRegistry.Update();
+
             // Update resource server
             //-------------------------------------------------------------------------
 
@@ -318,10 +364,12 @@ namespace EE
 
             // Sleep when idle to reduce CPU load
             auto const isBusy = m_resourceServer.IsBusy();
-            if( !isBusy )
+            if ( !isBusy )
             {
                 Threading::Sleep( 1 );
             }
+
+            m_resourceSystem.Update();
 
             // Update task bar
             //-------------------------------------------------------------------------
@@ -362,8 +410,27 @@ namespace EE
 
                 m_imguiSystem.EndFrame();
 
-                m_imguiRenderer.RenderViewport( m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
-                m_pRenderDevice->PresentFrame();
+                m_imguiRenderer.RenderViewport_Test( m_renderGraph, m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
+
+                m_renderGraph.Compile( m_pRenderDevice->GetRHIDevice() );
+ 
+                // TODO: when pipeline registry failed to update pipelines, use old pipelines
+                if ( m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() ) )
+                {
+                    //m_renderGraph.BeginFrame( m_pRenderDevice->GetRHIDevice() );
+                    
+                    m_pRenderDevice->GetRHIDevice()->BeginFrame();
+
+                    m_renderGraph.Execute( m_pRenderDevice->GetRHIDevice() );
+                    m_renderGraph.Present( m_pRenderDevice->GetRHIDevice(), *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
+
+                    m_pRenderDevice->GetRHIDevice()->EndFrame();
+                    //m_renderGraph.EndFrame( m_pRenderDevice->GetRHIDevice() );
+                }
+                
+                m_renderGraph.Retire();
+
+                //m_pRenderDevice->PresentFrame();
             }
         }
 

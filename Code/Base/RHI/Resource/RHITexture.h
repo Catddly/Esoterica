@@ -1,25 +1,17 @@
 #pragma once
 
-#include "RHIResource.h"
-#include "RHIResourceCreationCommons.h"
+#include "Base/_Module/API.h"
 #include "../RHICommandBuffer.h"
+#include "RHIResource.h"
+#include "RHITextureView.h"
+#include "RHIResourceCreationCommons.h"
 #include "Base/Types/HashMap.h"
 
 namespace EE::RHI
 {
     class RHIDevice;
 
-    class RHITextureView : public RHIResourceView
-    {
-    public:
-
-        RHITextureView( ERHIType rhiType = ERHIType::Invalid )
-            : RHIResourceView( rhiType )
-        {}
-        virtual ~RHITextureView() = default;
-    };
-
-    class RHITexture : public RHIResource
+    class EE_BASE_API RHITexture : public RHIResource
     {
     public:
 
@@ -32,7 +24,7 @@ namespace EE::RHI
 
         inline RHITextureCreateDesc const& GetDesc() const { return m_desc; }
 
-        RHITextureView* GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
+        RHITextureView GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
         void ClearAllViews( RHIDevice* pDevice );
 
         virtual void* MapSlice( RHIDevice* pDevice, uint32_t layer ) = 0;
@@ -42,12 +34,12 @@ namespace EE::RHI
 
     protected:
 
-        virtual RHITextureView* CreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc ) = 0;
-        virtual void            DestroyView( RHIDevice* pDevice, RHITextureView* pTextureView ) = 0;
+        virtual RHITextureView CreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc ) = 0;
+        virtual void           DestroyView( RHIDevice* pDevice, RHITextureView& textureView ) = 0;
 
     protected:
 
-        THashMap<RHITextureViewCreateDesc, RHITextureView*>         m_viewCache;
+        THashMap<RHITextureViewCreateDesc, RHITextureView>          m_viewCache;
         RHITextureCreateDesc                                        m_desc;
     };
 }

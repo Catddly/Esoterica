@@ -19,10 +19,8 @@ namespace EE::RHI
 
             pDevice->EndCommandBuffer( pCommandBuffer );
 
-            pDevice->SubmitCommandBuffer( pCommandBuffer, nullptr );
+            pDevice->SubmitCommandBuffer( pCommandBuffer );
             pDevice->WaitUntilIdle();
-
-            EE::Delete( pCommandBuffer );
         }
     }
 }

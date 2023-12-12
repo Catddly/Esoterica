@@ -11,10 +11,12 @@
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Function.h"
 #include "Base/Types/Arrays.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 //-------------------------------------------------------------------------
 
 namespace EE::Render { class Texture; class Viewport; }
+namespace EE::RHI { class RHIDevice; class RHITexture; }
 
 //-------------------------------------------------------------------------
 // ImGui Extensions
@@ -168,13 +170,16 @@ namespace EE::ImGuiX
     public:
 
         ImTextureID             m_ID = 0;
-        Render::Texture*        m_pTexture = nullptr;
+        RHI::RHITexture*        m_pTexture = nullptr;
+        //Render::Texture*        m_pTexture = nullptr;
         ImVec2                  m_size = ImVec2( 0, 0 );
     };
 
+    EE_BASE_API ImTextureID ToIm( RHI::RHITexture const* pTexture, RHI::RHITextureViewCreateDesc const& viewDesc = {} );
+
     EE_BASE_API ImTextureID ToIm( Render::Texture const& texture );
 
-    EE_BASE_API ImTextureID ToIm( Render::Texture const* pTexture );
+    //EE_BASE_API ImTextureID ToIm( Render::Texture const* pTexture );
 
     EE_FORCE_INLINE void Image( ImageInfo const& img, ImVec2 const& uv0 = ImVec2( 0, 0 ), ImVec2 const& uv1 = ImVec2( 1, 1 ), Color const& tintColor = Colors::White, Color const& borderColor = Colors::Transparent )
     {

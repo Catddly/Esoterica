@@ -1,5 +1,6 @@
 #if defined(EE_VULKAN)
 #include "VulkanCommandBuffer.h"
+#include "VulkanDevice.h"
 #include "VulkanBuffer.h"
 #include "VulkanTexture.h"
 #include "VulkanRenderPass.h"
@@ -8,8 +9,9 @@
 #include "VulkanCommandBufferPool.h"
 #include "VulkanCommandQueue.h"
 #include "RHIToVulkanSpecification.h"
-
 #include "Base/Math/Math.h"
+#include "Base/Types/Map.h"
+#include "Base/RHI/Resource/RHIDescriptorSet.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
 namespace EE::Render
@@ -36,7 +38,7 @@ namespace EE::Render
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
-        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView*> textureViews )
+        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews )
         {
             EE_ASSERT( pFramebuffer );
             EE_ASSERT( renderArea.IsValid() );
@@ -48,10 +50,9 @@ namespace EE::Render
                 {
                     TFixedVector<VkImageView, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> views;
                     views.reserve( textureViews.size() );
-                    for ( RHI::RHITextureView*& texView : textureViews )
+                    for ( RHI::RHITextureView const& texView : textureViews )
                     {
-                        auto* pVkTexView = RHI::RHIDowncast<VulkanTextureView>( texView );
-                        views.push_back( pVkTexView->m_pHandle );
+                        views.push_back( reinterpret_cast<VkImageView>( texView.m_pViewHandle ) );
                     }
 
                     VkRenderPassAttachmentBeginInfo attachmentBeginInfo = {};
@@ -153,6 +154,63 @@ namespace EE::Render
             {
                 EE_LOG_WARNING( "Render", "VulkanCommandBuffer", "Pass in null pipeline state, reject to bind pipeline state!" );
             }
+        }
+
+        void VulkanCommandBuffer::BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings )
+        {
+            EE_ASSERT( pPipelineState );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
+            EE_ASSERT( pVkPipelineState );
+
+            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState );
+            if ( !vkSet )
+            {
+                return;
+            }
+
+            EE_ASSERT( m_pDevice );
+            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+            EE_ASSERT( pVkDevice );
+
+            TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
+            TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
+            TInlineVector<uint32_t, 4> dynOffsets;
+            auto writes = WriteDescriptorSets( vkSet, pVkPipelineState->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
+
+            vkUpdateDescriptorSets( pVkDevice->m_pHandle, static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
+
+            vkCmdBindDescriptorSets(
+                m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipelineLayout,
+                set, 1, &vkSet,
+                static_cast<uint32_t>( dynOffsets.size() ), !dynOffsets.empty() ? dynOffsets.data() : nullptr
+            );
+        }
+
+        void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
+        {
+            EE_ASSERT( pPipelineState );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
+            EE_ASSERT( pVkPipelineState );
+
+            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState );
+            if ( !vkSet )
+            {
+                return;
+            }
+
+            EE_ASSERT( m_pDevice );
+            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+            EE_ASSERT( pVkDevice );
+
+            TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
+            TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
+            TInlineVector<uint32_t, 4> dynOffsets;
+            auto write = WriteDescriptorSet(
+                vkSet, binding, pVkPipelineState->m_setDescriptorLayouts[set], rhiBinding,
+                bufferInfos, textureInfos, dynOffsets
+            );
+
+            vkUpdateDescriptorSets( pVkDevice->m_pHandle, 1, &write, 0, nullptr );
         }
 
         // State Settings
@@ -653,10 +711,10 @@ namespace EE::Render
                 {
                     switch ( textureBarrier.m_previousLayout )
                     {
-                        case ImageMemoryLayout::Optimal:
+                        case RHI::TextureMemoryLayout::Optimal:
                         barrier.m_barrier.newLayout = accessInfo.m_imageLayout;
                         break;
-                        case ImageMemoryLayout::General:
+                        case RHI::TextureMemoryLayout::General:
                         {
                             if ( prevAccess == RHI::RenderResourceBarrierState::Present )
                             {
@@ -668,7 +726,7 @@ namespace EE::Render
                             }
                         }
                         break;
-                        case ImageMemoryLayout::GeneralAndPresentation:
+                        case RHI::TextureMemoryLayout::GeneralAndPresentation:
                         EE_UNIMPLEMENTED_FUNCTION();
                     }
                 }
@@ -691,10 +749,10 @@ namespace EE::Render
 
                 switch ( textureBarrier.m_nextLayout )
                 {
-                    case ImageMemoryLayout::Optimal:
+                    case RHI::TextureMemoryLayout::Optimal:
                     barrier.m_barrier.newLayout = accessInfo.m_imageLayout;
                     break;
-                    case ImageMemoryLayout::General:
+                    case RHI::TextureMemoryLayout::General:
                     {
                         if ( nextAccess == RHI::RenderResourceBarrierState::Present )
                         {
@@ -706,7 +764,7 @@ namespace EE::Render
                         }
                     }
                     break;
-                    case ImageMemoryLayout::GeneralAndPresentation:
+                    case RHI::TextureMemoryLayout::GeneralAndPresentation:
                     EE_UNIMPLEMENTED_FUNCTION();
                 }
             }
@@ -724,7 +782,202 @@ namespace EE::Render
 
             return barrier;
         }
-	}
+
+        // Vulkan descriptor binding helper functions
+        //-------------------------------------------------------------------------
+
+        VkWriteDescriptorSet VulkanCommandBuffer::WriteDescriptorSet(
+            VkDescriptorSet set, uint32_t binding, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
+            TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets )
+        {
+            auto iterator = setDescriptorLayout.find( binding );
+            if ( iterator == setDescriptorLayout.end() )
+            {
+                // must match shader descriptor layouts
+                return {};
+            }
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstBinding = binding;
+            write.dstSet = set;
+            write.dstArrayElement = 0;
+
+            if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIBufferBinding>() )
+            {
+                auto const& bufferBinding = eastl::get<RHI::RHIBufferBinding>( rhiBinding.m_binding );
+
+                EE_ASSERT( RHI::RHIDowncast<VulkanBuffer>( bufferBinding.m_pBuffer ) );
+                bufferInfos.emplace_front();
+                auto& bufferInfo = bufferInfos.front();
+                bufferInfo.buffer = RHI::RHIDowncast<VulkanBuffer>( bufferBinding.m_pBuffer )->m_pHandle;
+                bufferInfo.offset = 0;
+                bufferInfo.range = VK_WHOLE_SIZE;
+
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write.pBufferInfo = &bufferInfos.front();
+                write.descriptorCount = 1;
+            }
+            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIDynamicBufferBinding>() )
+            {
+                auto const& dynBufferBinding = eastl::get<RHI::RHIDynamicBufferBinding>( rhiBinding.m_binding );
+
+                EE_ASSERT( RHI::RHIDowncast<VulkanBuffer>( dynBufferBinding.m_pBuffer ) );
+                bufferInfos.emplace_front();
+                auto& bufferInfo = bufferInfos.front();
+                bufferInfo.buffer = RHI::RHIDowncast<VulkanBuffer>( dynBufferBinding.m_pBuffer )->m_pHandle;
+                bufferInfo.offset = dynBufferBinding.m_dynamicOffset;
+                bufferInfo.range = VK_WHOLE_SIZE; // TODO: dynamic buffer max uniform buffer range
+
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+                write.pBufferInfo = &bufferInfos.front();
+                write.descriptorCount = 1;
+
+                dynOffsets.push_back( static_cast<uint32_t>( bufferInfo.offset ) );
+            }
+            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHITextureBinding>() )
+            {
+                auto const& textureBinding = eastl::get<RHI::RHITextureBinding>( rhiBinding.m_binding );
+
+                textureInfos.emplace_front();
+                auto& textureInfo = textureInfos.front();
+                textureInfo.imageView = reinterpret_cast<VkImageView>( textureBinding.m_view.m_pViewHandle );
+                textureInfo.sampler = nullptr;
+                textureInfo.imageLayout = ToVulkanImageLayout( textureBinding.m_layout );
+
+                if ( textureInfo.imageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL )
+                {
+                    write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                }
+                else if ( textureInfo.imageLayout == VK_IMAGE_LAYOUT_GENERAL )
+                {
+                    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                }
+                else
+                {
+                    EE_UNIMPLEMENTED_FUNCTION();
+                }
+                write.pImageInfo = &textureInfos.front();
+                write.descriptorCount = 1;
+            }
+            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHITextureArrayBinding>() )
+            {
+                auto const& textureArrayBinding = eastl::get<RHI::RHITextureArrayBinding>( rhiBinding.m_binding );
+                EE_ASSERT( !textureArrayBinding.m_bindings.empty() );
+
+                for ( auto const& texBind : textureArrayBinding.m_bindings )
+                {
+                    textureInfos.emplace_front();
+                    auto& textureInfo = textureInfos.front();
+                    // just take the first one and assume all texture should have the layout
+                    textureInfo.imageLayout = ToVulkanImageLayout( textureArrayBinding.m_bindings[0].m_layout );
+                    textureInfo.sampler = nullptr;
+
+                    textureInfo.imageView = reinterpret_cast<VkImageView>( textureArrayBinding.m_bindings[0].m_view.m_pViewHandle );
+
+                    if ( textureInfo.imageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL )
+                    {
+                        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                    }
+                    else if ( textureInfo.imageLayout == VK_IMAGE_LAYOUT_GENERAL )
+                    {
+                        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                    }
+                    else
+                    {
+                        EE_UNIMPLEMENTED_FUNCTION();
+                    }
+                    write.pImageInfo = &textureInfos.front();
+                    write.descriptorCount = 1;
+                }
+            }
+            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIStaticSamplerBinding>() )
+            {
+                // do nothing
+            }
+            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIUnknownBinding>() )
+            {
+                EE_LOG_WARNING( "RHI", "Command Buffer", "Found unknown binding while binding pipline descriptor set!" );
+            }
+
+            return write;
+        }
+
+        TVector<VkWriteDescriptorSet> VulkanCommandBuffer::WriteDescriptorSets(
+            VkDescriptorSet set, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
+            TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
+        )
+        {
+            TVector<VkWriteDescriptorSet> writes;
+
+            uint32_t bindingIndex = 0;
+            for ( auto const& binding : bindings )
+            {
+                auto iterator = setDescriptorLayout.find(bindingIndex);
+                if ( iterator == setDescriptorLayout.end() )
+                {
+                    // must match shader descriptor layouts
+                    continue;
+                }
+
+                VkWriteDescriptorSet write = WriteDescriptorSet(
+                    set, bindingIndex, setDescriptorLayout, binding,
+                    bufferInfos, textureInfos, dynOffsets
+                );
+
+                writes.push_back( write );
+                ++bindingIndex;
+            }
+
+            return writes;
+        }
+
+        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState )
+        {
+            auto iterator = m_createdDescriptorSets.find( set );
+            if ( iterator != m_createdDescriptorSets.end() )
+            {
+                return iterator->second;
+            }
+
+            EE_ASSERT( m_pDevice );
+            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+            EE_ASSERT( pVkDevice );
+
+            if ( pVkPipelineState->m_setDescriptorLayouts.empty() || pVkPipelineState->m_setDescriptorLayouts.size() <= set )
+            {
+                return nullptr;
+            }
+
+            VkDescriptorPoolCreateInfo poolCI = {};
+            poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolCI.maxSets = 1;
+            poolCI.poolSizeCount = 1;
+            poolCI.pPoolSizes = &pVkPipelineState->m_setPoolSizes[set];
+            // TODO: pool update after bind
+
+            VkDescriptorPool vkPool;
+            VK_SUCCEEDED( vkCreateDescriptorPool( pVkDevice->m_pHandle, &poolCI, nullptr, &vkPool ) );
+
+            RHI::RHIDescriptorPool deferReleasePool;
+            deferReleasePool.m_pSetPoolHandle = vkPool;
+            deferReleasePool.SetRHIReleaseImpl( &Vulkan::gDescriptorSetReleaseImpl );
+
+            m_pDevice->DeferRelease( deferReleasePool );
+
+            VkDescriptorSetAllocateInfo setAllocateInfo = {};
+            setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            setAllocateInfo.descriptorSetCount = 1;
+            setAllocateInfo.pSetLayouts = &pVkPipelineState->m_setLayouts[set];
+            setAllocateInfo.descriptorPool = vkPool;
+
+            VkDescriptorSet vkSet;
+            VK_SUCCEEDED( vkAllocateDescriptorSets( pVkDevice->m_pHandle, &setAllocateInfo, &vkSet ) );
+
+            m_createdDescriptorSets.insert_or_assign( set, vkSet );
+            return vkSet;
+        }
+    }
 }
 
 #endif

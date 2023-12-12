@@ -9,7 +9,7 @@ namespace EE::RHI
 {
     class RHIDevice;
 
-    class RHIBuffer : public RHIResource
+    class EE_BASE_API RHIBuffer : public RHIResource
     {
     public:
 

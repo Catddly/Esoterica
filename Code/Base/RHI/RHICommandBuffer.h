@@ -1,13 +1,14 @@
 #pragma once
 
 #include "RHITaggedType.h"
-#include "RHICommandBuffer.h"
+#include "RHIResourceBinding.h"
+#include "Resource/RHITextureView.h"
 #include "Resource/RHIResourceCreationCommons.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Math/Math.h"
 // TODO: remove this
-#include "Base/Render/RenderTexture.h"
+//#include "Base/Render/RenderTexture.h"
 
 //-------------------------------------------------------------------------
 //	Rather than use sophisticated enum and bit flags inside vulkan or DX12
@@ -311,28 +312,6 @@ namespace EE::RHI
         }
     };
 
-    class RHITextureView;
-
-    // Used to synchronize CPU and GPU.
-    class RHICPUGPUSync : public RHITaggedType
-    {
-    public:
-
-        RHICPUGPUSync( ERHIType rhiType )
-            : RHITaggedType( rhiType )
-        {
-        }
-        virtual ~RHICPUGPUSync() = default;
-
-        RHICPUGPUSync( RHICPUGPUSync const& ) = delete;
-        RHICPUGPUSync& operator=( RHICPUGPUSync const& ) = delete;
-
-        RHICPUGPUSync( RHICPUGPUSync&& ) = default;
-        RHICPUGPUSync& operator=( RHICPUGPUSync&& ) = default;
-
-    private:
-    };
-
     class RHICommandBuffer : public RHITaggedType
     {
     public:
@@ -354,7 +333,7 @@ namespace EE::RHI
         virtual void Draw( uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstInstance = 0 ) = 0;
         virtual void DrawIndexed( uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0 ) = 0;
 
-        virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView*> textureViews ) = 0;
+        virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews ) = 0;
         virtual void EndRenderPass() = 0;
 
         virtual void PipelineBarrier(
@@ -364,6 +343,9 @@ namespace EE::RHI
         ) = 0;
 
         virtual void BindPipelineState( RHIPipelineState* pRhiPipelineState ) = 0;
+        virtual void BindDescriptorSetInPlace( uint32_t set, RHIPipelineState const* pPipelineState, TSpan<RHIPipelineBinding const> const& bindings ) = 0;
+
+        virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHIPipelineState const* pPipelineState, RHIPipelineBinding const& rhiBinding ) = 0;
 
         virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
         virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
@@ -377,6 +359,10 @@ namespace EE::RHI
 
         inline void SetRecording( bool bIsRecording ) { m_bRecording = bIsRecording; }
         inline bool IsRecording() const { return m_bRecording; }
+
+    public:
+
+        RHICPUGPUSync               m_sync;
 
     private:
         

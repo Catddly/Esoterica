@@ -20,6 +20,8 @@
 #include "Base/Types/HashMap.h"
 #include "Base/Resource/ResourcePtr.h"
 
+#include <EASTL/algorithm.h>
+
 namespace EE::Render
 {
 	namespace Backend
@@ -40,7 +42,7 @@ namespace EE::Render
 		//-------------------------------------------------------------------------
 
 		VulkanDevice::VulkanDevice()
-            : RHIDevice( RHI::ERHIType::Vulkan ), m_deviceFrameCount( 0 )
+            : RHIDevice( RHI::ERHIType::Vulkan )
 		{
             m_pInstance = MakeShared<VulkanInstance>();
             EE_ASSERT( m_pInstance != nullptr );
@@ -58,7 +60,7 @@ namespace EE::Render
         }
 
         VulkanDevice::VulkanDevice( InitConfig config )
-            : RHIDevice( RHI::ERHIType::Vulkan ), m_deviceFrameCount( 0 )
+            : RHIDevice( RHI::ERHIType::Vulkan )
 		{
             m_pInstance = MakeShared<VulkanInstance>();
             EE_ASSERT( m_pInstance != nullptr );
@@ -81,13 +83,11 @@ namespace EE::Render
 
             if ( m_immediateCommandBufferPool )
             {
-                vkDestroyCommandPool( m_pHandle, m_immediateCommandBufferPool->m_pHandle, nullptr );
                 EE::Delete( m_immediateCommandBufferPool );
             }
 
             for ( auto& commandPool : m_commandBufferPool )
             {
-                vkDestroyCommandPool( m_pHandle, commandPool->m_pHandle, nullptr );
                 EE::Delete( commandPool );
             }
 
@@ -105,27 +105,35 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        size_t VulkanDevice::BeginFrame()
+        void VulkanDevice::BeginFrame()
         {
             EE_ASSERT( !m_frameExecuting );
-
-            // TODO: make sure all command buffers which allocated from
-            //       this command pool had finished execution in GPU side.
+            
+            // Wait until current frame is completed on GPU side.
+            // Then we can safety free the resources used in this frame.
+            //-------------------------------------------------------------------------
 
             auto& commandPool = GetCurrentFrameCommandBufferPool();
-            vkResetCommandPool( m_pHandle, commandPool.m_pHandle, 0 );
+            commandPool.WaitUntilAllCommandsFinish();
+
+            // Release all stale resources.
+            //-------------------------------------------------------------------------
+            
+            size_t const frameIndex = GetCurrentFrameIndex();
+            m_deferReleaseQueues[frameIndex].ReleaseAllStaleResources( this );
+
+            // Reset command buffer pool
+            //-------------------------------------------------------------------------
+
+            commandPool.Reset();
 
             m_frameExecuting = true;
-
-            return m_deviceFrameCount;
         }
 
         void VulkanDevice::EndFrame()
         {
             EE_ASSERT( m_frameExecuting );
-
-            ++m_deviceFrameCount;
-
+            AdvanceFrame();
             m_frameExecuting = false;
         }
 
@@ -139,14 +147,8 @@ namespace EE::Render
 
         RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer()
         {
-            EE_ASSERT( m_frameExecuting );
-
-            auto& commandPool = GetCurrentFrameCommandBufferPool();
-            auto* pCommandBuffer = AllocateCommandBuffer( &commandPool );
-
-            // TODO: remember to destroy delete command buffer
-
-            return pCommandBuffer;
+            auto& commandBufferPool = GetCurrentFrameCommandBufferPool();
+            return commandBufferPool.Allocate();
         }
 
         RHI::RHICommandQueue* VulkanDevice::GetMainGraphicCommandQueue()
@@ -158,18 +160,10 @@ namespace EE::Render
         {
             if ( !m_immediateCommandBufferPool )
             {
-                m_immediateCommandBufferPool = EE::New<VulkanCommandBufferPool>();
-
-                VkCommandPoolCreateInfo poolCI = {};
-                poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetDeviceIndex();
-
-                VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(m_immediateCommandBufferPool->m_pHandle) ) );
-
-                m_immediateCommandBufferPool->m_pCommandQueue = m_pGlobalGraphicQueue;
+                m_immediateCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
             }
 
-            return AllocateCommandBuffer( m_immediateCommandBufferPool );
+            return m_immediateCommandBufferPool->Allocate();
         }
 
         bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
@@ -210,11 +204,8 @@ namespace EE::Render
             pVkCommandBuffer->SetRecording( false );
         }
 
-        void VulkanDevice::SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer, RHI::RHICPUGPUSync* pSync )
+        void VulkanDevice::SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
         {
-            // TODO: synchronization
-            (void)pSync;
-
             if ( pCommandBuffer )
             {
                 auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
@@ -223,23 +214,8 @@ namespace EE::Render
 
                 auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
                 EE_ASSERT( pCommandBufferPool );
-                auto* pCommandQueue = pCommandBufferPool->m_pCommandQueue;
-                EE_ASSERT( pCommandQueue );
 
-                auto* pVkCommandQueue = RHI::RHIDowncast<VulkanCommandQueue>( pCommandQueue );
-                EE_ASSERT( pVkCommandQueue );
-
-                VkSubmitInfo submitInfo = {};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                submitInfo.pCommandBuffers = &pVkCommandBuffer->m_pHandle;
-                submitInfo.commandBufferCount = 1;
-                submitInfo.pWaitSemaphores = nullptr;
-                submitInfo.waitSemaphoreCount = 0;
-                submitInfo.pSignalSemaphores = nullptr;
-                submitInfo.signalSemaphoreCount = 0;
-                submitInfo.pWaitDstStageMask = nullptr;
-
-                VK_SUCCEEDED( vkQueueSubmit( pVkCommandQueue->m_pHandle, 1, &submitInfo, nullptr ) );
+                pCommandBufferPool->SubmitToQueue( pVkCommandBuffer );
             }
         }
 
@@ -350,11 +326,30 @@ namespace EE::Render
 
         void VulkanDevice::DestroyTexture( RHI::RHITexture* pTexture )
         {
+            // Special case: destroy swapchain texture
+            // We can NOT destroy swapchain texture here, we just invalid the swapchain texture.
+            // When swapchain is truly destroyed, the texture with it will be destroyed together. 
+            //-------------------------------------------------------------------------
+
             EE_ASSERT( pTexture != nullptr );
             auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture );
             EE_ASSERT( pVkTexture && pVkTexture->m_pHandle != nullptr );
 
+            if ( !pVkTexture->m_waitToFlushMappedMemory.empty() )
+            {
+                EE_LOG_WARNING("Render", "VulkanDevice", "Try to destroy texture with host data to upload. Force upload ");
+            }
+
             pVkTexture->ClearAllViews( this );
+
+            // Note: swapchain texture has null allocation
+            if ( pVkTexture->m_allocation == nullptr )
+            {
+                m_onSwapchainImageDestroyedEvent.Execute( pTexture );
+                return;
+            }
+
+            //-------------------------------------------------------------------------
         
             #if VULKAN_USE_VMA_ALLOCATION
             if ( pVkTexture->m_allocation )
@@ -653,7 +648,7 @@ namespace EE::Render
                 // this shader must be loaded from ResourceLoader
                 EE_ASSERT( compiledShader->GetRHIShader() != nullptr );
 
-                VulkanShader* pVkShader = static_cast<VulkanShader*>( compiledShader->GetRHIShader() );
+                VulkanShader const* pVkShader = static_cast<VulkanShader const*>( compiledShader->GetRHIShader() );
 
                 auto& newPipelineShader = pipelineShaderStages.push_back();
                 newPipelineShader.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -828,6 +823,32 @@ namespace EE::Render
 
             // TODO: support batched pipeline creation
             VK_SUCCEEDED( vkCreateGraphicsPipelines( m_pHandle, nullptr, 1, &graphicsPipelineCI, nullptr, &(pVkPipelineStage->m_pPipeline) ) );
+
+            EE_ASSERT( !pVkPipelineStage->m_setDescriptorLayouts.empty() );
+            auto& poolSizes = pVkPipelineStage->m_setPoolSizes;
+            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_setDescriptorLayouts )
+            {
+                for ( auto const& [_binding, ty] : setDescriptorLayout )
+                {
+                    VkDescriptorType descriptorType = ToVulkanBindingResourceType( ty );
+                    VkDescriptorPoolSize* pPoolSize = eastl::find_if( poolSizes.begin(), poolSizes.end(), [&ty, &descriptorType] ( VkDescriptorPoolSize const& poolSize )
+                    {
+                        return poolSize.type == descriptorType;
+                    });
+
+                    if ( pPoolSize )
+                    {
+                        pPoolSize->descriptorCount += 1;
+                    }
+                    else
+                    {
+                        VkDescriptorPoolSize poolSize;
+                        poolSize.type = descriptorType;
+                        poolSize.descriptorCount = 1;
+                        poolSizes.push_back( poolSize );
+                    }
+                }
+            }
 
             return pVkPipelineStage;
         }
@@ -1022,16 +1043,8 @@ namespace EE::Render
 
             for ( auto& commandPool : m_commandBufferPool )
             {
-                commandPool = EE::New<VulkanCommandBufferPool>();
+                commandPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
                 EE_ASSERT( commandPool );
-
-                VkCommandPoolCreateInfo poolCI = {};
-                poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                poolCI.queueFamilyIndex = m_pGlobalGraphicQueue->GetDeviceIndex();
-
-                VK_SUCCEEDED( vkCreateCommandPool( m_pHandle, &poolCI, nullptr, &(commandPool->m_pHandle) ) );
-
-                commandPool->m_pCommandQueue = m_pGlobalGraphicQueue;
             }
 
 			return true;
@@ -1061,31 +1074,6 @@ namespace EE::Render
         // Pipeline State
         //-------------------------------------------------------------------------
 
-        RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer( VulkanCommandBufferPool* pool )
-        {
-            if ( !pool || !pool->m_pHandle || !pool->m_pCommandQueue )
-            {
-                return nullptr;
-            }
-
-            VkCommandBufferAllocateInfo allocInfo = {};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandPool = pool->m_pHandle;
-            allocInfo.commandBufferCount = 1;
-
-            auto* pVkCommandBuffer = EE::New<VulkanCommandBuffer>();
-            if ( pVkCommandBuffer )
-            {
-                VK_SUCCEEDED( vkAllocateCommandBuffers( m_pHandle, &allocInfo, &(pVkCommandBuffer->m_pHandle) ) );
-
-                pVkCommandBuffer->m_pCommandBufferPool = pool;
-                return pVkCommandBuffer;
-            }
-
-            return nullptr;
-        }
-
         bool VulkanDevice::CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState )
         {
             EE_ASSERT( pPipelineState != nullptr );
@@ -1109,8 +1097,8 @@ namespace EE::Render
 
             // Create descriptor set layout
             //-------------------------------------------------------------------------
-            TInlineVector<VkDescriptorSetLayout, Render::Shader::NumMaxResourceBindingSet> vkSetLayouts;
-            TInlineVector<TMap<uint32_t, VkDescriptorType>, Render::Shader::NumMaxResourceBindingSet> vkSetDescripotrTypes;
+            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet> vkSetLayouts;
+            TInlineVector<TMap<uint32_t, RHI::EBindingResourceType>, RHI::NumMaxResourceBindingSet> vkSetDescripotrTypes;
             for ( uint32_t set = 0; set < setCount; ++set )
             {
                 auto layout = CreateDescriptorSetLayout( set, combinedSetLayouts[set], VK_SHADER_STAGE_ALL_GRAPHICS );
@@ -1240,7 +1228,7 @@ namespace EE::Render
             return combinedSetLayouts;
         }
 
-        TPair<VkDescriptorSetLayout, TMap<uint32_t, VkDescriptorType>> VulkanDevice::CreateDescriptorSetLayout( uint32_t set, CombinedShaderBindingLayout const& combinedSetBindingLayout, VkShaderStageFlags stage )
+        TPair<VkDescriptorSetLayout, TMap<uint32_t, RHI::EBindingResourceType>> VulkanDevice::CreateDescriptorSetLayout( uint32_t set, CombinedShaderBindingLayout const& combinedSetBindingLayout, VkShaderStageFlags stage )
         {
             TVector<VkDescriptorSetLayoutBinding> vkBindings;
             vkBindings.reserve( combinedSetBindingLayout.size() );
@@ -1258,20 +1246,21 @@ namespace EE::Render
             VkDescriptorSetLayoutCreateFlags vkSetLayoutCreateFlag = 0;
             TInlineList<VkSampler const, 8> vkSamplerStackHolder;
 
-            TMap<uint32_t, VkDescriptorType> bindingTypeInfo;
+            TMap<uint32_t, RHI::EBindingResourceType> bindingTypeInfo;
 
             for ( auto const& bindingLayout : combinedSetBindingLayout )
             {
-                auto bindingResourceType = bindingLayout.second.m_bindingResourceType;
-                VkDescriptorType vkDescriptorType = ToVulkanDescriptorType( bindingLayout.second.m_bindingResourceType );
+                auto const reflBindingResourceType = bindingLayout.second.m_bindingResourceType;
+                RHI::EBindingResourceType const bindingResourceType = ToBindingResourceType( reflBindingResourceType );
+                VkDescriptorType const vkDescriptorType = ToVulkanBindingResourceType( bindingResourceType );
 
-                switch ( bindingResourceType )
+                switch ( reflBindingResourceType )
                 {
-                    case EE::Render::Shader::ReflectedBindingResourceType::SampledImage:
+                    case EE::Render::Shader::EReflectedBindingResourceType::SampleTexture:
                     {
                         uint32_t descriptorCount = static_cast<uint32_t>( bindingLayout.second.m_bindingCount.m_count );
 
-                        if ( bindingLayout.second.m_bindingCount.m_type == Render::Shader::BindingCountType::Dynamic )
+                        if ( bindingLayout.second.m_bindingCount.m_type == Render::Shader::EBindingCountType::Dynamic )
                         {
                             // Bindless descriptor can only be used at the end of this set.
                             EE_ASSERT( bindingLayout.first == static_cast<uint32_t>( combinedSetBindingLayout.size() - 1 ) );
@@ -1300,13 +1289,13 @@ namespace EE::Render
 
                         break;
                     }
-                    case EE::Render::Shader::ReflectedBindingResourceType::StorageTexelBuffer:
-                    case EE::Render::Shader::ReflectedBindingResourceType::StorageImage:
-                    case EE::Render::Shader::ReflectedBindingResourceType::UniformTexelBuffer:
-                    case EE::Render::Shader::ReflectedBindingResourceType::UniformBuffer:
-                    case EE::Render::Shader::ReflectedBindingResourceType::StorageBuffer:
+                    case EE::Render::Shader::EReflectedBindingResourceType::StorageTexelBuffer:
+                    case EE::Render::Shader::EReflectedBindingResourceType::StorageTexture:
+                    case EE::Render::Shader::EReflectedBindingResourceType::UniformTexelBuffer:
+                    case EE::Render::Shader::EReflectedBindingResourceType::UniformBuffer:
+                    case EE::Render::Shader::EReflectedBindingResourceType::StorageBuffer:
                     {
-                        if ( bindingLayout.second.m_bindingCount.m_type == Render::Shader::BindingCountType::Dynamic )
+                        if ( bindingLayout.second.m_bindingCount.m_type == Render::Shader::EBindingCountType::Dynamic )
                         {
                             EE_LOG_ERROR( "Render", "Vulkan Device", "StorageImage/UniformTexelBuffer/UniformBuffer/StorageBuffer doesn't support bindless descriptor set!");
                             EE_ASSERT( false );
@@ -1323,7 +1312,7 @@ namespace EE::Render
 
                         break;
                     }
-                    case EE::Render::Shader::ReflectedBindingResourceType::Sampler:
+                    case EE::Render::Shader::EReflectedBindingResourceType::Sampler:
                     {
                         VkSampler const vkSampler = FindImmutableSampler( bindingLayout.second.m_extraInfos );
                         vkSamplerStackHolder.push_front( vkSampler );
@@ -1339,8 +1328,8 @@ namespace EE::Render
 
                         break;
                     }
-                    case EE::Render::Shader::ReflectedBindingResourceType::CombinedImageSampler:
-                    case EE::Render::Shader::ReflectedBindingResourceType::InputAttachment:
+                    case EE::Render::Shader::EReflectedBindingResourceType::CombinedTextureSampler:
+                    case EE::Render::Shader::EReflectedBindingResourceType::InputAttachment:
                     {
                         EE_UNIMPLEMENTED_FUNCTION();
                         break;
@@ -1350,7 +1339,7 @@ namespace EE::Render
                     break;
                 }
 
-                bindingTypeInfo.insert( { bindingLayout.first, vkDescriptorType } );
+                bindingTypeInfo.insert( { bindingLayout.first, bindingResourceType } );
             }
 
             VkDescriptorSetLayoutBindingFlagsCreateInfo setLayoutBindingFlagsCreateInfo = {};
@@ -1567,8 +1556,8 @@ namespace EE::Render
 
         VulkanCommandBufferPool& VulkanDevice::GetCurrentFrameCommandBufferPool()
         {
-            auto deviceFrameIndex = m_deviceFrameCount % VulkanDevice::NumDeviceFrameCount;
-            return *m_commandBufferPool[deviceFrameIndex];
+            auto frameIndex = GetCurrentFrameIndex();
+            return *m_commandBufferPool[frameIndex];
         }
     }
 }

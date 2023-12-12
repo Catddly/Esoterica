@@ -13,7 +13,9 @@ namespace EE::Render
         class VulkanCommandQueue : public RHI::RHICommandQueue
         {
             friend class VulkanDevice;
+            friend class VulkanSwapchain;
             friend class VulkanCommandBuffer;
+            friend class VulkanCommandBufferPool;
 
         public:
 

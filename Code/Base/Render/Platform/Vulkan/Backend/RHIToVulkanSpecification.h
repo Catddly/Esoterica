@@ -1,6 +1,7 @@
 #pragma once
 #if defined(EE_VULKAN)
 #include "VulkanCommon.h"
+#include "Base\Render\RenderShader.h"
 #include "Base\RHI\Resource\RHIResourceCreationCommons.h"
 #include "Base\RHI\RHICommandBuffer.h"
 
@@ -28,6 +29,7 @@ namespace EE::Render
         VkImageViewType ToVulkanImageViewType( RHI::ETextureType type );
         VkImageViewType ToVulkanImageViewType( RHI::ETextureViewType type );
         VkImageAspectFlagBits ToVulkanImageAspectFlags( TBitFlags<RHI::ETextureViewAspect> aspect );
+        VkImageLayout ToVulkanImageLayout( RHI::ETextureLayout layout );
         VkSampleCountFlagBits ToVulkanSampleCountFlags( TBitFlags<RHI::ESampleCount> sample );
         VkImageUsageFlagBits ToVulkanImageUsageFlags( TBitFlags<RHI::ETextureUsage> usage );
         //VkImageLayout ToVulkanImageLayout();
@@ -44,10 +46,6 @@ namespace EE::Render
         VkAttachmentDescription ToVulkanAttachmentDescription( RHI::RHIRenderPassAttachmentDesc const& attachmentDesc );
 
         //-------------------------------------------------------------------------
-
-        VkDescriptorType ToVulkanDescriptorType( Render::Shader::ReflectedBindingResourceType reflectedBindingType );
-
-        //-------------------------------------------------------------------------
     
         VkShaderStageFlagBits ToVulkanShaderStageFlags( TBitFlags<Render::PipelineStage> pipelineStage );
         VkPrimitiveTopology ToVulkanPrimitiveTopology( RHI::ERHIPipelinePirmitiveTopology topology );
@@ -56,6 +54,12 @@ namespace EE::Render
         VkPolygonMode ToVulkanPolygonMode( Render::FillMode fillMode );
         VkBlendFactor ToVulkanBlendFactor( Render::BlendValue blendValue );
         VkBlendOp ToVulkanBlendOp( Render::BlendOp blendOp );
+
+        //-------------------------------------------------------------------------
+    
+        RHI::EBindingResourceType ToBindingResourceType( Render::Shader::EReflectedBindingResourceType ty );
+        RHI::EBindingResourceType ToBindingResourceType( VkDescriptorType ty );
+        VkDescriptorType ToVulkanBindingResourceType( RHI::EBindingResourceType ty );
     }
 }
 

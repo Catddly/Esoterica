@@ -2,18 +2,23 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Types/Arrays.h"
+#include "Base/Types/List.h"
+#include "Base/Types/Map.h"
+#include "Base/RHI/Resource/RHITexture.h"
+#include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/RHICommandBuffer.h"
+#include "Base/RHI/RHIResourceBinding.h"
 
 #include <vulkan/vulkan_core.h>
 
 namespace EE::RHI
 {
+    class RHIDevice;
     class RHIRenderPass;
     class RHIFramebuffer;
     class RHIPipelineState;
 
     class RHITexture;
-    class RHITextureView;
 }
 
 namespace EE::Render
@@ -57,10 +62,12 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         class VulkanCommandBufferPool;
+        class VulkanPipelineState;
 
 		class VulkanCommandBuffer : public RHI::RHICommandBuffer
 		{
             friend class VulkanDevice;
+            friend class VulkanCommandBufferPool;
 
         public:
 
@@ -82,7 +89,7 @@ namespace EE::Render
             // Pipeline Barrier
             //-------------------------------------------------------------------------
 
-            virtual bool BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView*> textureViews ) override;
+            virtual bool BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews ) override;
             virtual void EndRenderPass() override;
 
             virtual void PipelineBarrier( 
@@ -95,6 +102,9 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             virtual void BindPipelineState( RHI::RHIPipelineState* pRhiPipelineState ) override;
+            virtual void BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings ) override;
+
+            virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding ) override;
 
             // State Settings
             //-------------------------------------------------------------------------
@@ -120,14 +130,34 @@ namespace EE::Render
             VkBufferBarrierTransition GetBufferBarrierTransition( RHI::BufferBarrier const& bufferBarrier );
             VkTextureBarrierTransition GetTextureBarrierTransition( RHI::TextureBarrier const& textureBarrier );
 
+            // Vulkan descriptor binding helper functions
+            //-------------------------------------------------------------------------
+
+            VkWriteDescriptorSet WriteDescriptorSet(
+                VkDescriptorSet set, uint32_t binding, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
+                TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
+            );
+
+            TVector<VkWriteDescriptorSet> WriteDescriptorSets(
+                VkDescriptorSet set, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
+                TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
+            );
+
+            VkDescriptorSet CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState );
+
 		private:
 
             static TInlineVector<VkMemoryBarrier, 1>                    m_sGlobalBarriers;
             static TInlineVector<VkBufferMemoryBarrier, 32>             m_sBufferBarriers;
             static TInlineVector<VkImageMemoryBarrier, 32>              m_sTextureBarriers;
 			
+            RHI::RHIDevice*                                             m_pDevice = nullptr;
+
             VkCommandBuffer					                            m_pHandle = nullptr;
             VulkanCommandBufferPool*                                    m_pCommandBufferPool = nullptr;
+            uint32_t                                                    m_pInnerPoolIndex = 0;
+
+            TMap<uint32_t, VkDescriptorSet>                             m_createdDescriptorSets;
 		};
     }
 }

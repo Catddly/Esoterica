@@ -460,8 +460,19 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanTexture.cpp">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\RHIHelper.cpp" />
-    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanBuffer.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanBuffer.cpp">
+      <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHIHelper.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHIResourceBinding.h" />
+    <ClCompile Include="RHI\Resource\RHIDescriptorSet.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.cpp" />
+    <ClCompile Include="RHI\RHIDevice.cpp" />
+    <ClCompile Include="Render\RenderWindow.cpp" />
+    <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -2066,7 +2077,16 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSampler.h">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\RHIHelper.h" />
+    <ClInclude Include="RHI\RHIHelper.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanResourceBinding.h" />
+    <ClInclude Include="RHI\Resource\RHITextureView.h" />
+    <ClInclude Include="RHI\Resource\RHIDescriptorSet.h" />
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h" />
+    <ClInclude Include="Types\Queue.h" />
+    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h" />
+    <ClInclude Include="RHI\Resource\RHIDeferReleasable.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

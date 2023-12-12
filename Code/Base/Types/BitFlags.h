@@ -179,6 +179,7 @@ namespace EE
         inline TBitFlags& operator=( TBitFlags<T> const& flags )
         {
             m_flags = flags.m_flags;
+            return *this;
         }
 
         template<typename... Args, class Enable = std::enable_if_t<( ... && std::is_convertible_v<Args, T> )>>

@@ -12,6 +12,7 @@ namespace EE::Render
 		class VulkanSemaphore final : public RHI::RHISemaphore
 		{
 			friend class VulkanDevice;
+			friend class VulkanSwapchain;
 
 		public:
 

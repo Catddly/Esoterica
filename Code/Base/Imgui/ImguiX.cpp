@@ -3,6 +3,8 @@
 
 #include "Base/Render/RenderTexture.h"
 #include "Base/Render/RenderViewport.h"
+#include "Base/RHI/RHIDevice.h"
+#include "Base/RHI/Resource/RHITexture.h"
 #include "EASTL/sort.h"
 
 //-------------------------------------------------------------------------
@@ -13,14 +15,15 @@ namespace EE::ImGuiX
     // Conversion
     //-------------------------------------------------------------------------
 
-    ImTextureID ToIm( Render::Texture const& texture )
+    ImTextureID ToIm( RHI::RHITexture const* pTexture, RHI::RHITextureViewCreateDesc const& viewDesc )
     {
-        return (void*) &texture.GetShaderResourceView();
+        // Safety: we const_cast pTexture to only get the address as a unique id, NOT modifying any inner states.
+        return reinterpret_cast<void*>( const_cast<RHI::RHITexture*>( pTexture ) );
     }
 
-    ImTextureID ToIm( Render::Texture const* pTexture )
+    ImTextureID ToIm( Render::Texture const& texture )
     {
-        return (void*) &pTexture->GetShaderResourceView();
+        return ToIm(texture.GetRHITexture());
     }
 
     //-------------------------------------------------------------------------

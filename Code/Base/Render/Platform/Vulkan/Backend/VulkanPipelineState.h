@@ -2,7 +2,6 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Types/Map.h"
-#include "Base/Render/RenderShader.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
@@ -17,8 +16,6 @@ namespace EE::Render
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
-            using SetDescriptorLayout = TMap<uint32_t, VkDescriptorType>;
-
         public:
 
             EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
@@ -28,6 +25,10 @@ namespace EE::Render
             {}
             virtual ~VulkanPipelineState() = default;
 
+        public:
+
+            inline virtual TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_setDescriptorLayouts; }
+
         private:
 
             VkPipeline                                                              m_pPipeline = nullptr;
@@ -35,9 +36,9 @@ namespace EE::Render
 
             VkPipelineBindPoint                                                     m_pipelineBindPoint;
 
-            TInlineVector<SetDescriptorLayout, Shader::NumMaxResourceBindingSet>    m_setDescriptorLayouts;
-            TInlineVector<VkDescriptorPoolSize, Shader::NumMaxResourceBindingSet>   m_setPoolSizes;
-            TInlineVector<VkDescriptorSetLayout, Shader::NumMaxResourceBindingSet>  m_setLayouts;
+            TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet>       m_setDescriptorLayouts;
+            TVector<VkDescriptorPoolSize>                                           m_setPoolSizes;
+            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
         };
     }
 }

@@ -59,6 +59,34 @@ namespace EE::Render::Utils
         return true;
     }
 
+    bool FetchTextureBufferDataFromFile( RHI::RHITextureBufferData& bufferData, FileSystem::Path const& path )
+    {
+        EE_ASSERT( path.Exists() );
+
+        //-------------------------------------------------------------------------
+
+        int32_t width, height, channels;
+        uint8_t* pImage = stbi_load( path.c_str(), &width, &height, &channels, 4 );
+        if ( pImage == nullptr )
+        {
+            return false;
+        }
+
+        size_t const imageSize = size_t( width ) * height * channels; // 8 bits per channel
+
+        bufferData.m_textureWidth = static_cast<uint32_t>( width );
+        bufferData.m_textureHeight = static_cast<uint32_t>( height );
+        bufferData.m_textureDepth = 1;
+        bufferData.m_pixelByteLength = static_cast<uint32_t>( channels );
+        bufferData.m_binary.resize( imageSize );
+
+        memcpy( bufferData.m_binary.data(), pImage, imageSize );
+
+        stbi_image_free( pImage );
+
+        return true;
+    }
+
     bool FetchTextureBufferDataFromBase64( RHI::RHITextureBufferData& bufferData, uint8_t const* pData, size_t size )
     {
         Blob const decodedData = Encoding::Base64::Decode( pData, size );

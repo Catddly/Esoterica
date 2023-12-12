@@ -73,7 +73,6 @@ namespace EE::RG
         {
             Registering = 0,
             Compiled,
-            Retire,
         };
         
     public:

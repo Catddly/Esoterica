@@ -93,12 +93,12 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        RHI::RHITextureView* VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc )
+        RHI::RHITextureView VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc )
         {
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
             {
-                return nullptr;
+                return {};
             }
 
             uint32_t layerCount = 1;
@@ -122,17 +122,17 @@ namespace EE::Render
             viewCI.subresourceRange.levelCount = desc.m_levelCount.has_value() ? *desc.m_levelCount : m_desc.m_mipmap - desc.m_baseMipmap;
             viewCI.subresourceRange.layerCount = layerCount;
 
-            auto* pVkTextureView = EE::New<VulkanTextureView>();
-            if ( !pVkTextureView )
-            {
-                EE_ASSERT( false );
-            }
-            VK_SUCCEEDED( vkCreateImageView( pVkDevice->m_pHandle, &viewCI, nullptr, &(pVkTextureView->m_pHandle) ) );
+            RHI::RHITextureView textureView;
 
-            return pVkTextureView;
+            VkImageView vkView;
+            VK_SUCCEEDED( vkCreateImageView( pVkDevice->m_pHandle, &viewCI, nullptr, &vkView ) );
+
+            textureView.m_pViewHandle = reinterpret_cast<void*>( vkView );
+            textureView.m_desc = desc;
+            return textureView;
         }
 
-        void VulkanTexture::DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView* pTextureView )
+        void VulkanTexture::DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView& textureView )
         {
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
@@ -141,19 +141,33 @@ namespace EE::Render
                 return;
             }
 
-            auto* pVkTextureView = RHI::RHIDowncast<VulkanTextureView>( pTextureView );
-            if ( !pVkTextureView )
+            if ( !textureView.IsValid() )
             {
                 EE_ASSERT( false );
                 return;
             }
 
-            vkDestroyImageView( pVkDevice->m_pHandle, pVkTextureView->m_pHandle, nullptr );
+            vkDestroyImageView( pVkDevice->m_pHandle, reinterpret_cast<VkImageView>( textureView.m_pViewHandle ), nullptr );
 
-            EE::Delete( pTextureView );
+            textureView.m_desc = {};
+            textureView.m_pViewHandle = nullptr;
         }
 
         //-------------------------------------------------------------------------
+
+		void VulkanTexture::ForceDiscardAllUploadedData( RHI::RHIDevice* pDevice )
+		{
+            if ( !m_waitToFlushMappedMemory.empty() )
+            {
+                for ( auto& [layer, pStagingBuffer] : m_waitToFlushMappedMemory )
+                {
+                    pDevice->DestroyBuffer( pStagingBuffer );
+                }
+
+                TMap<uint32_t, RHI::RHIBuffer*> emptyMap;
+                m_waitToFlushMappedMemory.swap( emptyMap );
+            }
+		}
 
         uint32_t VulkanTexture::GetLayerByteSize( uint32_t layer )
         {
@@ -171,7 +185,7 @@ namespace EE::Render
             }
             return totalByteSize;
         }
-    }
+	}
 }
 
 #endif
