@@ -13,6 +13,7 @@ namespace EE::Render
 		{
 			friend class VulkanDevice;
 			friend class VulkanSwapchain;
+			friend class VulkanCommandBufferPool;
 
 		public:
 

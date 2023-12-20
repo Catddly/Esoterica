@@ -98,8 +98,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="LocalResourceProvider.cpp" />
-    <ClCompile Include="Render\PipelineRegistryResourceManager.cpp" />
-    <ClCompile Include="Render\PipelineRegistryResourceServerAdapter.cpp" />
     <ClCompile Include="ResourceServer.cpp" />
     <ClCompile Include="ResourceServerApplication.cpp" />
     <ClCompile Include="ResourceServerContext.cpp" />
@@ -118,8 +116,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LocalResourceProvider.h" />
-    <ClInclude Include="Render\PipelineRegistryResourceManager.h" />
-    <ClInclude Include="Render\PipelineRegistryResourceServerAdapter.h" />
     <ClInclude Include="ResourceServerApplication.h" />
     <ClInclude Include="ResourceServerContext.h" />
     <ClInclude Include="ResourceServerUI.h" />

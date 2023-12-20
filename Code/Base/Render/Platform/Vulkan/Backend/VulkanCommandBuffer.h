@@ -75,7 +75,9 @@ namespace EE::Render
 
             VulkanCommandBuffer()
                 : RHICommandBuffer( RHI::ERHIType::Vulkan )
-            {}
+            {
+                m_createdDescriptorSets.clear();
+            }
             virtual ~VulkanCommandBuffer() = default;
 
         public:
@@ -104,6 +106,9 @@ namespace EE::Render
             virtual void BindPipelineState( RHI::RHIPipelineState* pRhiPipelineState ) override;
             virtual void BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings ) override;
 
+            virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset = 0 ) override;
+            virtual void BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset = 0 ) override;
+
             virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding ) override;
 
             // State Settings
@@ -123,7 +128,7 @@ namespace EE::Render
 
         private:
 
-            // Vulkan Pipeline Barrier Utility Functions
+            // Vulkan pipeline barrier utility functions
             //-------------------------------------------------------------------------
             
             VkMemoryBarrierTransition GetMemoryBarrierTransition( RHI::GlobalBarrier const& globalBarrier );
@@ -144,6 +149,12 @@ namespace EE::Render
             );
 
             VkDescriptorSet CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState );
+
+            //-------------------------------------------------------------------------
+
+            // clean all old states and prepare for new command enqueue.
+            // Usually called after its command pool is reset.
+            void CleanUp();
 
 		private:
 

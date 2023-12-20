@@ -65,6 +65,7 @@ namespace EE::RG
             m_passName = eastl::exchange( rhs.m_passName, {} );
             m_id = eastl::exchange( rhs.m_id, {} );
             m_pipelineHandle = eastl::exchange( rhs.m_pipelineHandle, {} );
+            m_executionCallback = eastl::move( rhs.m_executionCallback );
         }
         RGNode& operator=( RGNode&& rhs ) noexcept
         {
@@ -87,6 +88,7 @@ namespace EE::RG
             eastl::swap( m_passName, rhs.m_passName );
             eastl::swap( m_id, rhs.m_id );
             eastl::swap( m_pipelineHandle, rhs.m_pipelineHandle );
+            eastl::swap( m_executionCallback, rhs.m_executionCallback );
         }
 
     private:

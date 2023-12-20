@@ -37,6 +37,7 @@ namespace EE::RHI
     class DeferReleaseQueue
     {
         friend class RHIDescriptorPool;
+        friend class RHIBuffer;
 
     public:
 
@@ -45,6 +46,7 @@ namespace EE::RHI
     private:
 
         TQueue<RHIDescriptorPool>                   m_descriptorPools;
+        TQueue<RHIBuffer*>                          m_deferReleaseBuffers;
     };
 
     //-------------------------------------------------------------------------
@@ -78,12 +80,12 @@ namespace EE::RHI
 
         //-------------------------------------------------------------------------
 
+        // Begin device frame, call at the beginning of drawing loop.
         virtual void BeginFrame() = 0;
+        // End device frame, call when your device frame is end.
         virtual void EndFrame() = 0;
 
-        virtual void   WaitUntilIdle() = 0;
-
-        virtual size_t GetDeviceFrameIndex() const = 0;
+        virtual void WaitUntilIdle() = 0;
 
         virtual RHICommandBuffer* AllocateCommandBuffer() = 0;
         virtual RHICommandQueue* GetMainGraphicCommandQueue() = 0;
@@ -93,7 +95,12 @@ namespace EE::RHI
         virtual bool BeginCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
         virtual void EndCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
 
-        virtual void SubmitCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
+        virtual void SubmitCommandBuffer(
+            RHICommandBuffer* pCommandBuffer,
+            TSpan<RHISemaphore*> pWaitSemaphores,
+            TSpan<RHISemaphore*> pSignalSemaphores,
+            TSpan<Render::PipelineStage> waitStages
+        ) = 0;
 
         //-------------------------------------------------------------------------
 
@@ -123,18 +130,20 @@ namespace EE::RHI
 
         template <typename T>
         typename eastl::enable_if_t<eastl::is_same_v<T, RHIDescriptorPool>, void>
-        DeferRelease( RHIDeferReleasable<T>& deferReleasable );
+        DeferRelease( RHIStaticDeferReleasable<T>& deferReleasable );
+
+        EE_BASE_API void DeferRelease( RHIDynamicDeferReleasable* pDeferReleasable );
 
         //-------------------------------------------------------------------------
 
-        void AdvanceFrame()
+        inline void AdvanceFrame()
         {
             ++m_deviceFrameCount;
             m_deviceFrameIndex = ( m_deviceFrameIndex + 1 ) % NumDeviceFramebufferCount;
         }
 
-        size_t GetTotalFrameCount() const { return m_deviceFrameCount; }
-        uint32_t GetCurrentFrameIndex() const { return m_deviceFrameIndex; }
+        size_t GetDeviceFrameCount() const { return m_deviceFrameCount; }
+        uint32_t GetDeviceFrameIndex() const { return m_deviceFrameIndex; }
 
     protected:
 
@@ -143,21 +152,5 @@ namespace EE::RHI
 
         DeferReleaseQueue                           m_deferReleaseQueues[NumDeviceFramebufferCount];
     };
-
-    template <typename T>
-    typename eastl::enable_if_t<eastl::is_same_v<T, RHIDescriptorPool>, void>
-    RHIDevice::DeferRelease( RHIDeferReleasable<T>& deferReleasable )
-    {
-        uint32_t const frameIndex = GetCurrentFrameIndex();
-        if constexpr ( eastl::is_same<T, RHIDescriptorPool>::value )
-        {
-            static_cast<T&>( deferReleasable ).Enqueue( m_deferReleaseQueues[frameIndex] );
-        }
-        else
-        {
-            EE_STATIC_ASSERT( false, "Test." );
-        }
-    }
-
 }
 

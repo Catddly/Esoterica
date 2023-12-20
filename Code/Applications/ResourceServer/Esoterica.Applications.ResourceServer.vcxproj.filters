@@ -5,12 +5,6 @@
     <ClCompile Include="ResourceServerApplication.cpp" />
     <ClCompile Include="ResourceServerUI.cpp" />
     <ClCompile Include="ResourceServerContext.cpp" />
-    <ClCompile Include="Render\PipelineRegistryResourceManager.cpp">
-      <Filter>Render</Filter>
-    </ClCompile>
-    <ClCompile Include="Render\PipelineRegistryResourceServerAdapter.cpp">
-      <Filter>Render</Filter>
-    </ClCompile>
     <ClCompile Include="LocalResourceProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -22,12 +16,6 @@
       <Filter>Resources</Filter>
     </ClInclude>
     <ClInclude Include="ResourceServerContext.h" />
-    <ClInclude Include="Render\PipelineRegistryResourceManager.h">
-      <Filter>Render</Filter>
-    </ClInclude>
-    <ClInclude Include="Render\PipelineRegistryResourceServerAdapter.h">
-      <Filter>Render</Filter>
-    </ClInclude>
     <ClInclude Include="LocalResourceProvider.h" />
   </ItemGroup>
   <ItemGroup>

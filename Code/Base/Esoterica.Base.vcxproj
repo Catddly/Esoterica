@@ -582,6 +582,7 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanTexture.cpp" />
     <ClCompile Include="Render\RenderWindow.cpp" />
+    <ClCompile Include="RHI\Resource\RHIBuffer.cpp" />
     <ClCompile Include="RHI\Resource\RHIDescriptorSet.cpp" />
     <ClCompile Include="RHI\RHIDevice.cpp" />
     <ClCompile Include="RHI\RHIResourceBinding.h" />

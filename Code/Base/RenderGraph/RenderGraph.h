@@ -89,7 +89,8 @@ namespace EE::RG
         inline RGResourceRegistry&       GetResourceRegistry() { return m_resourceRegistry; };
         inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
 
-        void AllocateCommandContext( RHI::RHIDevice* pRhiDevice );
+        // return a reset command context.
+        RGRenderCommandContext& ResetCommandContext( RHI::RHIDevice* pRhiDevice );
         void FlushCommandContext( RHI::RHIDevice* pRhiDevice );
 
         // Return -1 if failed to find the presentable node.
@@ -120,7 +121,7 @@ namespace EE::RG
 
         // Note: this render command context will match exact the device frame index.
         RGRenderCommandContext                  m_renderCommandContexts[RHI::RHIDevice::NumDeviceFramebufferCount];
-        size_t                                  m_currentDeviceFrameIndex;
+        uint32_t                                m_currentDeviceFrameIndex;
 	};
 
 	//-------------------------------------------------------------------------

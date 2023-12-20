@@ -186,6 +186,35 @@ namespace EE::Render
             );
         }
 
+        void VulkanCommandBuffer::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset )
+        {
+            VkDeviceSize const bufferOffset = static_cast<VkDeviceSize>( offset );
+            uint32_t const bindingCount = static_cast<uint32_t>( pVertexBuffers.size() );
+
+            TInlineVector<VkBuffer, 8> pVkBuffers;
+            for ( auto const* pVertexBuffer : pVertexBuffers )
+            {
+                if ( auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pVertexBuffer ) )
+                {
+                    pVkBuffers.push_back( pVkBuffer->m_pHandle );
+                }
+            }
+
+            if ( !pVkBuffers.empty() )
+            {
+                vkCmdBindVertexBuffers( m_pHandle, firstBinding, bindingCount, pVkBuffers.data(), &bufferOffset );
+            }
+        }
+
+        void VulkanCommandBuffer::BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset )
+        {
+            VkDeviceSize bufferOffset = static_cast<VkDeviceSize>( offset );
+            if ( auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pIndexBuffer ) )
+            {
+                vkCmdBindIndexBuffer( m_pHandle, pVkBuffer->m_pHandle, bufferOffset, VK_INDEX_TYPE_UINT32 );
+            }
+        }
+
         void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
         {
             EE_ASSERT( pPipelineState );
@@ -814,7 +843,7 @@ namespace EE::Render
                 bufferInfo.offset = 0;
                 bufferInfo.range = VK_WHOLE_SIZE;
 
-                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 write.pBufferInfo = &bufferInfos.front();
                 write.descriptorCount = 1;
             }
@@ -925,7 +954,10 @@ namespace EE::Render
                     bufferInfos, textureInfos, dynOffsets
                 );
 
-                writes.push_back( write );
+                if ( write.descriptorCount > 0 )
+                {
+                    writes.push_back( write );
+                }
                 ++bindingIndex;
             }
 
@@ -977,7 +1009,14 @@ namespace EE::Render
             m_createdDescriptorSets.insert_or_assign( set, vkSet );
             return vkSet;
         }
-    }
+
+        //-------------------------------------------------------------------------
+
+		void VulkanCommandBuffer::CleanUp()
+		{
+            m_createdDescriptorSets.clear();
+		}
+	}
 }
 
 #endif

@@ -26,6 +26,8 @@ namespace EE::Render
         // Render target only become valid after this function call.
         void AcquireRenderTarget();
 
+        void Present();
+
     protected:
 
         RHI::RHISwapchain*                  m_pSwapchain = nullptr;

@@ -15,26 +15,24 @@ namespace EE::RG
         static_assert( std::is_base_of<RGResourceTagTypeBase<Tag>, Tag>::value, "Invalid render graph resource tag!" );
 
         typedef typename Tag::DescType DescType;
-        typedef typename std::add_lvalue_reference_t<std::add_const_t<DescType>> DescCVType;
 
     public:
 
-        RGNodeResourceRef( DescCVType desc, _Impl::RGResourceID slotID );
+        RGNodeResourceRef( DescType const& desc, _Impl::RGResourceID slotID );
 
-        inline DescCVType GetDesc() const { return m_desc; }
+        inline DescType const& GetDesc() const { return m_desc; }
 
         auto Bind() const;
 
     private:
-        // Safety: This reference is always held by RenderGraph during the life time of RGNodeResourceRef.
-        DescCVType						m_desc;
-        _Impl::RGResourceID				m_slotID;
+        DescType						    m_desc;
+        _Impl::RGResourceID				    m_slotID;
     };
 
     //-------------------------------------------------------------------------
 
     template<typename Tag, RGResourceViewType RVT>
-    RGNodeResourceRef<Tag, RVT>::RGNodeResourceRef( DescCVType desc, _Impl::RGResourceID slotID )
+    RGNodeResourceRef<Tag, RVT>::RGNodeResourceRef( DescType const& desc, _Impl::RGResourceID slotID )
         : m_desc( desc ), m_slotID( slotID )
     {}
 
@@ -78,6 +76,11 @@ namespace EE::RG
     auto Bind( RGNodeResourceRef<Tag, RVT> const& nodeRef )
     {
         return nodeRef.Bind();
+    }
+
+    inline RGPipelineRHIRawBinding BindRaw( RHI::RHIPipelineBinding rhiBinding )
+    {
+        return RGPipelineRHIRawBinding{ rhiBinding };
     }
 
     inline RGPipelineStaticSamplerBinding BindStaticSampler()

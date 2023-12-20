@@ -92,6 +92,7 @@ namespace EE::Render
             for ( int i = (int) m_presentTextures.size() - 1; i >= 0; i-- )
             {
                 auto* pVkTexture = m_presentTextures[i];
+                pVkTexture->ClearAllViews( m_pDevice );
                 EE::Delete( pVkTexture );
             }
 
@@ -130,7 +131,7 @@ namespace EE::Render
             VK_SUCCEEDED( m_loadFuncs.m_pAcquireNextImageKHRFunc( m_pDevice->m_pHandle, m_pHandle, InfiniteWaitTimeOut, pVkAcquireSemaphore->m_pHandle, nullptr, &acquireFrameIndex ) );
 
             EE_ASSERT( acquireFrameIndex == m_currentRenderFrameIndex );
-
+            
             AdvanceFrame();
 
             return {
@@ -155,10 +156,11 @@ namespace EE::Render
             presentInfo.pSwapchains = &m_pHandle;
             presentInfo.pImageIndices = &swapchainRenderTarget.m_frameIndex;
             presentInfo.pWaitSemaphores = &pVkRenderCompleteSemaphore->m_pHandle;
-            presentInfo.swapchainCount = static_cast<uint32_t>( m_presentTextures.size() );
+            presentInfo.swapchainCount = 1;
             presentInfo.waitSemaphoreCount = 1;
 
             VK_SUCCEEDED( m_loadFuncs.m_pQueuePresentKHR( m_pDevice->m_pGlobalGraphicQueue->m_pHandle, &presentInfo ) );
+            VK_SUCCEEDED( result );
         }
 
         //-------------------------------------------------------------------------
@@ -341,7 +343,7 @@ namespace EE::Render
             swapchainCI.minImageCount = imageCount;
 
             swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            swapchainCI.imageUsage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            swapchainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
             swapchainCI.imageExtent = { (uint32_t) extent.m_x, (uint32_t) extent.m_y };
             swapchainCI.imageFormat = pickFormat.format;
             swapchainCI.imageColorSpace = pickFormat.colorSpace;
@@ -367,6 +369,9 @@ namespace EE::Render
 
                 EE_ASSERT( m_loadFuncs.m_pDestroySwapchainKHRFunc != nullptr );
                 m_loadFuncs.m_pDestroySwapchainKHRFunc( m_pDevice->m_pHandle, pOldSwapchain, nullptr );
+
+                // reset render frame index
+                m_currentRenderFrameIndex = 0;
             }
 
             // fetch swapchain images
@@ -380,7 +385,7 @@ namespace EE::Render
             for ( uint32_t i = 0; i < swapchainImageCount; ++i )
             {
                 auto desc = RHI::RHITextureCreateDesc::New2D( extent.m_x, extent.m_y, pickedRhiFormat );
-                desc.m_usage.SetMultipleFlags( RHI::ETextureUsage::Storage, RHI::ETextureUsage::Color );
+                desc.m_usage.SetMultipleFlags( RHI::ETextureUsage::TransferSrc, RHI::ETextureUsage::Color );
 
                 auto* pImage = EE::New<VulkanTexture>();
                 pImage->m_pHandle = swapchainImages[i];

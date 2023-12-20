@@ -10,7 +10,7 @@ namespace EE::Log
 {
     void TraceMessage( const char* format, ... )
     {
-        constexpr size_t const bufferSize = 1024;
+        constexpr size_t const bufferSize = 2048;
         char messageBuffer[bufferSize]; // Dont make this static as we need this to be threadsafe!!!
 
         va_list args;

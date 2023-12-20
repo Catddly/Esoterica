@@ -36,6 +36,7 @@ namespace EE::RHI
     {
     };
     
+    // Use as a placeholder
     struct RHIUnknownBinding
     {
     };

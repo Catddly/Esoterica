@@ -18,6 +18,11 @@ namespace EE::Render
 {
     namespace Backend
     {
+        //struct VulkanBufferReleaseImpl : public RHI::IRHIBufferReleaseImpl
+        //{
+        //    inline virtual void Release( RHI::RHIDevice* pDevice, void* pBuffer ) override;
+        //};
+
         class VulkanBuffer : public RHI::RHIBuffer
         {
             friend class VulkanDevice;

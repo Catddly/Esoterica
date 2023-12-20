@@ -45,7 +45,7 @@ namespace EE::Render
     public:
 
         RenderTarget() = default;
-        virtual ~RenderTarget() { EE_ASSERT( m_pRenderTarget != nullptr ); }
+        virtual ~RenderTarget() { EE_ASSERT( m_pRenderTarget == nullptr ); }
 
         inline bool IsValid() const { return m_pRenderTarget != nullptr; }
         Int2 GetDimensions() const;
@@ -66,11 +66,11 @@ namespace EE::Render
 
         virtual bool IsSwapchainRenderTarget() const { return false; }
 
+        virtual void Release( RHI::RHIDevice* pDevice ) override;
+
     public:
 
         bool Initialize( RHI::RHIDevice* pDevice, RenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
-
-        virtual void Release( RHI::RHIDevice* pDevice ) override;
 
     protected:
 
@@ -93,6 +93,7 @@ namespace EE::Render
     class SwapchainRenderTarget final : public RenderTarget
     {
         friend class RenderWindow;
+        friend class RenderGraph;
 
     public:
 
@@ -103,17 +104,21 @@ namespace EE::Render
 
     public:
 
-        bool Initialize( RHI::RHIDevice * pDevice, SwapchainRenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
+        virtual bool IsSwapchainRenderTarget() const override { return true; }
 
         virtual void Release( RHI::RHIDevice* pDevice ) override;
 
-        bool AcquireNextFrame();
-
-        RHI::RHISwapchain const* GetRHISwapchain() const { return m_pSwapchain; }
-
     public:
 
-        virtual bool IsSwapchainRenderTarget() const override { return true; }
+        bool Initialize( RHI::RHIDevice* pDevice, SwapchainRenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
+
+        void ResetFrame();
+
+        bool AcquireNextFrame();
+
+        RHI::RHISwapchain* GetRHISwapchain() const { return m_pSwapchain; }
+        RHI::RHISemaphore* GetWaitSemaphore() const { return m_pTextureAcquireSemaphore; }
+        RHI::RHISemaphore* GetSignalSemaphore() const { return m_pRenderCompleteSemaphore; }
 
     private:
 

@@ -526,13 +526,19 @@ namespace EE::RG
     {
     };
 
+    struct RGPipelineRHIRawBinding
+    {
+        RHI::RHIPipelineBinding                     m_rhiPipelineBinding;
+    };
+
     using RGPipelineResourceBinding = TVariant<
         RGPipelineBufferBinding,
         RGPipelineDynamicBufferBinding,
         RGPipelineTextureBinding,
         RGPipelineTextureArrayBinding,
         RGPipelineStaticSamplerBinding,
-        RGPipelineUnknownBinding
+        RGPipelineUnknownBinding,
+        RGPipelineRHIRawBinding
     >;
 
     class EE_BASE_API RGPipelineBinding

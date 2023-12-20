@@ -48,7 +48,7 @@ namespace EE::RG
         // Node Render Command
         //-------------------------------------------------------------------------
 
-        void Execute( RGNode::ExecutionCallbackFunc executionCallback );
+        void Execute( RGNode::ExecutionCallbackFunc const& executionCallback );
 
     private:
 

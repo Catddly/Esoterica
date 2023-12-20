@@ -2,9 +2,15 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Types/Arrays.h"
+#include "Base/Render/RenderAPI.h"
 
 #include <vulkan/vulkan_core.h>
 #include <limits>
+
+namespace EE::RHI
+{
+    class RHISemaphore;
+}
 
 namespace EE::Render
 {
@@ -39,11 +45,16 @@ namespace EE::Render
 
             VulkanCommandBuffer* Allocate();
 
-            void SubmitToQueue( VulkanCommandBuffer* pCommandBuffer );
+            void SubmitToQueue( VulkanCommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages );
 
-            void Reset();
+            bool IsReadyToAllocate() const { return m_bReadyToAllocate; }
 
+            // Wait until all commands inside this command buffer pool are finished.
             void WaitUntilAllCommandsFinish();
+
+            // Reset whole command buffer pool for next command allocation and record.
+            // After reset, IsReadyToAllocate() will return true. Otherwise false.
+            void Reset();
 
         private:
 
@@ -65,6 +76,8 @@ namespace EE::Render
             AllocatedCommandBufferArray             m_allocatedCommandBuffers;
             TVector<VulkanCommandBuffer*>           m_submittedCommandBuffers;
             TVector<VulkanCommandBuffer*>           m_idleCommandBuffers;
+        
+            bool                                    m_bReadyToAllocate = false;
         };
     }
 }

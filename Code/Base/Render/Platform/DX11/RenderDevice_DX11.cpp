@@ -124,6 +124,7 @@ namespace EE::Render
         //m_immediateContext.m_pDeviceContext->Flush();
 
         //DestroyDefaultDepthStencilStates();
+        
         DestroyDeviceAndSwapchain();
     }
 
@@ -359,6 +360,8 @@ namespace EE::Render
         //m_immediateContext.Present( m_primaryWindow );
         //m_immediateContext.SetRenderTarget( m_primaryWindow.m_renderTarget );
         //m_immediateContext.ClearRenderTargetViews( m_primaryWindow.m_renderTarget );
+
+        m_primaryWindow.Present();
     }
 
     void RenderDevice::ResizePrimaryWindowRenderTarget( Int2 const& dimensions )
@@ -1334,7 +1337,7 @@ namespace EE::Render
 
     void RenderDevice::DestroyRenderTarget( RenderTarget& renderTarget )
     {
-        EE_ASSERT( IsInitialized() && renderTarget.IsValid() );
+        EE_ASSERT( IsInitialized() && renderTarget.IsInitialized() );
         //DestroyTexture( renderTarget.m_RT );
         //DestroyTexture( renderTarget.m_DS );
 

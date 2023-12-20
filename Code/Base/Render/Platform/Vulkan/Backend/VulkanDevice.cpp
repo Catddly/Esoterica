@@ -80,7 +80,7 @@ namespace EE::Render
 			EE_ASSERT( m_pHandle != nullptr );
 
             WaitUntilIdle();
-
+            
             if ( m_immediateCommandBufferPool )
             {
                 EE::Delete( m_immediateCommandBufferPool );
@@ -94,6 +94,11 @@ namespace EE::Render
             if ( m_pGlobalGraphicQueue )
             {
                 EE::Delete( m_pGlobalGraphicQueue );
+            }
+
+            for ( auto& deferReleaseQueue : m_deferReleaseQueues )
+            {
+                deferReleaseQueue.ReleaseAllStaleResources( this );
             }
 
             DestroyStaticSamplers();
@@ -119,7 +124,7 @@ namespace EE::Render
             // Release all stale resources.
             //-------------------------------------------------------------------------
             
-            size_t const frameIndex = GetCurrentFrameIndex();
+            uint32_t const frameIndex = GetDeviceFrameIndex();
             m_deferReleaseQueues[frameIndex].ReleaseAllStaleResources( this );
 
             // Reset command buffer pool
@@ -148,6 +153,27 @@ namespace EE::Render
         RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer()
         {
             auto& commandBufferPool = GetCurrentFrameCommandBufferPool();
+
+            // Wait until current frame is completed on GPU side.
+            // Then we can safety free the resources used in this frame.
+            //-------------------------------------------------------------------------
+
+            //commandBufferPool.WaitUntilAllCommandsFinish();
+
+            //if ( !commandBufferPool.IsReadyToAllocate() )
+            //{
+            //    // Release all stale resources.
+            //    //-------------------------------------------------------------------------
+
+            //    uint32_t const frameIndex = GetDeviceFrameIndex();
+            //    m_deferReleaseQueues[frameIndex].ReleaseAllStaleResources( this );
+
+            //    // Reset command buffer pool
+            //    //-------------------------------------------------------------------------
+
+            //    commandBufferPool.Reset();
+            //}
+
             return commandBufferPool.Allocate();
         }
 
@@ -204,7 +230,12 @@ namespace EE::Render
             pVkCommandBuffer->SetRecording( false );
         }
 
-        void VulkanDevice::SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
+        void VulkanDevice::SubmitCommandBuffer(
+            RHI::RHICommandBuffer* pCommandBuffer,
+            TSpan<RHI::RHISemaphore*> pWaitSemaphores,
+            TSpan<RHI::RHISemaphore*> pSignalSemaphores,
+            TSpan<Render::PipelineStage> waitStages
+        )
         {
             if ( pCommandBuffer )
             {
@@ -215,7 +246,7 @@ namespace EE::Render
                 auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
                 EE_ASSERT( pCommandBufferPool );
 
-                pCommandBufferPool->SubmitToQueue( pVkCommandBuffer );
+                pCommandBufferPool->SubmitToQueue( pVkCommandBuffer, pWaitSemaphores, pSignalSemaphores, waitStages );
             }
         }
 
@@ -1556,7 +1587,7 @@ namespace EE::Render
 
         VulkanCommandBufferPool& VulkanDevice::GetCurrentFrameCommandBufferPool()
         {
-            auto frameIndex = GetCurrentFrameIndex();
+            auto frameIndex = GetDeviceFrameIndex();
             return *m_commandBufferPool[frameIndex];
         }
     }

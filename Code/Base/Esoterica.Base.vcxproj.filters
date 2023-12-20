@@ -473,6 +473,7 @@
     <ClCompile Include="RHI\RHIDevice.cpp" />
     <ClCompile Include="Render\RenderWindow.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.cpp" />
+    <ClCompile Include="RHI\Resource\RHIBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">

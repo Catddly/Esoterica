@@ -316,6 +316,8 @@ namespace EE
 
     bool ResourceServerApplication::Shutdown()
     {
+        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
+
         if ( IsInitialized() )
         {
             m_resourceServerUI.Shutdown();
@@ -325,9 +327,20 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
+        m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
+        m_pipelineRegistry.DestroyAllPipelineState( m_pRenderDevice->GetRHIDevice() );
         m_pipelineRegistry.Shutdown();
 
         //-------------------------------------------------------------------------
+
+        m_resourceSystem.Shutdown();
+        m_taskSystem.Shutdown();
+        
+        if ( m_pResourceProvider )
+        {
+            m_pResourceProvider->Shutdown();
+            EE::Delete( m_pResourceProvider );
+        }
 
         m_resourceServer.Shutdown();
 
@@ -412,25 +425,22 @@ namespace EE
 
                 m_imguiRenderer.RenderViewport_Test( m_renderGraph, m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
 
-                m_renderGraph.Compile( m_pRenderDevice->GetRHIDevice() );
- 
+                bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice->GetRHIDevice() );
                 // TODO: when pipeline registry failed to update pipelines, use old pipelines
-                if ( m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() ) )
+                m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
+ 
+                if ( bCompileResult )
                 {
-                    //m_renderGraph.BeginFrame( m_pRenderDevice->GetRHIDevice() );
-                    
                     m_pRenderDevice->GetRHIDevice()->BeginFrame();
 
                     m_renderGraph.Execute( m_pRenderDevice->GetRHIDevice() );
                     m_renderGraph.Present( m_pRenderDevice->GetRHIDevice(), *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
 
                     m_pRenderDevice->GetRHIDevice()->EndFrame();
-                    //m_renderGraph.EndFrame( m_pRenderDevice->GetRHIDevice() );
+                    m_pRenderDevice->PresentFrame();
                 }
                 
                 m_renderGraph.Retire();
-
-                //m_pRenderDevice->PresentFrame();
             }
         }
 
@@ -445,12 +455,12 @@ namespace EE
 
 int APIENTRY _tWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow )
 {
-    HANDLE pSingletonMutex = CreateMutex( NULL, TRUE, "Esoterica Resource Server" );
-    if ( GetLastError() == ERROR_ALREADY_EXISTS )
-    {
-        MessageBox( GetActiveWindow(), "Only a single instance of the Resource Server is allowed to run!", "Fatal Error Occurred!", MB_OK | MB_ICONERROR );
-        return -1;
-    }
+    //HANDLE pSingletonMutex = CreateMutex( NULL, TRUE, "Esoterica Resource Server" );
+    //if ( GetLastError() == ERROR_ALREADY_EXISTS )
+    //{
+    //    MessageBox( GetActiveWindow(), "Only a single instance of the Resource Server is allowed to run!", "Fatal Error Occurred!", MB_OK | MB_ICONERROR );
+    //    return -1;
+    //}
 
     //-------------------------------------------------------------------------
 
@@ -467,8 +477,8 @@ int APIENTRY _tWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 
     //-------------------------------------------------------------------------
 
-    ReleaseMutex( pSingletonMutex );
-    CloseHandle( pSingletonMutex );
+    //ReleaseMutex( pSingletonMutex );
+    //CloseHandle( pSingletonMutex );
 
     return result;
 }

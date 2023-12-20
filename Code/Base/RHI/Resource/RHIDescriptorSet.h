@@ -16,12 +16,12 @@ namespace EE::RHI
         virtual void Release( RHIDevice* pDevice, void* pSetPool ) = 0;
     };
 
-    class RHIDevice;
     class DeferReleaseQueue;
 
-    class RHIDescriptorPool : public RHIDeferReleasable<RHIDescriptorPool>
+    class RHIDescriptorPool : public RHIStaticDeferReleasable<RHIDescriptorPool>
     {
         friend class DeferReleaseQueue;
+        friend class RHIDevice;
 
     public:
 
@@ -29,13 +29,14 @@ namespace EE::RHI
 
     public:
 
-        inline bool IsValid() const { return m_pSetPoolHandle && m_pImpl; }
         inline void SetRHIReleaseImpl( IRHIDescriptorPoolReleaseImpl* pImpl ) { m_pImpl = pImpl; }
 
-        void Enqueue( DeferReleaseQueue& queue );
-
     private:
+
+        inline bool IsValid() const { return m_pSetPoolHandle && m_pImpl; }
         
+        EE_BASE_API void Enqueue( DeferReleaseQueue& queue );
+
         inline void Release( RHIDevice* pDevice )
         {
             EE_ASSERT( pDevice && m_pImpl );

@@ -2,8 +2,11 @@
 #include "VulkanCommandBufferPool.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommandQueue.h"
+#include "VulkanSemaphore.h"
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
+#include "RHIToVulkanSpecification.h"
+#include "Base/RHI/RHIDowncastHelper.h"
 
 namespace EE::Render
 {
@@ -34,17 +37,21 @@ namespace EE::Render
             if ( pVkCommandBuffer )
             {
                 EE_ASSERT( m_poolHandles.size() == m_allocatedCommandBuffers.size() );
-                if ( m_allocatedCommandBuffers.size() < NumMaxCommandBufferPerPool )
+
+                VkCommandBufferAllocateInfo allocInfo = {};
+                allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                allocInfo.commandPool = pool;
+                allocInfo.commandBufferCount = NumMaxCommandBufferPerPool;
+
+                if ( m_allocatedCommandBuffers.size() < NumMaxCommandBufferPerPool ) // pool still have space
                 {
-                    VkCommandBufferAllocateInfo allocInfo = {};
-                    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-                    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                    allocInfo.commandPool = pool;
-                    allocInfo.commandBufferCount = NumMaxCommandBufferPerPool;
+                    VkCommandBuffer cmdBuffer;
+                    VK_SUCCEEDED( vkAllocateCommandBuffers( m_pDevice->m_pHandle, &allocInfo, &cmdBuffer ) );
 
-                    m_allocatedCommandBuffers.back().push_back( pVkCommandBuffer );
-
-                    VK_SUCCEEDED( vkAllocateCommandBuffers( m_pDevice->m_pHandle, &allocInfo, &(pVkCommandBuffer->m_pHandle) ) );
+                    pVkCommandBuffer->m_pHandle = cmdBuffer;
+                    auto& allocatedCommandBufferArray = m_allocatedCommandBuffers.back();
+                    allocatedCommandBufferArray.push_back( pVkCommandBuffer );;
                 }
                 else // pool exhausted
                 {
@@ -52,16 +59,13 @@ namespace EE::Render
 
                     pool = m_poolHandles.back();
 
-                    VkCommandBufferAllocateInfo allocInfo = {};
-                    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-                    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                    allocInfo.commandPool = pool;
-                    allocInfo.commandBufferCount = NumMaxCommandBufferPerPool;
+                    VkCommandBuffer cmdBuffer;
+                    VK_SUCCEEDED( vkAllocateCommandBuffers( m_pDevice->m_pHandle, &allocInfo, &cmdBuffer ) );
+                    pVkCommandBuffer->m_pHandle = cmdBuffer;
 
                     auto& newCommandBufferArray = m_allocatedCommandBuffers.push_back();
                     newCommandBufferArray.push_back( pVkCommandBuffer );
 
-                    VK_SUCCEEDED( vkAllocateCommandBuffers( m_pDevice->m_pHandle, &allocInfo, &(pVkCommandBuffer->m_pHandle) ) );
                     EE_ASSERT( m_poolHandles.size() == m_allocatedCommandBuffers.size() );
                 }
 
@@ -76,8 +80,18 @@ namespace EE::Render
             return nullptr;
         }
 
-        void VulkanCommandBufferPool::SubmitToQueue( VulkanCommandBuffer* pCommandBuffer )
+        void VulkanCommandBufferPool::SubmitToQueue( VulkanCommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages )
         {
+            EE_ASSERT( waitStages.size() == pWaitSemaphores.size() );
+
+            TInlineVector<VkSemaphore, 8> waitSemaphores;
+            TInlineVector<VkSemaphore, 8> signalSemaphores;
+            TInlineVector<VkPipelineStageFlags, 8> waitDstStages;
+
+            waitSemaphores.reserve( pWaitSemaphores.size() );
+            signalSemaphores.reserve( pSignalSemaphores.size() );
+            waitDstStages.reserve( waitStages.size() );
+
             if ( pCommandBuffer )
             {
                 EE_ASSERT( !pCommandBuffer->IsRecording() );
@@ -96,11 +110,58 @@ namespace EE::Render
                 submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                 submitInfo.pCommandBuffers = &pCommandBuffer->m_pHandle;
                 submitInfo.commandBufferCount = 1;
-                submitInfo.pWaitSemaphores = nullptr;
-                submitInfo.waitSemaphoreCount = 0;
-                submitInfo.pSignalSemaphores = nullptr;
-                submitInfo.signalSemaphoreCount = 0;
-                submitInfo.pWaitDstStageMask = nullptr;
+
+                if ( !pWaitSemaphores.empty() )
+                {
+                    for ( auto& pWaitSemaphore : pWaitSemaphores )
+                    {
+                        if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pWaitSemaphore ) )
+                        {
+                            waitSemaphores.push_back( pVkSemaphore->m_pHandle );
+                        }
+                    }
+
+                    submitInfo.waitSemaphoreCount = static_cast<uint32_t>( waitSemaphores.size() );
+                    submitInfo.pWaitSemaphores = waitSemaphores.data();
+                }
+                else
+                {
+                    submitInfo.waitSemaphoreCount = 0;
+                    submitInfo.pWaitSemaphores = nullptr;
+                }
+
+                if ( !pSignalSemaphores.empty() )
+                {
+                    for ( auto& pSignalSemaphore : pSignalSemaphores )
+                    {
+                        if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pSignalSemaphore ) )
+                        {
+                            signalSemaphores.push_back( pVkSemaphore->m_pHandle );
+                        }
+                    }
+
+                    submitInfo.signalSemaphoreCount = static_cast<uint32_t>( signalSemaphores.size() );
+                    submitInfo.pSignalSemaphores = signalSemaphores.data();
+                }
+                else
+                {
+                    submitInfo.signalSemaphoreCount = 0;
+                    submitInfo.pSignalSemaphores = nullptr;
+                }
+
+                if ( !waitStages.empty() )
+                {
+                    for ( auto& waitStage : waitStages )
+                    {
+                        waitDstStages.push_back( ToVulkanPipelineStageFlags( waitStage ) );
+                    }
+
+                    submitInfo.pWaitDstStageMask = waitDstStages.data();
+                }
+                else
+                {
+                    submitInfo.pWaitDstStageMask = nullptr;
+                }
 
                 VkFence fence = pCommandBuffer->m_sync.IsValid() ? reinterpret_cast<VkFence>( pCommandBuffer->m_sync.m_pHandle ) : nullptr;
                 VK_SUCCEEDED( vkQueueSubmit( pCommandQueue->m_pHandle, 1, &submitInfo, fence ) );
@@ -121,11 +182,14 @@ namespace EE::Render
             {
                 for ( auto& pCommandBuffer : commandBuffers )
                 {
+                    // command buffer pool is reset, clean up old states in command buffer
+                    pCommandBuffer->CleanUp();
                     m_idleCommandBuffers.push_back( pCommandBuffer );
                 }
             }
 
             m_submittedCommandBuffers.clear();
+            m_bReadyToAllocate = true;
         }
 
         void VulkanCommandBufferPool::WaitUntilAllCommandsFinish()
@@ -139,7 +203,12 @@ namespace EE::Render
                 }
             }
 
-            WaitAllFences( toWaitFences );
+            if ( !toWaitFences.empty() )
+            {
+                WaitAllFences( toWaitFences );
+            }
+
+            m_bReadyToAllocate = false;
         }
 
         //-------------------------------------------------------------------------
@@ -163,6 +232,7 @@ namespace EE::Render
             {
                 for ( auto& commandBuffer : commandBuffers )
                 {
+                    RHI::RHICPUGPUSync::Destroy( m_pDevice, commandBuffer->m_sync );
                     EE::Delete( commandBuffer );
                 }
             }
@@ -185,10 +255,12 @@ namespace EE::Render
             poolCI.queueFamilyIndex = m_pCommandQueue->GetDeviceIndex();
             poolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-            auto& pool = m_poolHandles.push_back();
-            m_allocatedCommandBuffers.push_back();
-
+            VkCommandPool pool;
             VK_SUCCEEDED( vkCreateCommandPool( m_pDevice->m_pHandle, &poolCI, nullptr, &pool ) );
+        
+            m_poolHandles.push_back( pool );
+            m_allocatedCommandBuffers.push_back();
+            m_allocatedCommandBuffers.back().reserve( NumMaxCommandBufferPerPool );
         }
 
         VulkanCommandBuffer* VulkanCommandBufferPool::FindIdleCommandBuffer()

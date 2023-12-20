@@ -2,6 +2,7 @@
 
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
+#include "RHIDeferReleasable.h"
 
 #include <type_traits>
 
@@ -9,8 +10,10 @@ namespace EE::RHI
 {
     class RHIDevice;
 
-    class EE_BASE_API RHIBuffer : public RHIResource
+    class EE_BASE_API RHIBuffer : public RHIResource, public RHIDynamicDeferReleasable
     {
+        friend class DeferReleaseQueue;
+
     public:
 
         RHIBuffer( ERHIType rhiType = ERHIType::Invalid )
@@ -32,8 +35,14 @@ namespace EE::RHI
         virtual void* Map( RHIDevice* pDevice ) = 0;
         virtual void  Unmap( RHIDevice* pDevice ) = 0;
 
+    private:
+
+        virtual void Enqueue( DeferReleaseQueue& queue ) override;
+
+        virtual void Release( RHIDevice* pDevice ) override;
+
     protected:
 
-        RHIBufferCreateDesc                m_desc;
+        RHIBufferCreateDesc                         m_desc;
     };
 }

@@ -3,6 +3,7 @@
 #include "RenderGraphNodeRef.h"
 #include "RenderGraphResource.h"
 #include "Base/Math/Math.h"
+#include "Base/Render/RenderAPI.h"
 #include "Base/Render/RenderShader.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Optional.h"
@@ -15,6 +16,8 @@ namespace EE::RHI
     class RHICommandBuffer;
     class RHIRenderPass;
     class RHIPipelineState;
+
+    class RHISemaphore;
 }
 
 namespace EE::RG
@@ -44,6 +47,13 @@ namespace EE::RG
 
         RHI::RHIPipelineBinding ToRHIPipelineBinding( RGPipelineBinding const& pipelineBinding );
 
+        // Variant helper functions
+        template <typename BindingType>
+        inline auto IsRGBinding( RGPipelineBinding const& pipelineBinding )
+        {
+            return pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), BindingType>();
+        }
+
     private:
 
         using RGPipelineSetBinding = TPair<uint32_t, TSpan<RGPipelineBinding const>>;
@@ -57,7 +67,7 @@ namespace EE::RG
 
     class RGExecutableNode;
 
-    class EE_BASE_API RGRenderCommandContext
+    class EE_BASE_API RGRenderCommandContext final
     {
         friend class RenderGraph;
 
@@ -95,6 +105,9 @@ namespace EE::RG
 
         RGBoundPipeline BindPipeline();
 
+        inline void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset = 0 );
+        inline void BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset = 0 );
+
         inline void Draw( uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstInstance = 0 )
         {
             EE_ASSERT( m_pCommandBuffer );
@@ -111,6 +124,14 @@ namespace EE::RG
 
     private:
 
+        // Submit commands to its command queue and reset all context.
+        void SubmitAndReset( RHI::RHIDevice* pDevice );
+
+        void AddWaitSyncPoint( RHI::RHISemaphore* pWaitSemaphore, Render::PipelineStage waitStage );
+        void AddSignalSyncPoint( RHI::RHISemaphore* pSignalSemaphore );
+
+    private:
+
         // functions only accessible by RenderGraph.
         void SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer );
         inline bool IsValid() const { return m_pRenderGraph && m_pDevice && m_pCommandBuffer; }
@@ -124,5 +145,9 @@ namespace EE::RG
         RHI::RHIDevice*                     m_pDevice = nullptr;
         RHI::RHICommandQueue*               m_pCommandQueue = nullptr;
         RHI::RHICommandBuffer*              m_pCommandBuffer = nullptr;
+
+        TVector<RHI::RHISemaphore*>         m_waitSemaphores;
+        TVector<Render::PipelineStage>      m_waitStages;
+        TVector<RHI::RHISemaphore*>         m_signalSemaphores;
     };
 }

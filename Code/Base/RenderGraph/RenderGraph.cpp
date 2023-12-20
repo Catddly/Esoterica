@@ -25,7 +25,7 @@ namespace EE
         // Build Stage
 		//-------------------------------------------------------------------------
 		
-        void RenderGraph::AllocateCommandContext( RHI::RHIDevice* pRhiDevice )
+        RGRenderCommandContext& RenderGraph::ResetCommandContext( RHI::RHIDevice* pRhiDevice )
         {
             EE_ASSERT( pRhiDevice );
 
@@ -41,6 +41,7 @@ namespace EE
             }
 
             pRhiDevice->BeginCommandBuffer( commandContext.m_pCommandBuffer );
+            return commandContext;
         }
 
         void RenderGraph::FlushCommandContext( RHI::RHIDevice* pRhiDevice )
@@ -49,9 +50,8 @@ namespace EE
             EE_ASSERT( commandContext.m_pCommandBuffer );
 
             pRhiDevice->EndCommandBuffer( commandContext.m_pCommandBuffer );
-            pRhiDevice->SubmitCommandBuffer( commandContext.m_pCommandBuffer );
 
-            commandContext.Reset();
+            commandContext.SubmitAndReset( pRhiDevice );
         }
 
         RGResourceHandle<RGResourceTagBuffer> RenderGraph::ImportResource( RHI::RHIBuffer* pBuffer, RHI::RenderResourceBarrierState access )
@@ -219,7 +219,6 @@ namespace EE
             }
             else
             {
-                EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RenderGraph is not ready to be executed." );
                 return false;
             }
         
@@ -237,7 +236,7 @@ namespace EE
 
             if ( !m_executeNodesSequence.empty() )
             {
-                AllocateCommandContext( pRhiDevice );
+                ResetCommandContext( pRhiDevice );
 
                 // Transition all resources used in execution nodes ahead to reduce some pipeline bubbles.
                 //-------------------------------------------------------------------------
@@ -287,10 +286,6 @@ namespace EE
 
                 FlushCommandContext( pRhiDevice );
             }
-            else
-            {
-                EE_LOG_MESSAGE( "RenderGraph", "", "RenderGraph waiting for all nodes to be ready..." );
-            }
         }
 
         void RenderGraph::Present( RHI::RHIDevice* pRhiDevice, Render::SwapchainRenderTarget& swapchainRt )
@@ -304,29 +299,28 @@ namespace EE
                 // Acquire next frame before presenting
                 //-------------------------------------------------------------------------
 
-                swapchainRt.AcquireNextFrame();
-
-                // Execute render graph
-                //-------------------------------------------------------------------------
-
-                AllocateCommandContext( pRhiDevice );
-
-                for ( RGExecutableNode& executionNode : m_presentNodesSequence )
+                if ( swapchainRt.AcquireNextFrame() )
                 {
-                    ExecuteNode( executionNode );
-                }
+                    // Execute render graph
+                    //-------------------------------------------------------------------------
 
-                FlushCommandContext( pRhiDevice );
-            }
-            else
-            {
-                EE_LOG_MESSAGE( "RenderGraph", "", "RenderGraph waiting for all nodes to be ready..." );
+                    auto& commandContext = ResetCommandContext( pRhiDevice );
+                    commandContext.AddWaitSyncPoint( swapchainRt.GetWaitSemaphore(), Render::PipelineStage::Pixel );
+                    commandContext.AddSignalSyncPoint( swapchainRt.GetSignalSemaphore() );
+
+                    for ( RGExecutableNode& presentNode : m_presentNodesSequence )
+                    {
+                        PresentNode( presentNode, swapchainRt.GetRHIRenderTarget() );
+                    }
+
+                    FlushCommandContext( pRhiDevice );
+                }
             }
         }
 
         void RenderGraph::Retire()
         {
-            // clear up previos frame resources
+            // clear up previous frame resources
             m_renderGraph.clear();
             m_executeNodesSequence.clear();
             m_presentNodesSequence.clear();
@@ -586,6 +580,9 @@ namespace EE
 
         void RenderGraph::ExecuteNode( RGExecutableNode& node )
         {
+            // Transite resource to target pipeline barrier states
+            //-------------------------------------------------------------------------
+
             size_t totalResourceCount = node.m_inputs.size() + node.m_outputs.size();
             TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
             transitionResources.reserve( totalResourceCount );
@@ -603,12 +600,14 @@ namespace EE
                 transitionResources.emplace_back(
                     m_resourceRegistry.GetCompiledResource( output ),
                     output.m_passAccess
-                );
+                );   
             }
 
             TransitionResourceBatched( transitionResources );
 
             // execute node callback
+            //-------------------------------------------------------------------------
+
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
             commandContext.m_pExecutingNode = &node;
             node.m_executionCallback( commandContext );
@@ -618,6 +617,9 @@ namespace EE
         void RenderGraph::PresentNode( RGExecutableNode& node, RHI::RHITexture* pSwapchainTexture )
         {
             EE_ASSERT( pSwapchainTexture != nullptr );
+
+            // Transite resource to target pipeline barrier states
+            //-------------------------------------------------------------------------
 
             size_t totalResourceCount = node.m_inputs.size() + node.m_outputs.size();
             TVector<TPair<RGCompiledResource&, RHI::RenderResourceAccessState>> transitionResources;
@@ -650,8 +652,20 @@ namespace EE
             TransitionResourceBatched( transitionResources );
 
             // execute node callback
+            //-------------------------------------------------------------------------
+            
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
+            commandContext.m_pExecutingNode = &node;
             node.m_executionCallback( commandContext );
+            commandContext.m_pExecutingNode = nullptr;
+
+            // manually transition final present texture to present barrier state
+            //-------------------------------------------------------------------------
+
+            RHI::RenderResourceAccessState finalAccessState;
+            finalAccessState.SetSkipSyncIfContinuous( false );
+            finalAccessState.TransiteTo( RHI::RenderResourceBarrierState::Present );
+            TransitionResource( m_resourceRegistry.GetCompiledResource( node.m_outputs[0] ), eastl::move( finalAccessState ) );
         }
     }
 }

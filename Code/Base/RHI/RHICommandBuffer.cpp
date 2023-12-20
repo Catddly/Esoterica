@@ -97,8 +97,37 @@ namespace EE::RHI
         {
             switch ( access )
             {
+                case RenderResourceBarrierState::VertexBuffer:
+                case RenderResourceBarrierState::IndexBuffer:
+
+                case RenderResourceBarrierState::VertexShaderReadUniformBuffer:
+                case RenderResourceBarrierState::VertexShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::VertexShaderReadOther:
+                case RenderResourceBarrierState::TessellationControlShaderReadUniformBuffer:
+                case RenderResourceBarrierState::TessellationControlShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::TessellationControlShaderReadOther:
+                case RenderResourceBarrierState::TessellationEvaluationShaderReadUniformBuffer:
+                case RenderResourceBarrierState::TessellationEvaluationShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::TessellationEvaluationShaderReadOther:
+                case RenderResourceBarrierState::GeometryShaderReadUniformBuffer:
+                case RenderResourceBarrierState::GeometryShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::GeometryShaderReadOther:
+                case RenderResourceBarrierState::FragmentShaderReadUniformBuffer:
+                case RenderResourceBarrierState::FragmentShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::FragmentShaderReadColorInputAttachment:
+                case RenderResourceBarrierState::FragmentShaderReadDepthStencilInputAttachment:
+                case RenderResourceBarrierState::FragmentShaderReadOther:
                 case RenderResourceBarrierState::ColorAttachmentRead:
                 case RenderResourceBarrierState::DepthStencilAttachmentRead:
+
+                case RenderResourceBarrierState::DepthAttachmentWriteStencilReadOnly:
+                case RenderResourceBarrierState::StencilAttachmentWriteDepthReadOnly:
+                case RenderResourceBarrierState::ColorAttachmentReadWrite:
+
+                case RenderResourceBarrierState::AnyShaderReadUniformBuffer:
+                case RenderResourceBarrierState::AnyShaderReadUniformBufferOrVertexBuffer:
+                case RenderResourceBarrierState::AnyShaderReadSampledImageOrUniformTexelBuffer:
+                case RenderResourceBarrierState::AnyShaderReadOther:
 
                 return true;
                 break;
@@ -113,12 +142,20 @@ namespace EE::RHI
         {
             switch ( access )
             {
+                case RenderResourceBarrierState::ColorAttachmentReadWrite:
+
+                case RenderResourceBarrierState::VertexShaderWrite:
+                case RenderResourceBarrierState::TessellationControlShaderWrite:
+                case RenderResourceBarrierState::TessellationEvaluationShaderWrite:
+                case RenderResourceBarrierState::GeometryShaderWrite:
+                case RenderResourceBarrierState::FragmentShaderWrite:
                 case RenderResourceBarrierState::ColorAttachmentWrite:
                 case RenderResourceBarrierState::DepthStencilAttachmentWrite:
                 case RenderResourceBarrierState::DepthAttachmentWriteStencilReadOnly:
                 case RenderResourceBarrierState::StencilAttachmentWriteDepthReadOnly:
 
-                case RenderResourceBarrierState::ColorAttachmentReadWrite:
+                case RenderResourceBarrierState::AnyShaderWrite:
+
 
                 return true;
                 break;

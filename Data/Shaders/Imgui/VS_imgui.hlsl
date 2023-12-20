@@ -1,5 +1,5 @@
 [[vk::binding(0)]]
-cbuffer vertexBuffer : register(b0)
+cbuffer ubo : register(b0)
 {
     float4x4 ProjectionMatrix;
 };

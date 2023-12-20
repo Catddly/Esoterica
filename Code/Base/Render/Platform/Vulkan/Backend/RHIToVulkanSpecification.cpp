@@ -544,6 +544,25 @@ namespace EE::Render
             return VK_BLEND_OP_MAX_ENUM;
         }
 
+        VkPipelineStageFlagBits ToVulkanPipelineStageFlags( Render::PipelineStage stage )
+        {
+            switch ( stage )
+            {
+                case EE::Render::PipelineStage::Vertex: return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+                case EE::Render::PipelineStage::Geometry: return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+                case EE::Render::PipelineStage::Pixel: return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                case EE::Render::PipelineStage::Hull: return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
+                case EE::Render::PipelineStage::Domain: return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+                case EE::Render::PipelineStage::Compute: return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                case EE::Render::PipelineStage::None:
+                default:
+                break;
+            }
+
+            EE_UNREACHABLE_CODE();
+            return VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;
+        }
+
         //-------------------------------------------------------------------------
 
         RHI::EBindingResourceType ToBindingResourceType( Render::Shader::EReflectedBindingResourceType ty )
@@ -616,7 +635,7 @@ namespace EE::Render
             EE_UNREACHABLE_CODE();
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
-	}
+    }
 }
 
 #endif

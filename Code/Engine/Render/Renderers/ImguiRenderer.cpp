@@ -228,39 +228,40 @@ namespace EE::Render
         //    return false;
         //}
 
-        if ( !m_pVertexBuffer )
-        {
-            auto createDesc = RHI::RHIBufferCreateDesc::NewVertexBuffer( sizeof( ImDrawVert ) * g_numInitialVertices );
-            createDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            createDesc.m_memoryFlag.ClearAllFlags();
-            createDesc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
-            
-            m_pVertexBuffer = pRhiDevice->CreateBuffer( createDesc );
-            if ( !m_pVertexBuffer )
-            {
-                return false;
-            }
-        }
+        //if ( !m_pVertexBuffer )
+        //{
+        //    auto createDesc = RHI::RHIBufferCreateDesc::NewVertexBuffer( sizeof( ImDrawVert ) * g_numInitialVertices );
+        //    createDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+        //    createDesc.m_memoryFlag.ClearAllFlags();
+        //    createDesc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+        //    
+        //    m_pVertexBuffer = pRhiDevice->CreateBuffer( createDesc );
+        //    if ( !m_pVertexBuffer )
+        //    {
+        //        return false;
+        //    }
+        //}
 
-        if ( !m_pIndexBuffer )
-        {
-            auto createDesc = RHI::RHIBufferCreateDesc::NewIndexBuffer( sizeof( ImDrawIdx ) * g_numInitialIndices );
-            createDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            createDesc.m_memoryFlag.ClearAllFlags();
-            createDesc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+        //if ( !m_pIndexBuffer )
+        //{
+        //    auto createDesc = RHI::RHIBufferCreateDesc::NewIndexBuffer( sizeof( ImDrawIdx ) * g_numInitialIndices );
+        //    createDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+        //    createDesc.m_memoryFlag.ClearAllFlags();
+        //    createDesc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
 
-            m_pIndexBuffer = pRhiDevice->CreateBuffer( createDesc );
-            if ( !m_pIndexBuffer )
-            {
-                return false;
-            }
-        }
+        //    m_pIndexBuffer = pRhiDevice->CreateBuffer( createDesc );
+        //    if ( !m_pIndexBuffer )
+        //    {
+        //        return false;
+        //    }
+        //}
 
         // TODO: render graph auto render pass creation
         if ( !m_pRenderPass )
         {
             RHI::RHIRenderPassCreateDesc renderPassDesc;
-            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::RGBA8Unorm ) );
+            // TODO: automatically align with RHISwapchain texture format
+            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
             m_pRenderPass = pRhiDevice->CreateRenderPass( renderPassDesc );
 
             if ( !m_pRenderPass )
@@ -397,17 +398,17 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        if ( m_pVertexBuffer )
-        {
-            pRhiDevice->DestroyBuffer( m_pVertexBuffer );
-            m_pVertexBuffer = nullptr;
-        }
+        //if ( m_pVertexBuffer )
+        //{
+        //    pRhiDevice->DestroyBuffer( m_pVertexBuffer );
+        //    m_pVertexBuffer = nullptr;
+        //}
 
-        if ( m_pIndexBuffer )
-        {
-            pRhiDevice->DestroyBuffer( m_pIndexBuffer );
-            m_pIndexBuffer = nullptr;
-        }
+        //if ( m_pIndexBuffer )
+        //{
+        //    pRhiDevice->DestroyBuffer( m_pIndexBuffer );
+        //    m_pIndexBuffer = nullptr;
+        //}
 
         if ( m_pRenderPass )
         {
@@ -596,30 +597,30 @@ namespace EE::Render
         //    m_pRenderDevice->ResizeBuffer( m_vertexBuffer, sizeof( ImDrawVert ) * pDrawData->TotalVtxCount );
         //}
 
-        int const VertexBufferBudgetSize = pDrawData->TotalVtxCount * sizeof( ImDrawVert );
-        if ( static_cast<int>( m_pVertexBuffer->GetDesc().m_desireSize ) < VertexBufferBudgetSize )
-        {
-            auto desc = m_pVertexBuffer->GetDesc();
-            desc.m_desireSize = VertexBufferBudgetSize;
+        //int const VertexBufferBudgetSize = pDrawData->TotalVtxCount * sizeof( ImDrawVert );
+        //if ( static_cast<int>( m_pVertexBuffer->GetDesc().m_desireSize ) < VertexBufferBudgetSize )
+        //{
+        //    auto desc = m_pVertexBuffer->GetDesc();
+        //    desc.m_desireSize = VertexBufferBudgetSize;
 
-            pRhiDevice->DestroyBuffer( m_pVertexBuffer );
-            m_pVertexBuffer = pRhiDevice->CreateBuffer( desc );
-        }
+        //    pRhiDevice->DeferRelease( m_pVertexBuffer );
+        //    m_pVertexBuffer = pRhiDevice->CreateBuffer( desc );
+        //}
 
         //if ( (int32_t) m_indexBuffer.GetNumElements() < pDrawData->TotalIdxCount )
         //{
         //    m_pRenderDevice->ResizeBuffer( m_indexBuffer, sizeof( ImDrawIdx ) * pDrawData->TotalIdxCount );
         //}
 
-        int const IndexBufferBudgetSize = pDrawData->TotalIdxCount * sizeof( ImDrawIdx );
-        if ( static_cast<int>( m_pIndexBuffer->GetDesc().m_desireSize ) < IndexBufferBudgetSize )
-        {
-            auto desc = m_pIndexBuffer->GetDesc();
-            desc.m_desireSize = IndexBufferBudgetSize;
+        //int const IndexBufferBudgetSize = pDrawData->TotalIdxCount * sizeof( ImDrawIdx );
+        //if ( static_cast<int>( m_pIndexBuffer->GetDesc().m_desireSize ) < IndexBufferBudgetSize )
+        //{
+        //    auto desc = m_pIndexBuffer->GetDesc();
+        //    desc.m_desireSize = IndexBufferBudgetSize;
 
-            pRhiDevice->DestroyBuffer( m_pIndexBuffer );
-            m_pIndexBuffer = pRhiDevice->CreateBuffer( desc );
-        }
+        //    pRhiDevice->DeferRelease( m_pIndexBuffer );
+        //    m_pIndexBuffer = pRhiDevice->CreateBuffer( desc );
+        //}
 
         // Transfer buffer data
         //-------------------------------------------------------------------------
@@ -628,29 +629,29 @@ namespace EE::Render
         //ImDrawIdx* pIB = (ImDrawIdx*) renderContext.MapBuffer( m_indexBuffer );
 
         // Copy vertices into our vertex and index buffers and record the command lists
-        {
-            ImDrawVert* pVB = m_pVertexBuffer->MapTo<ImDrawVert*>( pRhiDevice );
-            int32_t VBWriteIdx = 0;
-            ImDrawIdx* pIB = m_pIndexBuffer->MapTo<ImDrawIdx*>( pRhiDevice );
-            int32_t IBWriteIdx = 0;
+        //{
+        //    ImDrawVert* pVB = m_pVertexBuffer->MapTo<ImDrawVert*>( pRhiDevice );
+        //    int32_t VBWriteIdx = 0;
+        //    ImDrawIdx* pIB = m_pIndexBuffer->MapTo<ImDrawIdx*>( pRhiDevice );
+        //    int32_t IBWriteIdx = 0;
 
-            for ( int32_t n = 0; n < pDrawData->CmdListsCount; n++ )
-            {
-                ImDrawList const* pCmdList = pDrawData->CmdLists[n];
+        //    for ( int32_t n = 0; n < pDrawData->CmdListsCount; n++ )
+        //    {
+        //        ImDrawList const* pCmdList = pDrawData->CmdLists[n];
 
-                // Copy vertex / index data
-                EE_ASSERT( VBWriteIdx + pCmdList->VtxBuffer.Size <= static_cast<int>( m_pVertexBuffer->GetDesc().m_desireSize / sizeof( ImDrawVert ) ) );
-                memcpy( &pVB[VBWriteIdx], pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof( ImDrawVert ) );
-                VBWriteIdx += pCmdList->VtxBuffer.Size;
+        //        // Copy vertex / index data
+        //        EE_ASSERT( VBWriteIdx + pCmdList->VtxBuffer.Size <= static_cast<int>( m_pVertexBuffer->GetDesc().m_desireSize / sizeof( ImDrawVert ) ) );
+        //        memcpy( &pVB[VBWriteIdx], pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof( ImDrawVert ) );
+        //        VBWriteIdx += pCmdList->VtxBuffer.Size;
 
-                EE_ASSERT( IBWriteIdx + pCmdList->IdxBuffer.Size <= static_cast<int>( m_pIndexBuffer->GetDesc().m_desireSize / sizeof( ImDrawIdx ) ) );
-                memcpy( &pIB[IBWriteIdx], pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof( ImDrawIdx ) );
-                IBWriteIdx += pCmdList->IdxBuffer.Size;
-            }
+        //        EE_ASSERT( IBWriteIdx + pCmdList->IdxBuffer.Size <= static_cast<int>( m_pIndexBuffer->GetDesc().m_desireSize / sizeof( ImDrawIdx ) ) );
+        //        memcpy( &pIB[IBWriteIdx], pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof( ImDrawIdx ) );
+        //        IBWriteIdx += pCmdList->IdxBuffer.Size;
+        //    }
 
-            m_pVertexBuffer->Unmap( pRhiDevice );
-            m_pIndexBuffer->Unmap( pRhiDevice );
-        }
+        //    m_pVertexBuffer->Unmap( pRhiDevice );
+        //    m_pIndexBuffer->Unmap( pRhiDevice );
+        //}
 
         //renderContext.UnmapBuffer( m_vertexBuffer );
         //renderContext.UnmapBuffer( m_indexBuffer );
@@ -673,12 +674,28 @@ namespace EE::Render
         {
             RG::RGNodeBuilder nodeBuilder = renderGraph.AddNode( "Draw UI" );
             
+            // Resource creation
+            //-------------------------------------------------------------------------
+
             auto uboDesc = RG::BufferDesc::NewUniformBuffer( sizeof( float ) * 4 * 4 );
             uboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
             uboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
             auto uboResource = renderGraph.CreateResource( uboDesc );
 
+            auto vboDesc = RG::BufferDesc::NewVertexBuffer( pDrawData->TotalVtxCount * sizeof( ImDrawVert ) );
+            vboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+            vboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            auto vboResource = renderGraph.CreateResource( vboDesc );
+
+            auto iboDesc = RG::BufferDesc::NewIndexBuffer( pDrawData->TotalIdxCount * sizeof( ImDrawIdx ) );
+            iboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+            iboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            auto iboResource = renderGraph.CreateResource( iboDesc );
+
             auto rtResource = renderGraph.ImportResource( renderTarget, RHI::RenderResourceBarrierState::Undefined );
+
+            // Pipeline binding
+            //-------------------------------------------------------------------------
 
             RHI::RHIRasterPipelineStateCreateDesc rasterPipelineDesc = {};
             rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.vsdr" ) ) );
@@ -691,12 +708,26 @@ namespace EE::Render
 
             nodeBuilder.RegisterRasterPipeline( std::move( rasterPipelineDesc ) );
 
-            auto uboBinding = nodeBuilder.RasterRead( uboResource, RHI::RenderResourceBarrierState::ColorAttachmentRead );
+            // Resource binding
+            //-------------------------------------------------------------------------
+
+            auto vboBinding = nodeBuilder.RasterRead( vboResource, RHI::RenderResourceBarrierState::VertexBuffer );
+            auto iboBinding = nodeBuilder.RasterRead( iboResource, RHI::RenderResourceBarrierState::IndexBuffer );
+
+            auto uboBinding = nodeBuilder.RasterRead( uboResource, RHI::RenderResourceBarrierState::VertexShaderReadUniformBuffer );
             auto rtBinding = nodeBuilder.RasterWrite( rtResource, RHI::RenderResourceBarrierState::ColorAttachmentReadWrite );
 
             RHI::RHIRenderPass* pRenderPass = m_pRenderPass;
 
-            nodeBuilder.Execute( [=] ( RG::RGRenderCommandContext& context )
+            // Render command recording
+            //-------------------------------------------------------------------------
+
+            nodeBuilder.Execute( [=,
+                                 uboBinding = eastl::move( uboBinding ),
+                                 rtBinding = eastl::move( rtBinding ),
+                                 vboBinding = eastl::move( vboBinding ),
+                                 iboBinding = eastl::move( iboBinding )
+            ] ( RG::RGRenderCommandContext& context )
             {
                 float const L = pDrawData->DisplayPos.x;
                 float const R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
@@ -719,6 +750,38 @@ namespace EE::Render
                 pUniformBuffer->Unmap( pDevice );
 
                 //-------------------------------------------------------------------------
+
+                RHI::RHIBuffer* pVertexBuffer = context.GetCompiledBufferResource( vboBinding );
+                RHI::RHIBuffer* pIndexBuffer = context.GetCompiledBufferResource( iboBinding );
+                EE_ASSERT( pVertexBuffer );
+                EE_ASSERT( pIndexBuffer );
+
+                // Copy vertices into our vertex and index buffers and record the command lists
+                {
+                    ImDrawVert* pVB = pVertexBuffer->MapTo<ImDrawVert*>( pRhiDevice );
+                    int32_t VBWriteIdx = 0;
+                    ImDrawIdx* pIB = pIndexBuffer->MapTo<ImDrawIdx*>( pRhiDevice );
+                    int32_t IBWriteIdx = 0;
+
+                    for ( int32_t n = 0; n < pDrawData->CmdListsCount; n++ )
+                    {
+                        ImDrawList const* pCmdList = pDrawData->CmdLists[n];
+
+                        // Copy vertex / index data
+                        EE_ASSERT( VBWriteIdx + pCmdList->VtxBuffer.Size <= static_cast<int>( pVertexBuffer->GetDesc().m_desireSize / sizeof( ImDrawVert ) ) );
+                        memcpy( &pVB[VBWriteIdx], pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof( ImDrawVert ) );
+                        VBWriteIdx += pCmdList->VtxBuffer.Size;
+
+                        EE_ASSERT( IBWriteIdx + pCmdList->IdxBuffer.Size <= static_cast<int>( pIndexBuffer->GetDesc().m_desireSize / sizeof( ImDrawIdx ) ) );
+                        memcpy( &pIB[IBWriteIdx], pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof( ImDrawIdx ) );
+                        IBWriteIdx += pCmdList->IdxBuffer.Size;
+                    }
+
+                    pVertexBuffer->Unmap( pRhiDevice );
+                    pIndexBuffer->Unmap( pRhiDevice );
+                }
+
+                //-------------------------------------------------------------------------
                 
                 RG::RGRenderTargetViewDesc rtViews[] = {
                     RG::RGRenderTargetViewDesc{ rtBinding, RHI::RHITextureViewCreateDesc{} }
@@ -731,6 +794,10 @@ namespace EE::Render
                 context.SetViewport( static_cast<uint32_t>( pDrawData->DisplaySize.x ), static_cast<uint32_t>( pDrawData->DisplaySize.y ) );
 
                 auto boundPipeline = context.BindPipeline();
+
+                RHI::RHIBuffer* pVertexBuffers[] = { pVertexBuffer };
+                context.BindVertexBuffer( 0, pVertexBuffers );
+                context.BindIndexBuffer( pIndexBuffer );
 
                 int32_t vertexOffset = 0;
                 int32_t indexOffset = 0;
@@ -774,13 +841,13 @@ namespace EE::Render
 
                             auto imguiTexBinding = RHI::RHITextureBinding{};
                             imguiTexBinding.m_view = pImguiTexture->GetOrCreateView( context.GetRHIDevice(), RHI::RHITextureViewCreateDesc{} );
-                            imguiTexBinding.m_layout = RHI::ETextureLayout::ColorOptimal;
-                            boundPipeline.UpdateRHIBinding( 0, 2, RHI::RHIPipelineBinding{ imguiTexBinding } );
+                            imguiTexBinding.m_layout = RHI::ETextureLayout::ShaderReadOnlyOptimal;
 
                             // Bind descriptor
                             RG::RGPipelineBinding const binding0[] = {
                                 RG::Bind( uboBinding ),
                                 RG::BindStaticSampler(),
+                                RG::BindRaw( { eastl::move( imguiTexBinding ) } )
                             };
                             boundPipeline.Bind( 0, binding0 );
 

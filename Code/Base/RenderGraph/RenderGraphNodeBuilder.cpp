@@ -18,7 +18,7 @@ namespace EE::RG
         //EE_ASSERT( pipelineDesc.IsValid() );
     }
 
-    void RGNodeBuilder::Execute( RGNode::ExecutionCallbackFunc executionCallback )
+    void RGNodeBuilder::Execute( RGNode::ExecutionCallbackFunc const& executionCallback )
     {
         m_node.m_executionCallback = executionCallback;
     }

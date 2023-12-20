@@ -2,7 +2,6 @@
 
 #include "ResourceServer.h"
 #include "ResourceServerUI.h"
-#include "Render/PipelineRegistryResourceServerAdapter.h"
 #include "Base/Resource/ResourceSystem.h"
 #include "Base/Threading/TaskSystem.h"
 #include "Engine/Render/Renderers/ImguiRenderer.h"
@@ -84,7 +83,7 @@ namespace EE
         RG::RenderGraph                                     m_renderGraph;
 
         Render::PipelineRegistry                            m_pipelineRegistry;
-        TaskSystem                                          m_taskSystem = TaskSystem( Threading::GetProcessorInfo().m_numPhysicalCores - 1 );
+        TaskSystem                                          m_taskSystem = TaskSystem( 4 );
         Resource::ResourceProvider*                         m_pResourceProvider = nullptr;
         Resource::ResourceSystem                            m_resourceSystem = Resource::ResourceSystem( m_taskSystem );
 

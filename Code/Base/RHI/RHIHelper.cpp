@@ -19,7 +19,7 @@ namespace EE::RHI
 
             pDevice->EndCommandBuffer( pCommandBuffer );
 
-            pDevice->SubmitCommandBuffer( pCommandBuffer );
+            pDevice->SubmitCommandBuffer( pCommandBuffer, {}, {}, {} );
             pDevice->WaitUntilIdle();
         }
     }

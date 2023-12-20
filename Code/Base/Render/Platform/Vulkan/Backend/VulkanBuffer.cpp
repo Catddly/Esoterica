@@ -8,6 +8,14 @@ namespace EE::Render
 {
     namespace Backend
     {
+        //void VulkanBufferReleaseImpl::Release( RHI::RHIDevice* pDevice, void* pBuffer )
+        //{
+        //    auto* pRhiBuffer = reinterpret_cast<RHI::RHIBuffer*>( pBuffer );
+        //    pDevice->DestroyBuffer( pRhiBuffer );
+        //}
+
+        //-------------------------------------------------------------------------
+
         void* VulkanBuffer::Map( RHI::RHIDevice* pDevice )
         {
             if ( m_desc.m_memoryUsage == RHI::ERenderResourceMemoryUsage::GPUOnly ||

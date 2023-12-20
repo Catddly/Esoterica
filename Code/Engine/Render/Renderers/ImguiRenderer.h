@@ -68,8 +68,8 @@ namespace EE::Render
         //VertexBuffer                    m_vertexBuffer;
         //Texture                         m_fontTexture;
 
-        RHI::RHIBuffer*                     m_pVertexBuffer = nullptr;
-        RHI::RHIBuffer*                     m_pIndexBuffer = nullptr;
+        //RHI::RHIBuffer*                     m_pVertexBuffer = nullptr;
+        //RHI::RHIBuffer*                     m_pIndexBuffer = nullptr;
 
         RHI::RHIRenderPass*                 m_pRenderPass = nullptr;
 

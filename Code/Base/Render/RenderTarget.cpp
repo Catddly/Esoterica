@@ -74,6 +74,19 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
+	void SwapchainRenderTarget::Release( RHI::RHIDevice* pDevice )
+	{
+        if ( m_pSwapchain )
+        {
+            m_pRenderTarget = nullptr;
+            m_pTextureAcquireSemaphore = nullptr;
+            m_pRenderCompleteSemaphore = nullptr;
+
+            m_pSwapchain = nullptr;
+            m_isInitialized = false;
+        }
+	}
+
 	bool SwapchainRenderTarget::InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams )
 	{
         SwapchainRenderTargetCreateParameters const& params = static_cast<SwapchainRenderTargetCreateParameters const&>( createParams );
@@ -88,18 +101,15 @@ namespace EE::Render
         return true;
 	}
 
-	void SwapchainRenderTarget::Release( RHI::RHIDevice* pDevice )
-	{
-        if ( m_pSwapchain )
-        {
-            m_pRenderTarget = nullptr;
-            m_pTextureAcquireSemaphore = nullptr;
-            m_pRenderCompleteSemaphore = nullptr;
-
-            m_pSwapchain = nullptr;
-            m_isInitialized = false;
-        }
-	}
+    void SwapchainRenderTarget::ResetFrame()
+    {
+        m_pRenderTarget = nullptr;
+        m_pDepthStencil = nullptr;
+        
+        m_pTextureAcquireSemaphore = nullptr;
+        m_pRenderCompleteSemaphore = nullptr;
+        m_frameIndex = 0;
+    }
 
 	bool SwapchainRenderTarget::AcquireNextFrame()
 	{

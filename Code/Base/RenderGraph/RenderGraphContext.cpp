@@ -31,7 +31,7 @@ namespace EE::RG
             return;
         }
 
-        TInlineVector<RHI::RHIPipelineBinding const, 8> rhiBindings;
+        TInlineVector<RHI::RHIPipelineBinding const, 16> rhiBindings;
         rhiBindings.reserve( bindings.size() );
 
         for ( RGPipelineBinding const& binding : bindings )
@@ -58,7 +58,7 @@ namespace EE::RG
     {
         RHI::RHIPipelineBinding rhiBinding = RHI::RHIUnknownBinding{};
 
-        if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineBufferBinding>() )
+        if ( IsRGBinding<RGPipelineBufferBinding>( pipelineBinding ) )
         {
             auto const& bufferBinding = eastl::get<RGPipelineBufferBinding>( pipelineBinding.m_binding );
 
@@ -66,7 +66,7 @@ namespace EE::RG
             EE_ASSERT( pBuffer );
             rhiBinding = RHI::RHIPipelineBinding( RHI::RHIBufferBinding{ pBuffer } );
         }
-        else if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineDynamicBufferBinding>() )
+        else if ( IsRGBinding<RGPipelineDynamicBufferBinding>( pipelineBinding ) )
         {
             auto const& dynBufferBinding = eastl::get<RGPipelineDynamicBufferBinding>( pipelineBinding.m_binding );
 
@@ -74,7 +74,7 @@ namespace EE::RG
             EE_ASSERT( pBuffer );
             rhiBinding = RHI::RHIPipelineBinding( RHI::RHIDynamicBufferBinding{ pBuffer, dynBufferBinding.m_dynamicOffset } );
         }
-        else if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineTextureBinding>() )
+        else if ( IsRGBinding<RGPipelineTextureBinding>( pipelineBinding ) )
         {
             auto const& textureBinding = eastl::get<RGPipelineTextureBinding>( pipelineBinding.m_binding );
 
@@ -82,7 +82,7 @@ namespace EE::RG
             EE_ASSERT( pTexture );
             rhiBinding = RHI::RHIPipelineBinding{ RHI::RHITextureBinding{ pTexture->GetOrCreateView( m_pDevice, textureBinding.m_viewDesc ), textureBinding.m_layout } };
         }
-        else if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineTextureArrayBinding>() )
+        else if ( IsRGBinding<RGPipelineTextureArrayBinding>( pipelineBinding ) )
         {
             auto const& textureArrayBinding = eastl::get<RGPipelineTextureArrayBinding>( pipelineBinding.m_binding );
 
@@ -97,13 +97,18 @@ namespace EE::RG
 
             rhiBinding = RHI::RHIPipelineBinding{ eastl::move( rhiTextureArrayBinding ) };
         }
-        else if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineStaticSamplerBinding>() )
+        else if ( IsRGBinding<RGPipelineStaticSamplerBinding>( pipelineBinding ) )
         {
             rhiBinding = RHI::RHIPipelineBinding{ RHI::RHIStaticSamplerBinding{} };
         }
-        else if ( pipelineBinding.m_binding.index() == GetVariantTypeIndex<decltype( pipelineBinding.m_binding ), RGPipelineUnknownBinding>() )
+        else if ( IsRGBinding<RGPipelineUnknownBinding>( pipelineBinding ) )
         {
             rhiBinding = RHI::RHIPipelineBinding{ RHI::RHIUnknownBinding{} };
+        }
+        else if ( IsRGBinding<RGPipelineRHIRawBinding>( pipelineBinding ) )
+        {
+            auto const& rhiRawBinding = eastl::get<RGPipelineRHIRawBinding>( pipelineBinding.m_binding );
+            rhiBinding = rhiRawBinding.m_rhiPipelineBinding;
         }
         else
         {
@@ -123,6 +128,7 @@ namespace EE::RG
     )
     {
         EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
         EE_ASSERT( extent.m_x > 0 && extent.m_y > 0 );
 
         // get or create necessary framebuffer
@@ -130,7 +136,7 @@ namespace EE::RG
 
         RHI::RHIFramebufferCacheKey key;
         key.m_extentX = static_cast<uint32_t>( extent.m_x );
-        key.m_extentX = static_cast<uint32_t>( extent.m_y );
+        key.m_extentY = static_cast<uint32_t>( extent.m_y );
 
         for ( RGRenderTargetViewDesc const& color : colorAttachemnts )
         {
@@ -176,6 +182,7 @@ namespace EE::RG
 
     RGBoundPipeline RGRenderCommandContext::BindPipeline()
     {
+        EE_ASSERT( IsValid() );
         EE_ASSERT( m_pExecutingNode );
         auto* pPipelineState = m_pExecutingNode->m_pPipelineState;
         EE_ASSERT( pPipelineState );
@@ -185,18 +192,56 @@ namespace EE::RG
         return RGBoundPipeline( m_pDevice, m_pCommandBuffer, pPipelineState, m_pRenderGraph );
     }
 
+    void RGRenderCommandContext::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset )
+    {
+        EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
+        m_pCommandBuffer->BindVertexBuffer( firstBinding, pVertexBuffers, offset );
+    }
+
+    void RGRenderCommandContext::BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset )
+    {
+        EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
+        m_pCommandBuffer->BindIndexBuffer( pIndexBuffer, offset );
+    }
+
     void RGRenderCommandContext::SetViewport( uint32_t width, uint32_t height, int32_t xOffset, int32_t yOffset )
     {
         EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
         m_pCommandBuffer->SetViewport( width, height, xOffset, yOffset );
     }
 
     void RGRenderCommandContext::SetScissor( uint32_t width, uint32_t height, int32_t xOffset, int32_t yOffset )
     {
         EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
         m_pCommandBuffer->SetScissor( width, height, xOffset, yOffset );
     }
     
+    //-------------------------------------------------------------------------
+
+    void RGRenderCommandContext::SubmitAndReset( RHI::RHIDevice* pDevice )
+    {
+        EE_ASSERT( pDevice );
+        pDevice->SubmitCommandBuffer( m_pCommandBuffer, m_waitSemaphores, m_signalSemaphores, m_waitStages );
+        Reset();
+    }
+
+    void RGRenderCommandContext::AddWaitSyncPoint( RHI::RHISemaphore* pWaitSemaphore, Render::PipelineStage waitStage )
+    {
+        EE_ASSERT( m_waitSemaphores.size() == m_waitStages.size() );
+
+        m_waitSemaphores.push_back( pWaitSemaphore );
+        m_waitStages.push_back( waitStage );
+    }
+
+    void RGRenderCommandContext::AddSignalSyncPoint( RHI::RHISemaphore* pSignalSemaphore )
+    {
+        m_signalSemaphores.push_back( pSignalSemaphore );
+    }
+
     //-------------------------------------------------------------------------
 
     void RGRenderCommandContext::SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer )
@@ -211,6 +256,11 @@ namespace EE::RG
     {
         m_pRenderGraph = nullptr;
         m_pDevice = nullptr;
+        m_pCommandQueue = nullptr;
         m_pCommandBuffer = nullptr;
+
+        m_waitSemaphores.clear();
+        m_waitStages.clear();
+        m_signalSemaphores.clear();
     }
 }

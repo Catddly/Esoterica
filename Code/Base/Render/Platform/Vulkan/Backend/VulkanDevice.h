@@ -103,8 +103,6 @@ namespace EE::Render
 
             inline virtual void WaitUntilIdle() override;
 
-            inline virtual size_t GetDeviceFrameIndex() const override { return m_deviceFrameCount % NumDeviceFramebufferCount; }
-
             virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
             inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
 
@@ -113,7 +111,12 @@ namespace EE::Render
             virtual bool BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
             virtual void EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
 
-            virtual void SubmitCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
+            virtual void SubmitCommandBuffer(
+                RHI::RHICommandBuffer* pCommandBuffer,
+                TSpan<RHI::RHISemaphore*> pWaitSemaphores,
+                TSpan<RHI::RHISemaphore*> pSignalSemaphores,
+                TSpan<Render::PipelineStage> waitStages
+            ) override;
 
             //-------------------------------------------------------------------------
 

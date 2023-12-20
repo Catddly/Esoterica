@@ -722,7 +722,6 @@ namespace EE::RHI
         inline bool IsValid() const { return true; }
 
     public:
-
     };
 
     class RHIDevice;

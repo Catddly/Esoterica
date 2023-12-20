@@ -55,6 +55,8 @@ namespace EE::Render
         VkBlendFactor ToVulkanBlendFactor( Render::BlendValue blendValue );
         VkBlendOp ToVulkanBlendOp( Render::BlendOp blendOp );
 
+        VkPipelineStageFlagBits ToVulkanPipelineStageFlags( Render::PipelineStage stage );
+
         //-------------------------------------------------------------------------
     
         RHI::EBindingResourceType ToBindingResourceType( Render::Shader::EReflectedBindingResourceType ty );
