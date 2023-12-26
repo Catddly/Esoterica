@@ -39,6 +39,7 @@ namespace EE::RHI
 
 namespace EE::RG
 {
+    class RGResourceRegistry;
     class RGTransientResourceCache;
 
 	enum class RGResourceType : uint8_t
@@ -261,6 +262,12 @@ namespace EE::RG
 		RHI::RenderResourceBarrierState			m_currentAccess;
 	};
 
+    struct RGExportedResource
+    {
+        RHI::RHIResource*       	    	    m_pExportedResource;
+        RHI::RenderResourceBarrierState			m_finalAccess;
+    };
+
     class RGCompiledResource;
 
     namespace _Impl
@@ -275,16 +282,17 @@ namespace EE::RG
 	class EE_BASE_API RGResource
 	{
         friend class RenderGraph;
+        friend class RGResourceRegistry;
 
 	public:
 
         RGResource() = default;
 
         template <typename RGDescType, typename DescType>
-        RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc );
+        RGResource( String const& name, _Impl::RGResourceDesc<RGDescType, DescType> const& desc, bool bIsNamedResource );
 
         template <typename RGDescType, typename DescType>
-        RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource );
+        RGResource( String const& name, _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource );
 
         ~RGResource() = default;
 
@@ -293,8 +301,10 @@ namespace EE::RG
 
         RGResource( RGResource&& rhs ) noexcept
         {
+            m_name = eastl::exchange( rhs.m_name, {} );
             m_desc = eastl::exchange( rhs.m_desc, {} );
             m_resource = eastl::exchange( rhs.m_resource, {} );
+            m_bIsNamedResource = eastl::exchange( rhs.m_bIsNamedResource, {} );
         }
         RGResource& operator=( RGResource&& rhs ) noexcept
         {
@@ -336,7 +346,9 @@ namespace EE::RG
 
         // This function only operates on rvalue.
         // You must give out the ownership of origin resource to get a compiled resource.
-        RGCompiledResource Compile( RHI::RHIDevice* pDevice, RGTransientResourceCache& cache ) &&;
+        RGCompiledResource Compile( RHI::RHIDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&;
+
+        inline bool IsNamedResource() const { return m_bIsNamedResource; }
 
     public:
 
@@ -347,28 +359,32 @@ namespace EE::RG
 
         void swap( RGResource& rhs ) noexcept
         {
+            eastl::swap( m_name, rhs.m_name );
             eastl::swap( m_desc, rhs.m_desc );
             eastl::swap( m_resource, rhs.m_resource );
+            eastl::swap( m_bIsNamedResource, rhs.m_bIsNamedResource );
         }
 
 	private:
 
+        String                                                  m_name;
 		// TODO: compile-time enum element expand (use macro?)
 		TVariant<
             _Impl::RGBufferDesc,
             _Impl::RGTextureDesc
 		>														m_desc;
 		TVariant<RGLazyCreateResource, RGImportedResource>		m_resource;
+        bool                                                    m_bIsNamedResource;
 	};
 
     template <typename RGDescType, typename DescType>
-    RGResource::RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc )
-        : m_desc( desc.GetRGDesc() ), m_resource( RGLazyCreateResource{} )
+    RGResource::RGResource( String const& name, _Impl::RGResourceDesc<RGDescType, DescType> const& desc, bool bIsNamedResource )
+        : m_name( name ), m_desc( desc.GetRGDesc() ), m_resource( RGLazyCreateResource{} ), m_bIsNamedResource( bIsNamedResource )
     {}
 
     template <typename RGDescType, typename DescType>
-    RGResource::RGResource( _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource )
-        : m_desc( desc.GetRGDesc() ), m_resource( std::move( importedResource ) )
+    RGResource::RGResource( String const& name, _Impl::RGResourceDesc<RGDescType, DescType> const& desc, RGImportedResource importedResource )
+        : m_name( name ), m_desc( desc.GetRGDesc() ), m_resource( importedResource ), m_bIsNamedResource( false )
     {}
 
 	template <typename Tag, typename DescType, typename DescConstRefType>
@@ -443,11 +459,13 @@ namespace EE::RG
 
         //-------------------------------------------------------------------------
 
-        // TODO: change RGCompiledResource into RGRetiredResource
-        void Retire( RGTransientResourceCache& cache );
+        void Retire( RGResourceRegistry& resourceRegistry, RGTransientResourceCache& cache );
+
+        inline bool IsNamedResource() const { return m_bIsNamedResource; }
 
     private:
 
+        String                                                          m_name;
         // TODO: compile-time enum element expand (use macro?)
         TVariant<
             _Impl::RGBufferDesc,
@@ -464,6 +482,7 @@ namespace EE::RG
         TOptional<RGImportedResource>                                   m_importedResource = {};
 
         RGResourceLifetime                                              m_lifetime;
+        bool                                                            m_bIsNamedResource;
     };
 
     template <typename Tag, typename DescType, typename DescConstRefType>

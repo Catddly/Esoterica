@@ -4,6 +4,8 @@
 #include "RenderGraphNode.h"
 #include "RenderGraphTransientResourceCache.h"
 #include "Base/Types/Arrays.h"
+#include "Base/Types/String.h"
+#include "Base/Types/HashMap.h"
 #include "Base/Render/RenderPipelineRegistry.h"
 
 #include <type_traits>
@@ -55,6 +57,8 @@ namespace EE::RG
     class RGResourceRegistry
     {
         friend class RenderGraphResolver;
+        friend class RGResource;
+        friend class RGCompiledResource;
 
     public:
 
@@ -87,7 +91,7 @@ namespace EE::RG
         // Created transient rhi resources will be cached in transient resource cache.
         bool Compile( RHI::RHIDevice* pDevice, RGResolveResult const& result );
 
-        void ReleaseAllResources();
+        void Retire();
 
         // Clear and destroy all resources.
         void Shutdown( RHI::RHIDevice* pDevice );
@@ -100,7 +104,10 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
         template <typename RGDescType, typename RGDescCVType = typename std::add_lvalue_reference_t<std::add_const_t<RGDescType>>>
-        _Impl::RGResourceID RegisterResource( RGDescCVType rgDesc );
+        _Impl::RGResourceID RegisterTemporaryResource( RGDescCVType rgDesc );
+
+        template <typename RGDescType, typename RGDescCVType = typename std::add_lvalue_reference_t<std::add_const_t<RGDescType>>>
+        _Impl::RGResourceID RegisterNamedResource( String const& name, RGDescCVType rgDesc );
 
         [[nodiscard]] inline Render::PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc ) const
         {
@@ -168,16 +175,23 @@ namespace EE::RG
 
         TVector<RGResource> const& GetRegisteredResources() const { return m_registeredResources; };
 
+        // Named resource is exportable resource.
+        inline bool IsExportableResource( _Impl::RGResourceID const& id ) const { return m_registeredResources[id.m_id].IsNamedResource(); }
+
     private:
 
-        ResourceState                           m_resourceState = ResourceState::Registering;
+        ResourceState                                           m_resourceState = ResourceState::Registering;
 
-        Render::PipelineRegistry*               m_pRenderPipelineRegistry = nullptr;
+        Render::PipelineRegistry*                               m_pRenderPipelineRegistry = nullptr;
 
-        TVector<RGResource>						m_registeredResources;
-        TVector<RGCompiledResource>             m_compiledResources;
+        TVector<RGResource>						                m_registeredResources;
+        THashMap<String, _Impl::RGResourceID>                   m_exportableResources;
 
-        RGTransientResourceCache                m_transientResourceCache;
+        THashMap<String, RHI::RenderResourceAccessState>        m_exportedResourceBarrierStates;
+
+        TVector<RGCompiledResource>                             m_compiledResources;
+
+        RGTransientResourceCache                                m_transientResourceCache;
     };
 
     template <typename RGDescType, typename RGDescCVType>
@@ -198,18 +212,37 @@ namespace EE::RG
         }
 
         _Impl::RGResourceID id( static_cast<uint32_t>( slotID ) );
-        m_registeredResources.emplace_back( rgDesc, std::move( importResource ) );
+        m_registeredResources.emplace_back( "", rgDesc, eastl::move( importResource ) ); // TODO: import resource name
         return id;
     }
 
     template <typename RGDescType, typename RGDescCVType>
-    _Impl::RGResourceID RGResourceRegistry::RegisterResource( RGDescCVType rgDesc )
+    _Impl::RGResourceID RGResourceRegistry::RegisterTemporaryResource( RGDescCVType rgDesc )
     {
         size_t slotID = m_registeredResources.size();
         EE_ASSERT( slotID >= 0 && slotID < std::numeric_limits<uint32_t>::max() );
 
         _Impl::RGResourceID id( static_cast<uint32_t>( slotID ) );
-        m_registeredResources.emplace_back( rgDesc );
+        m_registeredResources.emplace_back( "", rgDesc, false ); // TODO: temporary resource name
+        return id;
+    }
+
+    template <typename RGDescType, typename RGDescCVType>
+    _Impl::RGResourceID RGResourceRegistry::RegisterNamedResource( String const& name, RGDescCVType rgDesc )
+    {
+        auto iterator = m_exportableResources.find( name );
+        if ( iterator != m_exportableResources.end() )
+        {
+            return iterator->second;
+        }
+
+        size_t slotID = m_registeredResources.size();
+        EE_ASSERT( slotID >= 0 && slotID < std::numeric_limits<uint32_t>::max() );
+
+        _Impl::RGResourceID id( static_cast<uint32_t>( slotID ) );
+        m_registeredResources.emplace_back( name, rgDesc, true );
+
+        m_exportableResources.insert( { name, id } );
         return id;
     }
 

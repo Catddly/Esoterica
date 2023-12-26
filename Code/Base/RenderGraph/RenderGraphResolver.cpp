@@ -25,14 +25,28 @@ namespace EE::RG
                     if ( iterator == result.m_resourceLifetimes.end() )
                     {
                         auto& lifetime = result.m_resourceLifetimes.insert( input.m_slotID.m_id ).first->second;
-                        lifetime = RGResourceLifetime{ currentNodeIndex, currentNodeIndex };
+                        if ( m_resourceRegistry.IsExportableResource( input.m_slotID ) )
+                        {
+                            lifetime = RGResourceLifetime{ currentNodeIndex, ExportableResourceLifetime };
+                        }
+                        else
+                        {
+                            lifetime = RGResourceLifetime{ currentNodeIndex, currentNodeIndex };
+                        }
                     }
                     else
                     {
                         auto& lifetime = iterator->second;
-                        EE_ASSERT( lifetime.HasValidLifetime() );
+                        if ( m_resourceRegistry.IsExportableResource( input.m_slotID ) )
+                        {
+                            lifetime.m_lifeEndTimePoint = ExportableResourceLifetime;
+                        }
+                        else
+                        {
+                            EE_ASSERT( lifetime.HasValidLifetime() );
 
-                        lifetime.m_lifeEndTimePoint = currentNodeIndex;
+                            lifetime.m_lifeEndTimePoint = currentNodeIndex;
+                        }
                     }
                 }
 
@@ -42,14 +56,29 @@ namespace EE::RG
                     if ( iterator == result.m_resourceLifetimes.end() )
                     {
                         auto& lifetime = result.m_resourceLifetimes.insert( output.m_slotID.m_id ).first->second;
-                        lifetime = RGResourceLifetime{ currentNodeIndex, currentNodeIndex };
+                        if ( m_resourceRegistry.IsExportableResource( output.m_slotID ) )
+                        {
+                            lifetime = RGResourceLifetime{ currentNodeIndex, ExportableResourceLifetime };
+                        }
+                        else
+                        {
+                            lifetime = RGResourceLifetime{ currentNodeIndex, currentNodeIndex };
+                        }
                     }
                     else
                     {
                         auto& lifetime = iterator->second;
-                        EE_ASSERT( lifetime.HasValidLifetime() );
 
-                        lifetime.m_lifeEndTimePoint = currentNodeIndex;
+                        if ( m_resourceRegistry.IsExportableResource( output.m_slotID ) )
+                        {
+                            lifetime.m_lifeEndTimePoint = ExportableResourceLifetime;
+                        }
+                        else
+                        {
+                            EE_ASSERT( lifetime.HasValidLifetime() );
+
+                            lifetime.m_lifeEndTimePoint = currentNodeIndex;
+                        }
                     }
                 }
 

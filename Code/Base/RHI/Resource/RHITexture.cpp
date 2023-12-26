@@ -1,4 +1,5 @@
 #include "RHITexture.h"
+#include "../RHIDevice.h"
 #include "Base/Logging/Log.h"
 
 namespace EE::RHI
@@ -46,4 +47,16 @@ namespace EE::RHI
         m_viewCache.clear();
     }
 
+    //-------------------------------------------------------------------------
+
+	void RHITexture::Enqueue( DeferReleaseQueue& queue )
+	{
+        queue.m_deferReleaseTextures.push( this );
+	}
+
+    void RHITexture::Release( RHIDevice* pDevice )
+    {
+        pDevice->DestroyTexture( this );
+
+    }
 }

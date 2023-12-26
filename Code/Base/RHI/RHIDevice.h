@@ -38,6 +38,7 @@ namespace EE::RHI
     {
         friend class RHIDescriptorPool;
         friend class RHIBuffer;
+        friend class RHITexture;
 
     public:
 
@@ -47,6 +48,7 @@ namespace EE::RHI
 
         TQueue<RHIDescriptorPool>                   m_descriptorPools;
         TQueue<RHIBuffer*>                          m_deferReleaseBuffers;
+        TQueue<RHITexture*>                         m_deferReleaseTextures;
     };
 
     //-------------------------------------------------------------------------

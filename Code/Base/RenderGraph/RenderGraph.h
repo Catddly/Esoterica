@@ -51,7 +51,10 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
 		template <typename DescType, typename RTTag = typename DescType::RGResourceTypeTag>
-		RGResourceHandle<RTTag> CreateResource( DescType const& desc );
+		RGResourceHandle<RTTag> CreateTemporaryResource( DescType const& desc );
+
+        template <typename DescType, typename RTTag = typename DescType::RGResourceTypeTag>
+        RGResourceHandle<RTTag> GetOrCreateNamedResource( String const& name, DescType const& desc );
 
         RGResourceHandle<RGResourceTagBuffer> ImportResource( RHI::RHIBuffer* pBuffer, RHI::RenderResourceBarrierState access );
         RGResourceHandle<RGResourceTagTexture> ImportResource( RHI::RHITexture* pTexture, RHI::RenderResourceBarrierState access );
@@ -127,7 +130,7 @@ namespace EE::RG
 	//-------------------------------------------------------------------------
 
 	template <typename DescType, typename RTTag>
-	RGResourceHandle<RTTag> RenderGraph::CreateResource( DescType const& desc )
+	RGResourceHandle<RTTag> RenderGraph::CreateTemporaryResource( DescType const& desc )
 	{
 		static_assert( std::is_base_of<RGResourceTagTypeBase<RTTag>, RTTag>::value, "Invalid render graph resource tag!" );
 		typedef typename RTTag::RGDescType RGDescType;
@@ -137,58 +140,28 @@ namespace EE::RG
 		RGDescType rgDesc = {};
 		rgDesc.m_desc = desc;
 
-		_Impl::RGResourceID const id = m_resourceRegistry.RegisterResource<RGDescType>( rgDesc );
+		_Impl::RGResourceID const id = m_resourceRegistry.RegisterTemporaryResource<RGDescType>( rgDesc );
 		RGResourceHandle<RTTag> handle;
 		handle.m_slotID = id;
 		handle.m_desc = desc;
 		return handle;
 	}
 
-    //template <typename RTTag>
-    //RGResourceHandle<RTTag> RenderGraph::ImportResource( RHI::RHIResource* pResource, RHI::RenderResourceBarrierState access )
-    //{
-    //    EE_ASSERT( Threading::IsMainThread() );
+    template <typename DescType, typename RTTag>
+    RGResourceHandle<RTTag> RenderGraph::GetOrCreateNamedResource( String const& name, DescType const& desc )
+    {
+        static_assert( std::is_base_of<RGResourceTagTypeBase<RTTag>, RTTag>::value, "Invalid render graph resource tag!" );
+        typedef typename RTTag::RGDescType RGDescType;
 
-    //    if ( pResource->IsBuffer() )
-    //    {
-    //        RHI::RHIBuffer* pBuffer = static_cast<RHI::RHIBuffer*>( pResource );
+        EE_ASSERT( Threading::IsMainThread() );
 
-    //        _Impl::RGBufferDesc rgDesc = {};
-    //        EE::RG::BufferDesc bufferDesc;
-    //        bufferDesc.m_desc = pBuffer->GetDesc();
-    //        rgDesc.m_desc = bufferDesc;
+        RGDescType rgDesc = {};
+        rgDesc.m_desc = desc;
 
-    //        RGImportedResource importResource;
-    //        importResource.m_pImportedResource = pResource;
-    //        importResource.m_currentAccess = access;
-
-    //        _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGBufferDesc>( std::move( rgDesc ), std::move( importResource ) );
-    //        RGResourceHandle<RGResourceTagBuffer> handle;
-    //        handle.m_slotID = id;
-    //        handle.m_desc = bufferDesc;
-    //        return handle;
-    //    }
-    //    else if ( pResource->IsTexture() )
-    //    {
-    //        RHI::RHITexture* pTexture = static_cast<RHI::RHITexture*>( pResource );
-
-    //        _Impl::RGTextureDesc rgDesc = {};
-    //        EE::RG::TextureDesc textureDesc;
-    //        textureDesc.m_desc = pTexture->GetDesc();
-    //        rgDesc.m_desc = textureDesc;
-
-    //        RGImportedResource importResource;
-    //        importResource.m_pImportedResource = pResource;
-    //        importResource.m_currentAccess = access;
-
-    //        _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( std::move( rgDesc ), std::move( importResource ) );
-    //        RGResourceHandle<RGResourceTagTexture> handle;
-    //        handle.m_slotID = id;
-    //        handle.m_desc = textureDesc;
-    //        return handle;
-    //    }
-
-    //    EE_UNIMPLEMENTED_FUNCTION();
-    //    return {};
-    //}
+        _Impl::RGResourceID const id = m_resourceRegistry.RegisterNamedResource<RGDescType>( name, rgDesc );
+        RGResourceHandle<RTTag> handle;
+        handle.m_slotID = id;
+        handle.m_desc = desc;
+        return handle;
+    }
 }

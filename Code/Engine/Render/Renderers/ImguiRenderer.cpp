@@ -398,18 +398,6 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        //if ( m_pVertexBuffer )
-        //{
-        //    pRhiDevice->DestroyBuffer( m_pVertexBuffer );
-        //    m_pVertexBuffer = nullptr;
-        //}
-
-        //if ( m_pIndexBuffer )
-        //{
-        //    pRhiDevice->DestroyBuffer( m_pIndexBuffer );
-        //    m_pIndexBuffer = nullptr;
-        //}
-
         if ( m_pRenderPass )
         {
             pRhiDevice->DestroyRenderPass( m_pRenderPass );
@@ -680,17 +668,17 @@ namespace EE::Render
             auto uboDesc = RG::BufferDesc::NewUniformBuffer( sizeof( float ) * 4 * 4 );
             uboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
             uboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
-            auto uboResource = renderGraph.CreateResource( uboDesc );
+            auto uboResource = renderGraph.CreateTemporaryResource( uboDesc );
 
             auto vboDesc = RG::BufferDesc::NewVertexBuffer( pDrawData->TotalVtxCount * sizeof( ImDrawVert ) );
             vboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
             vboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
-            auto vboResource = renderGraph.CreateResource( vboDesc );
+            auto vboResource = renderGraph.GetOrCreateNamedResource( "ImguiDynamicVertexBuffer", vboDesc );
 
             auto iboDesc = RG::BufferDesc::NewIndexBuffer( pDrawData->TotalIdxCount * sizeof( ImDrawIdx ) );
             iboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
             iboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
-            auto iboResource = renderGraph.CreateResource( iboDesc );
+            auto iboResource = renderGraph.GetOrCreateNamedResource( "ImguiDynamicIndexBuffer", iboDesc );
 
             auto rtResource = renderGraph.ImportResource( renderTarget, RHI::RenderResourceBarrierState::Undefined );
 
@@ -722,12 +710,7 @@ namespace EE::Render
             // Render command recording
             //-------------------------------------------------------------------------
 
-            nodeBuilder.Execute( [=,
-                                 uboBinding = eastl::move( uboBinding ),
-                                 rtBinding = eastl::move( rtBinding ),
-                                 vboBinding = eastl::move( vboBinding ),
-                                 iboBinding = eastl::move( iboBinding )
-            ] ( RG::RGRenderCommandContext& context )
+            nodeBuilder.Execute( [=] ( RG::RGRenderCommandContext& context )
             {
                 float const L = pDrawData->DisplayPos.x;
                 float const R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;

@@ -3,6 +3,7 @@
 #include "Base/_Module/API.h"
 #include "../RHICommandBuffer.h"
 #include "RHIResource.h"
+#include "RHIDeferReleasable.h"
 #include "RHITextureView.h"
 #include "RHIResourceCreationCommons.h"
 #include "Base/Types/HashMap.h"
@@ -10,9 +11,12 @@
 namespace EE::RHI
 {
     class RHIDevice;
+    class DeferReleaseQueue;
 
-    class EE_BASE_API RHITexture : public RHIResource
+    class EE_BASE_API RHITexture : public RHIResource, public RHIDynamicDeferReleasable
     {
+        friend class DeferReleaseQueue;
+
     public:
 
         RHITexture( ERHIType rhiType = ERHIType::Invalid )
@@ -36,6 +40,12 @@ namespace EE::RHI
 
         virtual RHITextureView CreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc ) = 0;
         virtual void           DestroyView( RHIDevice* pDevice, RHITextureView& textureView ) = 0;
+
+    private:
+
+        virtual void Enqueue( DeferReleaseQueue& queue ) override;
+
+        inline virtual void Release( RHIDevice* pDevice ) override;
 
     protected:
 

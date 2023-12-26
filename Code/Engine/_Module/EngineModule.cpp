@@ -352,15 +352,15 @@ namespace EE
         //m_renderGraph.AllocateCommandContext( pDevice );
 
         auto bufferDesc = RG::BufferDesc::NewSize( 512 );
-        auto handle0 = m_renderGraph.CreateResource( bufferDesc );
+        auto handle0 = m_renderGraph.CreateTemporaryResource( bufferDesc );
         EE_ASSERT( handle0.GetDesc().m_desc.m_desireSize == 512 );
 
         bufferDesc.m_desc.m_desireSize = 256;
-        auto handle1 = m_renderGraph.CreateResource( bufferDesc );
+        auto handle1 = m_renderGraph.CreateTemporaryResource( bufferDesc );
         EE_ASSERT( handle1.GetDesc().m_desc.m_desireSize == 256 );
 
         auto textureDesc = RG::TextureDesc::New2D( 512, 512, RHI::EPixelFormat::BGRA8Unorm );
-        auto handle2 = m_renderGraph.CreateResource( textureDesc );
+        auto handle2 = m_renderGraph.CreateTemporaryResource( textureDesc );
 
         {
             auto node = m_renderGraph.AddNode( "Clear Color RT" );
@@ -381,8 +381,8 @@ namespace EE
             pipelineDesc.DepthWrite( false );
             node.RegisterRasterPipeline( std::move( pipelineDesc ) );
 
-            EE_ASSERT( handle0_ref.GetDesc().m_desc.m_desireSize == 512 );
-            EE_ASSERT( handle1_ref.GetDesc().m_desc.m_desireSize == 256 );
+            //EE_ASSERT( handle0_ref.GetDesc().m_desc.m_desireSize == 512 );
+            //EE_ASSERT( handle1_ref.GetDesc().m_desc.m_desireSize == 256 );
         }
 
         //{

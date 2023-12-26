@@ -93,6 +93,20 @@ namespace EE::RG
             return m_pRenderGraph->GetResourceRegistry().GetCompiledTextureResource( resourceRef );
         }
 
+        template <RGResourceViewType View>
+        RHI::RHIBufferCreateDesc const& GetDesc( RGNodeResourceRef<RGResourceTagBuffer, View> const& resourceRef ) const
+        {
+            EE_ASSERT( m_pRenderGraph );
+            return m_pRenderGraph->GetResourceRegistry().GetCompiledBufferResource( resourceRef )->GetDesc();
+        }
+
+        template <RGResourceViewType View>
+        RHI::RHITextureCreateDesc const& GetDesc( RGNodeResourceRef<RGResourceTagTexture, View> const& resourceRef ) const
+        {
+            EE_ASSERT( m_pRenderGraph );
+            return m_pRenderGraph->GetResourceRegistry().GetCompiledTextureResource( resourceRef )->GetDesc();
+        }
+
         // Render Commands
         //-------------------------------------------------------------------------
 

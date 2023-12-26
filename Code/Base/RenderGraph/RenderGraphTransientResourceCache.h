@@ -2,6 +2,7 @@
 
 #include "Base/Types/Arrays.h"
 #include "Base/Types/HashMap.h"
+#include "Base/Types/String.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RHI
@@ -27,11 +28,25 @@ namespace EE::RG
 
     public:
 
-        RHI::RHIBuffer* FetchAvailableBuffer( RHI::RHIBufferCreateDesc const& bufferDesc );
-        RHI::RHITexture* FetchAvailableTexture( RHI::RHITextureCreateDesc const& textureDesc );
+        RHI::RHIBuffer* FetchAvailableTemporaryBuffer( RHI::RHIBufferCreateDesc const& bufferDesc );
+        RHI::RHITexture* FetchAvailableTemporaryTexture( RHI::RHITextureCreateDesc const& textureDesc );
 
-        void StoreBufferResource( RHI::RHIBuffer* pBuffer );
-        void StoreTextureResource( RHI::RHITexture* pTexture );
+        // If the named buffer exists and it is updated successfully, return true. Otherwise, return false.
+        // Buffer will be updated immediately.
+        bool UpdateDirtyNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
+        // If the named texture exists and it is updated successfully, return true. Otherwise, return false.
+        // Texture will be updated immediately.
+        bool UpdateDirtyNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
+
+        RHI::RHIBuffer* GetOrCreateNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
+        RHI::RHITexture* GetOrCreateNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
+
+        //-------------------------------------------------------------------------
+
+        void RestoreBuffer( RHI::RHIBuffer* pBuffer );
+        void RestoreTexture( RHI::RHITexture* pTexture );
+
+        //-------------------------------------------------------------------------
 
         void DestroyAllResource( RHI::RHIDevice* pDevice );
 
@@ -39,5 +54,8 @@ namespace EE::RG
 
         THashMap<RHI::RHIBufferCreateDesc, TVector<RHI::RHIBuffer*>>        m_bufferCache;
         THashMap<RHI::RHITextureCreateDesc, TVector<RHI::RHITexture*>>      m_textureCache;
+
+        THashMap<String, RHI::RHIBuffer*>                                   m_namedBuffers;
+        THashMap<String, RHI::RHITexture*>                                  m_namedTextures;
     };
 }

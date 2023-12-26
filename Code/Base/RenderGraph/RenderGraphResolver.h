@@ -5,6 +5,8 @@
 #include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
 
+#include <limits>
+
 namespace EE::RG
 {
     class RGResourceRegistry;
@@ -19,6 +21,9 @@ namespace EE::RG
     // dependent execution sequence.
     class RenderGraphResolver
     {
+        // Lifetime marker used to mark resources as exportable resources.
+        static constexpr int32_t ExportableResourceLifetime = std::numeric_limits<int32_t>::max();
+
     public:
 
         // TODO: this will be changed lately when we use a real graph

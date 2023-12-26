@@ -196,7 +196,7 @@ namespace EE
                 executeSequences.reserve( m_renderGraph.size() );
                 for ( auto& node : m_renderGraph )
                 {
-                    executeSequences.emplace_back( eastl::exchange( node, {} ).IntoExecutableNode( &m_resourceRegistry ) );
+                    executeSequences.emplace_back( eastl::move( node ).IntoExecutableNode( &m_resourceRegistry ) );
                 }
 
                 // Split execute nodes and present nodes
@@ -325,7 +325,7 @@ namespace EE
             m_executeNodesSequence.clear();
             m_presentNodesSequence.clear();
 
-            m_resourceRegistry.ReleaseAllResources();
+            m_resourceRegistry.Retire();
         }
 
         // Cleanup Stage
@@ -356,7 +356,7 @@ namespace EE
             importResource.m_pImportedResource = nullptr;
             importResource.m_currentAccess = RHI::RenderResourceBarrierState::Undefined;
 
-            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( rgDesc, std::move( importResource ) );
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( rgDesc, importResource );
             RGResourceHandle<RGResourceTagTexture> handle;
             handle.m_slotID = id;
             handle.m_desc = textureDesc;

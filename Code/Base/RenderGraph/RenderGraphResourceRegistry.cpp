@@ -23,7 +23,7 @@ namespace EE::RG
             auto iterator = result.m_resourceLifetimes.find( i );
             if ( iterator != result.m_resourceLifetimes.end() )
             {
-                auto& compiledResource = m_compiledResources.emplace_back( eastl::exchange( rgResource, {} ).Compile( pDevice, m_transientResourceCache ) );
+                auto& compiledResource = m_compiledResources.emplace_back( eastl::move( rgResource ).Compile( pDevice, *this, m_transientResourceCache ) );
                 compiledResource.m_lifetime = iterator->second;
             }
             else
@@ -42,7 +42,7 @@ namespace EE::RG
         return true;
     }
 
-    void RGResourceRegistry::ReleaseAllResources()
+    void RGResourceRegistry::Retire()
     {
         EE_ASSERT( Threading::IsMainThread() );
         EE_ASSERT( m_resourceState == ResourceState::Compiled );
@@ -51,11 +51,13 @@ namespace EE::RG
         {
             if ( resource.m_lifetime.HasValidLifetime() )
             {
-                resource.Retire( m_transientResourceCache );
+                resource.Retire( *this, m_transientResourceCache );
             }
         }
 
+        m_registeredResources.clear();
         m_compiledResources.clear();
+        m_exportableResources.clear();
         // one frame draw end, render graph go back to origin state
         m_resourceState = ResourceState::Registering;
     }

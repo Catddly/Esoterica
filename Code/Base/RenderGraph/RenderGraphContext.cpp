@@ -140,13 +140,13 @@ namespace EE::RG
 
         for ( RGRenderTargetViewDesc const& color : colorAttachemnts )
         {
-            auto const& desc = color.m_rgRenderTargetRef.GetDesc().m_desc;
+            auto const& desc = GetDesc( color.m_rgRenderTargetRef );
             key.m_attachmentHashs.emplace_back( desc.m_usage, desc.m_flag );
         }
 
         if ( depthAttachment.has_value() )
         {
-            auto const& desc = depthAttachment->m_rgRenderTargetRef.GetDesc().m_desc;
+            auto const& desc = GetDesc( depthAttachment->m_rgRenderTargetRef );
             key.m_attachmentHashs.emplace_back( desc.m_usage, desc.m_flag );
         }
 

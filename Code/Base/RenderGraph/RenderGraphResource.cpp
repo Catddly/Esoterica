@@ -1,4 +1,5 @@
 #include "RenderGraphResource.h"
+#include "RenderGraphResourceRegistry.h"
 #include "RenderGraphTransientResourceCache.h"
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
@@ -6,7 +7,7 @@
 
 namespace EE::RG
 {
-    RGCompiledResource RGResource::Compile( RHI::RHIDevice* pDevice, RGTransientResourceCache& cache ) &&
+    RGCompiledResource RGResource::Compile( RHI::RHIDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&
     {
         RGCompiledResource compiled;
 
@@ -16,12 +17,30 @@ namespace EE::RG
             {
                 BufferDesc const& desc = GetDesc<RGResourceTagBuffer>();
 
-                //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Buffer Desired Size = %d", desc.m_desc.m_desireSize );
-                //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Buffer Allocated Size = %d", desc.m_desc.m_desireSize );
-
-                if ( !IsImportedResource() )
+                if ( IsNamedResource() )
                 {
-                    auto* pBuffer = cache.FetchAvailableBuffer( desc.m_desc );
+                    cache.UpdateDirtyNamedBuffer( m_name, pDevice, desc.m_desc );
+                    auto* pBuffer = cache.GetOrCreateNamedBuffer( m_name, pDevice, desc.m_desc );
+
+                    EE_ASSERT( pBuffer != nullptr );
+
+                    // use last frame's resource barrier state if available
+                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceBarrierStates.find( m_name );
+                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceBarrierStates.end() )
+                    {
+                        compiled.m_currentAccessState = lastFrameBarrierStateIterator->second;
+                    }
+                    else
+                    {
+                        compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
+                    }
+
+                    compiled.m_resource = pBuffer;
+                    compiled.m_bIsNamedResource = true;
+                }
+                else if ( !IsImportedResource() )
+                {
+                    auto* pBuffer = cache.FetchAvailableTemporaryBuffer( desc.m_desc );
                     if ( !pBuffer )
                     {
                         pBuffer = pDevice->CreateBuffer( desc.m_desc );
@@ -31,7 +50,6 @@ namespace EE::RG
                     compiled.m_resource = pBuffer;
                     // Note: because this resource is created by the render graph within this frame, it doesn't matter it first barrier state is.
                     compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
-                    //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Lazy created buffer resources..." );
                 }
                 else
                 {
@@ -40,7 +58,6 @@ namespace EE::RG
                     RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource;
                     compiled.m_resource = static_cast<RHI::RHIBuffer*>( pResource );
                     compiled.m_currentAccessState = RHI::RenderResourceAccessState{ compiled.m_importedResource->m_currentAccess };
-                    //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Import a buffer resource..." );
                 }
             }
             break;
@@ -49,12 +66,27 @@ namespace EE::RG
             {
                 TextureDesc const& desc = GetDesc<RGResourceTagTexture>();
 
-                //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Texture Width = %d", desc.m_desc.m_width );
-                //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Texture Height = %d", desc.m_desc.m_height );
-
-                if ( !IsImportedResource() )
+                if ( IsNamedResource() )
                 {
-                    auto* pTexture = cache.FetchAvailableTexture( desc.m_desc );
+                    cache.UpdateDirtyNamedTexture( m_name, pDevice, desc.m_desc );
+                    auto* pTexture = cache.GetOrCreateNamedTexture( m_name, pDevice, desc.m_desc );
+
+                    EE_ASSERT( pTexture != nullptr );
+                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceBarrierStates.find( m_name );
+                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceBarrierStates.end() )
+                    {
+                        compiled.m_currentAccessState = lastFrameBarrierStateIterator->second;
+                    }
+                    else
+                    {
+                        compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
+                    }
+                    compiled.m_resource = pTexture;
+                    compiled.m_bIsNamedResource = true;
+                }
+                else if ( !IsImportedResource() )
+                {
+                    auto* pTexture = cache.FetchAvailableTemporaryTexture( desc.m_desc );
                     if ( !pTexture )
                     {
                         pTexture = pDevice->CreateTexture( desc.m_desc );
@@ -64,8 +96,6 @@ namespace EE::RG
                     compiled.m_resource = pTexture;
                     // Note: because this resource is created by the render graph within this frame, it doesn't matter it first barrier state is.
                     compiled.m_currentAccessState = RHI::RenderResourceAccessState{ RHI::RenderResourceBarrierState::Undefined };
-
-                    //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Lazy created texture resource..." );
                 }
                 else
                 {
@@ -74,7 +104,6 @@ namespace EE::RG
                     RHI::RHIResource* pResource = compiled.m_importedResource->m_pImportedResource;
                     compiled.m_resource = static_cast<RHI::RHITexture*>( pResource );
                     compiled.m_currentAccessState = RHI::RenderResourceAccessState{ compiled.m_importedResource->m_currentAccess };
-                    //EE_LOG_MESSAGE( "RenderGraph", "RenderGraph::CreateNodeRHIResource()", "Import a texture resource..." );
                 }
             }
             break;
@@ -86,15 +115,42 @@ namespace EE::RG
             break;
         }
 
+        compiled.m_name = eastl::move( m_name );
         compiled.m_desc = eastl::exchange( m_desc, {} );
+        compiled.m_bIsNamedResource = m_bIsNamedResource;
         return compiled;
     }
 
     //-------------------------------------------------------------------------
 
-    void RGCompiledResource::Retire( RGTransientResourceCache& cache )
+    void RGCompiledResource::Retire( RGResourceRegistry& resourceRegistry, RGTransientResourceCache& cache )
     {
-        if ( !IsImportedResource() )
+        if ( IsNamedResource() )
+        {
+            switch ( GetResourceType() )
+            {
+                case RGResourceType::Buffer:
+                {
+                    // remember access state of this exportable resource after this frame is ended
+                    resourceRegistry.m_exportedResourceBarrierStates.insert_or_assign( m_name, m_currentAccessState );
+                }
+                break;
+
+                case RGResourceType::Texture:
+                {
+                    // remember access state of this exportable resource after this frame is ended
+                    resourceRegistry.m_exportedResourceBarrierStates.insert_or_assign( m_name, m_currentAccessState );
+                }
+                break;
+
+                case RGResourceType::Unknown:
+                default:
+                EE_LOG_ERROR( "Render Graph", "Compilation", "Unknown type of render graph resource!" );
+                EE_ASSERT( false );
+                break;
+            }
+        }
+        else if ( !IsImportedResource() )
         {
             switch ( GetResourceType() )
             {
@@ -104,7 +160,7 @@ namespace EE::RG
                     RHI::RHIBuffer* pRhiBuffer = static_cast<RHI::RHIBuffer*>( pResource );
                     pResource = nullptr;
 
-                    cache.StoreBufferResource( pRhiBuffer );
+                    cache.RestoreBuffer( pRhiBuffer );
                 }
                 break;
 
@@ -114,7 +170,7 @@ namespace EE::RG
                     RHI::RHITexture* pRhiTexture = static_cast<RHI::RHITexture*>( pResource );
                     pResource = nullptr;
 
-                    cache.StoreTextureResource( pRhiTexture );
+                    cache.RestoreTexture( pRhiTexture );
                 }
                 break;
 

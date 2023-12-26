@@ -1,6 +1,7 @@
 #include "RHIDevice.h"
 #include "Resource/RHIDescriptorSet.h"
 #include "Resource/RHIBuffer.h"
+#include "Resource/RHITexture.h"
 
 namespace EE::RHI
 {
@@ -19,9 +20,19 @@ namespace EE::RHI
         while ( !m_deferReleaseBuffers.empty() )
         {
             auto& buffer = m_deferReleaseBuffers.front();
-            buffer->Release( pDevice );
+            pDevice->DestroyBuffer( buffer );
+            buffer = nullptr;
 
             m_deferReleaseBuffers.pop();
+        }
+
+        while ( !m_deferReleaseTextures.empty() )
+        {
+            auto& texture = m_deferReleaseTextures.front();
+            pDevice->DestroyTexture( texture );
+            texture = nullptr;
+
+            m_deferReleaseTextures.pop();
         }
     }
 

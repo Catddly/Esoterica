@@ -178,11 +178,23 @@ namespace EE::RHI
             return eastl::tie( lhs.m_width, lhs.m_height, lhs.m_depth,
                                lhs.m_array, lhs.m_mipmap, lhs.m_format,
                                lhs.m_usage, lhs.m_tiling, lhs.m_sample,
-                               lhs.m_type, lhs.m_flag, lhs.m_memoryUsage )
+                               lhs.m_type, lhs.m_flag, lhs.m_memoryUsage, lhs.m_memoryFlag )
                 == eastl::tie( rhs.m_width, rhs.m_height, rhs.m_depth,
                                rhs.m_array, rhs.m_mipmap, rhs.m_format,
                                rhs.m_usage, rhs.m_tiling, rhs.m_sample,
-                               rhs.m_type, rhs.m_flag, rhs.m_memoryUsage );
+                               rhs.m_type, rhs.m_flag, rhs.m_memoryUsage, rhs.m_memoryFlag );
+        }
+
+        friend bool operator!=( RHITextureCreateDesc const& lhs, RHITextureCreateDesc const& rhs )
+        {
+            return eastl::tie( lhs.m_width, lhs.m_height, lhs.m_depth,
+                               lhs.m_array, lhs.m_mipmap, lhs.m_format,
+                               lhs.m_usage, lhs.m_tiling, lhs.m_sample,
+                               lhs.m_type, lhs.m_flag, lhs.m_memoryUsage, lhs.m_memoryFlag )
+                != eastl::tie( rhs.m_width, rhs.m_height, rhs.m_depth,
+                               rhs.m_array, rhs.m_mipmap, rhs.m_format,
+                               rhs.m_usage, rhs.m_tiling, rhs.m_sample,
+                               rhs.m_type, rhs.m_flag, rhs.m_memoryUsage, rhs.m_memoryFlag );
         }
 
     private:
@@ -302,8 +314,14 @@ namespace EE::RHI
 
         friend bool operator==( RHIBufferCreateDesc const& lhs, RHIBufferCreateDesc const& rhs )
         {
-            return eastl::tie( lhs.m_desireSize, lhs.m_usage, lhs.m_memoryUsage )
-                == eastl::tie( rhs.m_desireSize, rhs.m_usage, rhs.m_memoryUsage );
+            return eastl::tie( lhs.m_desireSize, lhs.m_usage, lhs.m_memoryUsage, lhs.m_memoryFlag )
+                == eastl::tie( rhs.m_desireSize, rhs.m_usage, rhs.m_memoryUsage, rhs.m_memoryFlag );
+        }
+
+        friend bool operator!=( RHIBufferCreateDesc const& lhs, RHIBufferCreateDesc const& rhs )
+        {
+            return eastl::tie( lhs.m_desireSize, lhs.m_usage, lhs.m_memoryUsage, lhs.m_memoryFlag )
+                != eastl::tie( rhs.m_desireSize, rhs.m_usage, rhs.m_memoryUsage, rhs.m_memoryFlag );
         }
 
     public:

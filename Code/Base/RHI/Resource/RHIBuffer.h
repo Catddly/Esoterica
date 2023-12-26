@@ -39,7 +39,7 @@ namespace EE::RHI
 
         virtual void Enqueue( DeferReleaseQueue& queue ) override;
 
-        virtual void Release( RHIDevice* pDevice ) override;
+        inline virtual void Release( RHIDevice* pDevice ) override;
 
     protected:
 

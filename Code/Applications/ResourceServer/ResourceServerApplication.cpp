@@ -425,22 +425,22 @@ namespace EE
 
                 m_imguiRenderer.RenderViewport_Test( m_renderGraph, m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
 
+                m_pRenderDevice->GetRHIDevice()->BeginFrame();
+
                 bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice->GetRHIDevice() );
                 // TODO: when pipeline registry failed to update pipelines, use old pipelines
                 m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
  
                 if ( bCompileResult )
                 {
-                    m_pRenderDevice->GetRHIDevice()->BeginFrame();
-
                     m_renderGraph.Execute( m_pRenderDevice->GetRHIDevice() );
                     m_renderGraph.Present( m_pRenderDevice->GetRHIDevice(), *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
 
-                    m_pRenderDevice->GetRHIDevice()->EndFrame();
                     m_pRenderDevice->PresentFrame();
                 }
-                
+
                 m_renderGraph.Retire();
+                m_pRenderDevice->GetRHIDevice()->EndFrame();
             }
         }
 

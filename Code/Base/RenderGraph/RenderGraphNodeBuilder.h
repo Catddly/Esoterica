@@ -121,11 +121,11 @@ namespace EE::RG
         m_node.m_inputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
 
         // fetch graph resource from render graph
-        DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
+        //DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
         // return a lifetime limited reference to it.
         // Note: here we take a const reference description of a resource.
         // The whole system should make sure the lifetime of RGNodeResourceRef should be less than the resources inside RGResourceRegistry.
-        return RGNodeResourceRef<Tag, RVT>( desc, pResource.m_slotID );
+        return RGNodeResourceRef<Tag, RVT>( pResource.m_slotID );
     }
 
     template <typename Tag, RGResourceViewType RVT>
@@ -143,7 +143,7 @@ namespace EE::RG
         m_node.m_outputs.emplace_back( pResource.m_slotID, std::move( accessState ) );
 
         // fetch graph resource from render graph
-        DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
+        //DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
 
         // after write operation, this resource is considered a new resource
         _Impl::RGResourceID newSlotID = pResource.m_slotID;
@@ -152,6 +152,6 @@ namespace EE::RG
         // return a lifetime limited reference to it.
         // Note: here we take a const reference description of a resource.
         // The whole system should make sure the lifetime of RGNodeResourceRef should be less than the resources inside RGResourceRegistry.
-        return RGNodeResourceRef<Tag, RVT>( desc, newSlotID );
+        return RGNodeResourceRef<Tag, RVT>( newSlotID );
     }
 }
