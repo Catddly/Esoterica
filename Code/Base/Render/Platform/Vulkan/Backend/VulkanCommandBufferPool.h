@@ -26,7 +26,7 @@ namespace EE::Render
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
-            constexpr static uint32_t NumMaxCommandBufferPerPool = 8;
+            constexpr static uint32_t NumMaxCommandBufferPerPool = 32;
 
             using AllocatedCommandBufferArray = TVector<TFixedVector<VulkanCommandBuffer*, NumMaxCommandBufferPerPool>>;
 
@@ -64,7 +64,7 @@ namespace EE::Render
 
             inline uint32_t GetPoolAllocatedBufferCount() const;
 
-            inline void WaitAllFences( TInlineVector<VkFence, 16> fences, uint64_t timeout = std::numeric_limits<uint64_t>::max() );
+            inline void WaitAllFences( TInlineVector<VkFence, NumMaxCommandBufferPerPool> fences, uint64_t timeout = std::numeric_limits<uint64_t>::max() );
 
         private:
 

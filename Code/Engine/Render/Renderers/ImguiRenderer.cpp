@@ -163,43 +163,6 @@ namespace EE::Render
     //    m_PSO.m_pPixelShader = &m_pixelShader;
     //    m_PSO.m_pBlendState = &m_blendState;
     //    m_PSO.m_pRasterizerState = &m_rasterizerState;
-
-    //    //-------------------------------------------------------------------------
-    //    // IMGUI Setup
-    //    //-------------------------------------------------------------------------
-
-    //    // Imgui needs to be initialized before this
-    //    EE_ASSERT( ::ImGui::GetCurrentContext() != nullptr );
-
-    //    ImGuiIO& io = ::ImGui::GetIO();
-    //    io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
-
-    //    // Multiple Viewport Support
-    //    if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
-    //    {
-    //        ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
-    //        platformIO.Renderer_CreateWindow = ImGui_CreateWindowContext;
-    //        platformIO.Renderer_DestroyWindow = ImGui_DestroyWindowContext;
-    //        platformIO.Renderer_SetWindowSize = ImGui_SetWindowSize;
-    //    }
-
-    //    //-------------------------------------------------------------------------
-
-    //    uint8_t* pPixels = nullptr;
-    //    Int2 dimensions;
-    //    io.Fonts->GetTexDataAsRGBA32( &pPixels, &dimensions.m_x, &dimensions.m_y );
-    //    size_t const textureDataSize = dimensions.m_x * dimensions.m_y * 4;
-
-    //    m_fontTexture = Texture( dimensions );
-    //    EE_ASSERT( pPixels != nullptr );
-    //    m_pRenderDevice->CreateDataTexture( m_fontTexture, TextureFormat::Raw, pPixels, textureDataSize );
-
-    //    io.Fonts->TexID = const_cast<ViewSRVHandle*>( &m_fontTexture.GetShaderResourceView() );
-
-    //    //-------------------------------------------------------------------------
-
-    //    m_initialized = m_fontTexture.IsValid();
-    //    return m_initialized;
     //}
 
     bool ImguiRenderer::Initialize( RenderDevice* pRenderDevice )
@@ -364,22 +327,35 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        //uint8_t* pPixels = nullptr;
-        //Int2 dimensions;
-        //io.Fonts->GetTexDataAsRGBA32( &pPixels, &dimensions.m_x, &dimensions.m_y );
-        //size_t const textureDataSize = dimensions.m_x * dimensions.m_y * 4;
+        constexpr size_t fontTextureByteSize = 4;
+        uint8_t* pPixels = nullptr;
+        Int2 dimensions;
+        io.Fonts->GetTexDataAsRGBA32( &pPixels, &dimensions.m_x, &dimensions.m_y );
+        size_t const textureDataSize = dimensions.m_x * dimensions.m_y * fontTextureByteSize;
+        EE_ASSERT( pPixels != nullptr );
 
-        //m_fontTexture = Texture( dimensions );
-        //EE_ASSERT( pPixels != nullptr );
-        //m_pRenderDevice->CreateDataTexture( m_fontTexture, TextureFormat::Raw, pPixels, textureDataSize );
+        RHI::RHITextureBufferData texBufferData;
+        texBufferData.m_textureWidth = static_cast<uint32_t>( dimensions.m_x );
+        texBufferData.m_textureHeight = static_cast<uint32_t>( dimensions.m_y );
+        texBufferData.m_textureDepth = 1;
+        texBufferData.m_pixelByteLength = static_cast<uint32_t>( fontTextureByteSize );
+        texBufferData.m_binary.resize( textureDataSize );
+        memcpy( texBufferData.m_binary.data(), pPixels, textureDataSize );
+        auto fontTextureCreateDesc = RHI::RHITextureCreateDesc::NewInitData( texBufferData, RHI::EPixelFormat::RGBA8Unorm );
+        fontTextureCreateDesc.m_usage.SetFlag( RHI::ETextureUsage::Sampled );
 
-        //io.Fonts->TexID = const_cast<ViewSRVHandle*>( &m_fontTexture.GetShaderResourceView() );
+        m_fontTexture = m_pRenderDevice->GetRHIDevice()->CreateTexture( fontTextureCreateDesc );
 
-        ////-------------------------------------------------------------------------
+        if ( !m_fontTexture )
+        {
+            EE_LOG_ERROR( "Render", "Imgui Renderer", "Failed to initialize font rhi texture.");
+            return false;
+        }
 
-        //m_initialized = m_fontTexture.IsValid();
+        io.Fonts->TexID = m_fontTexture;
+
         m_initialized = true;
-        return m_initialized;
+        return true;
     }
 
     void ImguiRenderer::Shutdown()
@@ -450,6 +426,11 @@ namespace EE::Render
         //{
         //    m_pRenderDevice->DestroyBlendState( m_blendState );
         //}
+
+        if ( m_fontTexture )
+        {
+            m_pRenderDevice->GetRHIDevice()->DestroyTexture( m_fontTexture );
+        }
 
         m_pRenderDevice = nullptr;
         m_initialized = false;
@@ -533,39 +514,52 @@ namespace EE::Render
         // Viewport Support
         //-------------------------------------------------------------------------
 
-        //if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
-        //{
-        //    ImGui::UpdatePlatformWindows();
+        if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
+        {
+            ImGui::UpdatePlatformWindows();
 
-        //    //-------------------------------------------------------------------------
+            //-------------------------------------------------------------------------
 
-        //    ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+            ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
 
-        //    for ( int i = 1; i < platformIO.Viewports.Size; i++ )
-        //    {
-        //        ImGuiViewport* pViewport = platformIO.Viewports[i];
-        //        if ( pViewport->Flags & ImGuiViewportFlags_IsMinimized )
-        //        {
-        //            continue;
-        //        }
+            for ( int i = 1; i < platformIO.Viewports.Size; i++ )
+            {
+                ImGuiViewport* pViewport = platformIO.Viewports[i];
+                if ( pViewport->Flags & ImGuiViewportFlags_IsMinimized )
+                {
+                    continue;
+                }
 
-        //        auto pSecondarySwapChain = (RenderWindow*) pViewport->RendererUserData;
-        //        EE_ASSERT( pSecondarySwapChain != nullptr );
+                auto* pSecondarySwapChain = (RenderWindow*) pViewport->RendererUserData;
+                EE_ASSERT( pSecondarySwapChain != nullptr );
 
-        //        renderContext.SetRenderTarget( *pSecondarySwapChain->GetRenderTarget() );
-        //        if ( !( pViewport->Flags & ImGuiViewportFlags_NoRendererClear ) )
-        //        {
-        //            renderContext.ClearRenderTargetViews( *pSecondarySwapChain->GetRenderTarget() );
-        //        }
-        //        RenderImguiData( renderContext, pViewport->DrawData );
-        //        renderContext.Present( *pSecondarySwapChain );
-        //    }
-        //}
+                //renderContext.SetRenderTarget( *pSecondarySwapChain->GetRenderTarget() );
+                 
+                // TODO: render target clear up
+                //if ( !( pViewport->Flags & ImGuiViewportFlags_NoRendererClear ) )
+                //{
+                //    renderContext.ClearRenderTargetViews( *pSecondarySwapChain->GetRenderTarget() );
+                //}
+                
+                //RenderImguiData( renderContext, pViewport->DrawData );
+                RenderImguiData( renderGraph, *pSecondarySwapChain->GetRenderTarget(), pViewport->DrawData );
+                //renderContext.Present( *pSecondarySwapChain );
+
+                pSecondarySwapChain->Present();
+            }
+        }
     }
 
     void ImguiRenderer::RenderImguiData( RG::RenderGraph& renderGraph, RenderTarget const& renderTarget, ImDrawData const* pDrawData )
     {
         if ( pDrawData->DisplaySize.x <= 0.0f || pDrawData->DisplaySize.y <= 0.0f )
+        {
+            return;
+        }
+
+        // [Bug?] This may happen after window is minimized. (i.e. DisplaySize in ImDrawData doesn't match the size in RenderTarget after swapchain resizing)
+        if ( pDrawData->DisplaySize.x != renderTarget.GetDimensions().m_x &&
+             pDrawData->DisplaySize.y != renderTarget.GetDimensions().m_y )
         {
             return;
         }
@@ -827,12 +821,12 @@ namespace EE::Render
                             imguiTexBinding.m_layout = RHI::ETextureLayout::ShaderReadOnlyOptimal;
 
                             // Bind descriptor
-                            RG::RGPipelineBinding const binding0[] = {
+                            RG::RGPipelineBinding const binding[] = {
                                 RG::Bind( uboBinding ),
                                 RG::BindStaticSampler(),
                                 RG::BindRaw( { eastl::move( imguiTexBinding ) } )
                             };
-                            boundPipeline.Bind( 0, binding0 );
+                            boundPipeline.Bind( 0, binding );
 
                             // Draw
                             context.DrawIndexed( pCmd->ElemCount, 1, pCmd->IdxOffset + indexOffset, pCmd->VtxOffset + vertexOffset );

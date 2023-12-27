@@ -83,7 +83,6 @@ namespace EE::Render::Utils
         memcpy( bufferData.m_binary.data(), pImage, imageSize );
 
         stbi_image_free( pImage );
-
         return true;
     }
 

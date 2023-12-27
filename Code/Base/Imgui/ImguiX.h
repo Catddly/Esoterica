@@ -171,7 +171,6 @@ namespace EE::ImGuiX
 
         ImTextureID             m_ID = 0;
         RHI::RHITexture*        m_pTexture = nullptr;
-        //Render::Texture*        m_pTexture = nullptr;
         ImVec2                  m_size = ImVec2( 0, 0 );
     };
 

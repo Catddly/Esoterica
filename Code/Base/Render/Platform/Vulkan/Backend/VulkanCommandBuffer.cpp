@@ -162,7 +162,8 @@ namespace EE::Render
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
 
-            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState );
+            bool bFoundBoundedVkSet;
+            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState, bFoundBoundedVkSet );
             if ( !vkSet )
             {
                 return;
@@ -172,12 +173,15 @@ namespace EE::Render
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
             EE_ASSERT( pVkDevice );
 
-            TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
-            TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
             TInlineVector<uint32_t, 4> dynOffsets;
-            auto writes = WriteDescriptorSets( vkSet, pVkPipelineState->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
+            if ( !bFoundBoundedVkSet )
+            {
+                TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
+                TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
+                auto writes = WriteDescriptorSets( vkSet, pVkPipelineState->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
 
-            vkUpdateDescriptorSets( pVkDevice->m_pHandle, static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
+                vkUpdateDescriptorSets( pVkDevice->m_pHandle, static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
+            }
 
             vkCmdBindDescriptorSets(
                 m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipelineLayout,
@@ -220,8 +224,9 @@ namespace EE::Render
             EE_ASSERT( pPipelineState );
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
-
-            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState );
+            
+            bool bFoundBoundedVkSet;
+            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState, bFoundBoundedVkSet );
             if ( !vkSet )
             {
                 return;
@@ -964,11 +969,12 @@ namespace EE::Render
             return writes;
         }
 
-        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState )
+        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState, bool& foundBounded )
         {
             auto iterator = m_createdDescriptorSets.find( set );
             if ( iterator != m_createdDescriptorSets.end() )
             {
+                foundBounded = true;
                 return iterator->second;
             }
 
@@ -1007,6 +1013,7 @@ namespace EE::Render
             VK_SUCCEEDED( vkAllocateDescriptorSets( pVkDevice->m_pHandle, &setAllocateInfo, &vkSet ) );
 
             m_createdDescriptorSets.insert_or_assign( set, vkSet );
+            foundBounded = false;
             return vkSet;
         }
 

@@ -8,17 +8,6 @@
 
 namespace EE::Render
 {
-    Int2 RenderTarget::GetDimensions() const
-    {
-        EE_ASSERT( IsValid() );
-        return Int2{ 
-            static_cast<int>( m_pRenderTarget->GetDesc().m_width ),
-            static_cast<int>( m_pRenderTarget->GetDesc().m_height )
-        };
-    }
-
-    //-------------------------------------------------------------------------
-
 	bool RenderTarget::InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams )
 	{
         EE_ASSERT( pDevice );
@@ -29,6 +18,7 @@ namespace EE::Render
             params.m_width, params.m_height, RHI::EPixelFormat::RGBA8Unorm
         );
 
+        m_dimensions = Int2{ (int32_t) params.m_width, (int32_t) params.m_height };
         m_pRenderTarget = pDevice->CreateTexture( textureDesc );
 	
         if ( params.m_bNeedDepth )
@@ -91,6 +81,8 @@ namespace EE::Render
 	{
         SwapchainRenderTargetCreateParameters const& params = static_cast<SwapchainRenderTargetCreateParameters const&>( createParams );
         m_pSwapchain = params.m_pSwapchain;
+
+        m_dimensions = Int2{ (int32_t) m_pSwapchain->GetPresentTextureDesc().m_width, (int32_t) m_pSwapchain->GetPresentTextureDesc().m_height };
 
         if ( !m_pSwapchain )
         {

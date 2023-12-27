@@ -293,7 +293,7 @@ namespace EE::Render
             rasterEntry->m_pPipelineState = pPipelineState;
 
             // TODO: add render graph debug name
-            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%ull] Pipeline Visible.", rasterEntry->m_desc.GetHash() );
+            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", rasterEntry->m_desc.GetHash() );
 
             return true;
         }

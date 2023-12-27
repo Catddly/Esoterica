@@ -148,7 +148,7 @@ namespace EE::Render
                 TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
             );
 
-            VkDescriptorSet CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState );
+            VkDescriptorSet CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState, bool& foundBounded );
 
             //-------------------------------------------------------------------------
 

@@ -71,10 +71,10 @@ namespace EE::Render
         //RHI::RHIBuffer*                     m_pVertexBuffer = nullptr;
         //RHI::RHIBuffer*                     m_pIndexBuffer = nullptr;
 
+        // TODO: eliminate render pass
         RHI::RHIRenderPass*                 m_pRenderPass = nullptr;
+        RHI::RHITexture*                    m_fontTexture = nullptr;
 
-        // TODO: we change the origin PipelineState to RasterPipelineState
-        //RasterPipelineState             m_PSO;
         bool                                m_initialized = false;
     };
 }

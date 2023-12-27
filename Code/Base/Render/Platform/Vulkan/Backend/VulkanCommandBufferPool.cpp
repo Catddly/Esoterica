@@ -42,7 +42,7 @@ namespace EE::Render
                 allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
                 allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
                 allocInfo.commandPool = pool;
-                allocInfo.commandBufferCount = NumMaxCommandBufferPerPool;
+                allocInfo.commandBufferCount = 1;
 
                 if ( m_allocatedCommandBuffers.size() < NumMaxCommandBufferPerPool ) // pool still have space
                 {
@@ -61,8 +61,8 @@ namespace EE::Render
 
                     VkCommandBuffer cmdBuffer;
                     VK_SUCCEEDED( vkAllocateCommandBuffers( m_pDevice->m_pHandle, &allocInfo, &cmdBuffer ) );
-                    pVkCommandBuffer->m_pHandle = cmdBuffer;
 
+                    pVkCommandBuffer->m_pHandle = cmdBuffer;
                     auto& newCommandBufferArray = m_allocatedCommandBuffers.push_back();
                     newCommandBufferArray.push_back( pVkCommandBuffer );
 
@@ -194,7 +194,7 @@ namespace EE::Render
 
         void VulkanCommandBufferPool::WaitUntilAllCommandsFinish()
         {
-            TInlineVector<VkFence, 2 * NumMaxCommandBufferPerPool> toWaitFences;
+            TInlineVector<VkFence, NumMaxCommandBufferPerPool> toWaitFences;
             for ( auto* pSubmittedCommandBuffer : m_submittedCommandBuffers )
             {
                 if ( pSubmittedCommandBuffer->m_sync.IsValid() )
@@ -280,7 +280,7 @@ namespace EE::Render
             return static_cast<uint32_t>( m_allocatedCommandBuffers.back().size() );
         }
 
-        void VulkanCommandBufferPool::WaitAllFences( TInlineVector<VkFence, 16> fences, uint64_t timeout )
+        void VulkanCommandBufferPool::WaitAllFences( TInlineVector<VkFence, NumMaxCommandBufferPerPool> fences, uint64_t timeout )
         {
             VK_SUCCEEDED( vkWaitForFences( m_pDevice->m_pHandle, static_cast<uint32_t>( fences.size() ), fences.data(), true, timeout ) );
         }

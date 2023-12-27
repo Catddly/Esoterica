@@ -448,8 +448,8 @@ namespace EE::Render
 
         window.m_pSwapchain = nullptr;
 
-        m_immediateContext.m_pDeviceContext->ClearState();
-        m_immediateContext.m_pDeviceContext->Flush();
+        //m_immediateContext.m_pDeviceContext->ClearState();
+        //m_immediateContext.m_pDeviceContext->Flush();
     }
 
     void RenderDevice::ResizeWindow( RenderWindow& window, Int2 const& dimensions )

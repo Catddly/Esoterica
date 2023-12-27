@@ -206,7 +206,7 @@ namespace EE
 
                 if ( firstPresentNodeIndex < 0 )
                 {
-                    EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RenderGraph has no presentable node!" );
+                    //EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RenderGraph has no presentable node!" );
                     return false;
                 }
 

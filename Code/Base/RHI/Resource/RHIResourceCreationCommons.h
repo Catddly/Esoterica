@@ -111,7 +111,7 @@ namespace EE::RHI
 
     struct RHITextureCreateDesc;
 
-    struct RHITextureBufferData
+    struct EE_BASE_API RHITextureBufferData
     {
         Blob                m_binary;
         uint32_t            m_textureWidth = 0;
@@ -129,7 +129,7 @@ namespace EE::RHI
         bool CanBeUsedBy( RHITextureCreateDesc const& textureCreateDesc ) const;
     };
 
-    struct RHITextureCreateDesc
+    struct EE_BASE_API RHITextureCreateDesc
     {
     public:
 

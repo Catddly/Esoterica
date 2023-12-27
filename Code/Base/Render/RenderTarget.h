@@ -48,9 +48,9 @@ namespace EE::Render
         virtual ~RenderTarget() { EE_ASSERT( m_pRenderTarget == nullptr ); }
 
         inline bool IsValid() const { return m_pRenderTarget != nullptr; }
-        Int2 GetDimensions() const;
         inline bool HasDepthStencil() const { return m_pDepthStencil != nullptr; }
         inline bool HasPickingRT() const { return m_pPickingRT != nullptr; }
+        inline Int2 GetDimensions() const { return m_dimensions; }
 
         inline bool operator==( RenderTarget const& rhs ) const { return m_pRenderTarget == rhs.m_pRenderTarget && m_pDepthStencil == rhs.m_pDepthStencil; }
         inline bool operator!=( RenderTarget const& rhs ) const { return !operator==(rhs); }
@@ -77,6 +77,8 @@ namespace EE::Render
         virtual bool InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams ) override;
 
     protected:
+
+        Int2                        m_dimensions;
 
         RHI::RHITexture*            m_pRenderTarget = nullptr;
         RHI::RHITexture*            m_pDepthStencil = nullptr;
