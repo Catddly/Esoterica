@@ -10,7 +10,7 @@
 #include "VulkanCommandQueue.h"
 #include "RHIToVulkanSpecification.h"
 #include "Base/Math/Math.h"
-#include "Base/Types/Map.h"
+#include "Base/Encoding/Hash.h"
 #include "Base/RHI/Resource/RHIDescriptorSet.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
@@ -158,29 +158,43 @@ namespace EE::Render
 
         void VulkanCommandBuffer::BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings )
         {
+            static VkDescriptorSet lastBoundVkDescriptorSet = nullptr;
+
             EE_ASSERT( pPipelineState );
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
 
-            bool bFoundBoundedVkSet;
-            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState, bFoundBoundedVkSet );
+            VulkanDescriptorSetHash const hash = {
+                set,
+                bindings
+            };
+
+            VkDescriptorSet vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, pVkPipelineState );
             if ( !vkSet )
             {
                 return;
             }
+
+            if ( lastBoundVkDescriptorSet == vkSet )
+            {
+                return;
+            }
+            lastBoundVkDescriptorSet = vkSet;
 
             EE_ASSERT( m_pDevice );
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
             EE_ASSERT( pVkDevice );
 
             TInlineVector<uint32_t, 4> dynOffsets;
-            if ( !bFoundBoundedVkSet )
+            size_t const setHashValue = hash.GetHash();
+            if ( !IsInPlaceDescriptorSetUpdated( setHashValue ) )
             {
                 TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
                 TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
                 auto writes = WriteDescriptorSets( vkSet, pVkPipelineState->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
 
                 vkUpdateDescriptorSets( pVkDevice->m_pHandle, static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
+                MarkAsUpdated( setHashValue, vkSet );
             }
 
             vkCmdBindDescriptorSets(
@@ -225,8 +239,19 @@ namespace EE::Render
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
             
-            bool bFoundBoundedVkSet;
-            VkDescriptorSet vkSet = CreateOrFindInPlaceDescriptorSet( set, pVkPipelineState, bFoundBoundedVkSet );
+            RHI::RHIPipelineBinding const bindingsRef[] = { rhiBinding };
+            VulkanDescriptorSetHash const hash = {
+                set,
+                bindingsRef
+            };
+
+            size_t const setHashValue = hash.GetHash();
+            if ( IsInPlaceDescriptorSetUpdated( setHashValue ) ) // Only update once
+            {
+                return;
+            }
+
+            VkDescriptorSet vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, pVkPipelineState );
             if ( !vkSet )
             {
                 return;
@@ -245,6 +270,7 @@ namespace EE::Render
             );
 
             vkUpdateDescriptorSets( pVkDevice->m_pHandle, 1, &write, 0, nullptr );
+            MarkAsUpdated( setHashValue, vkSet );
         }
 
         // State Settings
@@ -969,12 +995,26 @@ namespace EE::Render
             return writes;
         }
 
-        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState, bool& foundBounded )
+        void VulkanCommandBuffer::MarkAsUpdated( size_t setHashValue, VkDescriptorSet vkSet )
         {
-            auto iterator = m_createdDescriptorSets.find( set );
-            if ( iterator != m_createdDescriptorSets.end() )
+            m_updatedDescriptorSets.insert_or_assign( setHashValue, vkSet);
+        }
+
+        bool VulkanCommandBuffer::IsInPlaceDescriptorSetUpdated( size_t setHashValue )
+        {
+            if ( m_updatedDescriptorSets.find( setHashValue ) == m_updatedDescriptorSets.end() )
             {
-                foundBounded = true;
+                return false;
+            }
+            return true;
+        }
+
+        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanPipelineState const* pVkPipelineState )
+        {
+            size_t const hashValue = hash.GetHash();
+            auto iterator = m_updatedDescriptorSets.find( hashValue );
+            if ( iterator != m_updatedDescriptorSets.end() )
+            {
                 return iterator->second;
             }
 
@@ -982,7 +1022,7 @@ namespace EE::Render
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
             EE_ASSERT( pVkDevice );
 
-            if ( pVkPipelineState->m_setDescriptorLayouts.empty() || pVkPipelineState->m_setDescriptorLayouts.size() <= set )
+            if ( pVkPipelineState->m_setDescriptorLayouts.empty() || pVkPipelineState->m_setDescriptorLayouts.size() <= hash.m_set )
             {
                 return nullptr;
             }
@@ -991,7 +1031,7 @@ namespace EE::Render
             poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolCI.maxSets = 1;
             poolCI.poolSizeCount = 1;
-            poolCI.pPoolSizes = &pVkPipelineState->m_setPoolSizes[set];
+            poolCI.pPoolSizes = &pVkPipelineState->m_setPoolSizes[hash.m_set];
             // TODO: pool update after bind
 
             VkDescriptorPool vkPool;
@@ -1006,14 +1046,13 @@ namespace EE::Render
             VkDescriptorSetAllocateInfo setAllocateInfo = {};
             setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             setAllocateInfo.descriptorSetCount = 1;
-            setAllocateInfo.pSetLayouts = &pVkPipelineState->m_setLayouts[set];
+            setAllocateInfo.pSetLayouts = &pVkPipelineState->m_setLayouts[hash.m_set];
             setAllocateInfo.descriptorPool = vkPool;
 
-            VkDescriptorSet vkSet;
+            VkDescriptorSet vkSet = nullptr;
             VK_SUCCEEDED( vkAllocateDescriptorSets( pVkDevice->m_pHandle, &setAllocateInfo, &vkSet ) );
+            EE_ASSERT( vkSet );
 
-            m_createdDescriptorSets.insert_or_assign( set, vkSet );
-            foundBounded = false;
             return vkSet;
         }
 
@@ -1021,9 +1060,22 @@ namespace EE::Render
 
 		void VulkanCommandBuffer::CleanUp()
 		{
-            m_createdDescriptorSets.clear();
+            m_updatedDescriptorSets.clear();
 		}
-	}
+
+        //-------------------------------------------------------------------------
+
+        size_t VulkanDescriptorSetHash::GetHash() const
+        {
+            size_t hash = 0;
+            Hash::HashCombine( hash, m_set );
+            for ( RHI::RHIPipelineBinding const& binding : m_bindings )
+            {
+                Hash::HashCombine( hash, binding.GetHash() );
+            }
+            return hash;
+        }
+    }
 }
 
 #endif

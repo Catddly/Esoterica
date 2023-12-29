@@ -7,8 +7,6 @@
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Math/Math.h"
-// TODO: remove this
-//#include "Base/Render/RenderTexture.h"
 
 //-------------------------------------------------------------------------
 //	Rather than use sophisticated enum and bit flags inside vulkan or DX12

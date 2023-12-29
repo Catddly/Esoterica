@@ -585,6 +585,7 @@
     <ClCompile Include="RHI\Resource\RHIBuffer.cpp" />
     <ClCompile Include="RHI\Resource\RHIDescriptorSet.cpp" />
     <ClCompile Include="RHI\RHIDevice.cpp" />
+    <ClCompile Include="RHI\RHIResourceBindings.cpp" />
     <ClCompile Include="RHI\RHIResourceBinding.h" />
     <ClCompile Include="RHI\Resource\RHIRenderPass.cpp" />
     <ClCompile Include="RHI\Resource\RHIResourceCreationCommons.cpp" />

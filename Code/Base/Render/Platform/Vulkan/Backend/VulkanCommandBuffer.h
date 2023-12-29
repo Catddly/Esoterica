@@ -3,11 +3,10 @@
 
 #include "Base/Types/Arrays.h"
 #include "Base/Types/List.h"
-#include "Base/Types/Map.h"
+#include "Base/Types/HashMap.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/RHICommandBuffer.h"
-#include "Base/RHI/RHIResourceBinding.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -59,6 +58,20 @@ namespace EE::Render
             VkImageMemoryBarrier				m_barrier;
         };
 
+        struct VulkanDescriptorSetHash
+        {
+            uint32_t                                        m_set;
+            TSpan<RHI::RHIPipelineBinding const> const&     m_bindings;
+
+            size_t GetHash() const;
+
+            friend bool operator==( VulkanDescriptorSetHash const& lhs, VulkanDescriptorSetHash const& rhs )
+            {
+                return eastl::tie( lhs.m_set, lhs.m_bindings )
+                    == eastl::tie( rhs.m_set, rhs.m_bindings );
+            }
+        };
+
         //-------------------------------------------------------------------------
 
         class VulkanCommandBufferPool;
@@ -76,7 +89,7 @@ namespace EE::Render
             VulkanCommandBuffer()
                 : RHICommandBuffer( RHI::ERHIType::Vulkan )
             {
-                m_createdDescriptorSets.clear();
+                m_updatedDescriptorSets.clear();
             }
             virtual ~VulkanCommandBuffer() = default;
 
@@ -148,7 +161,10 @@ namespace EE::Render
                 TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
             );
 
-            VkDescriptorSet CreateOrFindInPlaceDescriptorSet( uint32_t set, VulkanPipelineState const* pVkPipelineState, bool& foundBounded );
+            inline void MarkAsUpdated( size_t setHashValue, VkDescriptorSet vkSet );
+            inline bool IsInPlaceDescriptorSetUpdated( size_t setHashValue );
+            
+            VkDescriptorSet CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanPipelineState const* pVkPipelineState );
 
             //-------------------------------------------------------------------------
 
@@ -168,9 +184,25 @@ namespace EE::Render
             VulkanCommandBufferPool*                                    m_pCommandBufferPool = nullptr;
             uint32_t                                                    m_pInnerPoolIndex = 0;
 
-            TMap<uint32_t, VkDescriptorSet>                             m_createdDescriptorSets;
+            // Only safe cached hash here
+            THashMap<size_t, VkDescriptorSet>                           m_updatedDescriptorSets;
 		};
     }
+}
+
+// Hash
+//-------------------------------------------------------------------------
+
+namespace eastl
+{
+    template <>
+    struct hash<EE::Render::Backend::VulkanDescriptorSetHash>
+    {
+        EE_FORCE_INLINE eastl_size_t operator()( EE::Render::Backend::VulkanDescriptorSetHash const& descriptorSetHash ) const noexcept
+        {
+            return descriptorSetHash.GetHash();
+        }
+    };
 }
 
 #endif

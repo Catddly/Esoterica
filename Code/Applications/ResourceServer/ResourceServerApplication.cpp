@@ -456,12 +456,12 @@ namespace EE
 
 int APIENTRY _tWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow )
 {
-    //HANDLE pSingletonMutex = CreateMutex( NULL, TRUE, "Esoterica Resource Server" );
-    //if ( GetLastError() == ERROR_ALREADY_EXISTS )
-    //{
-    //    MessageBox( GetActiveWindow(), "Only a single instance of the Resource Server is allowed to run!", "Fatal Error Occurred!", MB_OK | MB_ICONERROR );
-    //    return -1;
-    //}
+    HANDLE pSingletonMutex = CreateMutex( NULL, TRUE, "Esoterica Resource Server" );
+    if ( GetLastError() == ERROR_ALREADY_EXISTS )
+    {
+        MessageBox( GetActiveWindow(), "Only a single instance of the Resource Server is allowed to run!", "Fatal Error Occurred!", MB_OK | MB_ICONERROR );
+        return -1;
+    }
 
     //-------------------------------------------------------------------------
 
@@ -478,8 +478,8 @@ int APIENTRY _tWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 
     //-------------------------------------------------------------------------
 
-    //ReleaseMutex( pSingletonMutex );
-    //CloseHandle( pSingletonMutex );
+    ReleaseMutex( pSingletonMutex );
+    CloseHandle( pSingletonMutex );
 
     return result;
 }
