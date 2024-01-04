@@ -17,6 +17,11 @@ namespace EE::RHI
         {
             return lhs.m_pBuffer == rhs.m_pBuffer;
         }
+
+        friend bool operator!=( RHIBufferBinding const& lhs, RHIBufferBinding const& rhs )
+        {
+            return !operator==( lhs, rhs );
+        }
     };
 
     struct RHIDynamicBufferBinding
@@ -28,6 +33,11 @@ namespace EE::RHI
         {
             return eastl::tie( lhs.m_pBuffer, lhs.m_dynamicOffset )
                 == eastl::tie( rhs.m_pBuffer, rhs.m_dynamicOffset );
+        }
+
+        friend bool operator!=( RHIDynamicBufferBinding const& lhs, RHIDynamicBufferBinding const& rhs )
+        {
+            return !operator==( lhs, rhs );
         }
     };
 
@@ -69,6 +79,11 @@ namespace EE::RHI
 
             return true;
         }
+
+        friend bool operator!=( RHITextureArrayBinding const& lhs, RHITextureArrayBinding const& rhs )
+        {
+            return !operator==( lhs, rhs );
+        }
     };
 
     // Use as a placeholder
@@ -78,14 +93,24 @@ namespace EE::RHI
         {
             return true;
         }
+
+        inline friend bool operator!=( RHIStaticSamplerBinding const& lhs, RHIStaticSamplerBinding const& rhs )
+        {
+            return !operator==( lhs, rhs );
+        }
     };
-    
+
     // Use as a placeholder
     struct RHIUnknownBinding
     {
         inline friend bool operator==( RHIUnknownBinding const&, RHIUnknownBinding const& )
         {
             return true;
+        }
+
+        inline friend bool operator!=( RHIUnknownBinding const& lhs, RHIUnknownBinding const& rhs )
+        {
+            return !operator==( lhs, rhs );
         }
     };
 

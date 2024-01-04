@@ -463,9 +463,6 @@
     <ClCompile Include="RHI\RHIHelper.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\RHIResourceBinding.h">
-      <Filter>RHI</Filter>
-    </ClCompile>
     <ClCompile Include="RHI\RHIDevice.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
@@ -490,9 +487,7 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.cpp">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\RHIResourceBindings.cpp">
-      <Filter>RHI</Filter>
-    </ClCompile>
+    <ClCompile Include="RHI\RHIResourceBinding.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -2120,6 +2115,9 @@
     </ClInclude>
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHIResourceBinding.h">
+      <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

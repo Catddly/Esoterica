@@ -262,7 +262,7 @@ namespace EE::Render
                 }
 
                 // Clear render target and depth stencil textures
-                m_pRenderDevice->GetImmediateContext().ClearRenderTargetViews( *pViewportRT );
+                //m_pRenderDevice->GetImmediateContext().ClearRenderTargetViews( *pViewportRT );
             }
 
             // Draw

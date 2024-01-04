@@ -25,6 +25,7 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanResourceBinding.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h" />
+    <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\Resource\RHIDescriptorSet.h" />
     <ClInclude Include="RHI\Resource\RHITextureView.h" />
     <ClInclude Include="RHI\RHICommandBuffer.h" />
@@ -585,13 +586,12 @@
     <ClCompile Include="RHI\Resource\RHIBuffer.cpp" />
     <ClCompile Include="RHI\Resource\RHIDescriptorSet.cpp" />
     <ClCompile Include="RHI\RHIDevice.cpp" />
-    <ClCompile Include="RHI\RHIResourceBindings.cpp" />
-    <ClCompile Include="RHI\RHIResourceBinding.h" />
     <ClCompile Include="RHI\Resource\RHIRenderPass.cpp" />
     <ClCompile Include="RHI\Resource\RHIResourceCreationCommons.cpp" />
     <ClCompile Include="RHI\Resource\RHITexture.cpp" />
     <ClCompile Include="RHI\RHICommandBuffer.cpp" />
     <ClCompile Include="RHI\RHIHelper.cpp" />
+    <ClCompile Include="RHI\RHIResourceBinding.cpp" />
     <ClCompile Include="ThirdParty\implot\implot.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_demo.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_items.cpp" />

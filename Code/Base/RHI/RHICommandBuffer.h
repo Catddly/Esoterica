@@ -1,12 +1,12 @@
 #pragma once
 
 #include "RHITaggedType.h"
-#include "RHIResourceBinding.h"
-#include "Resource/RHITextureView.h"
-#include "Resource/RHIResourceCreationCommons.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Math/Math.h"
+#include "Resource/RHITextureView.h"
+#include "Resource/RHIResourceCreationCommons.h"
+#include "Base/RHI/RHIResourceBinding.h"
 
 //-------------------------------------------------------------------------
 //	Rather than use sophisticated enum and bit flags inside vulkan or DX12
