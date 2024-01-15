@@ -7,11 +7,15 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI { class RHIBuffer; }
+
+//-------------------------------------------------------------------------
+
 namespace EE::Render
 {
     class EE_BASE_API RenderBuffer
     {
-        friend class RenderDevice;
+        friend class MeshLoader;
 
         EE_SERIALIZE( m_ID, m_slot, m_byteSize, m_byteStride, m_usage, m_type );
 
@@ -38,32 +42,32 @@ namespace EE::Render
         RenderBuffer( RenderBuffer const& ) = default;
         RenderBuffer& operator=( RenderBuffer const& ) = default;
 
-        ~RenderBuffer() { EE_ASSERT( !m_resourceHandle.IsValid() ); }
+        ~RenderBuffer() { EE_ASSERT( !m_pBuffer ); }
 
-        inline bool IsValid() const { return m_resourceHandle.IsValid(); }
+        inline bool IsValid() const { return m_pBuffer != nullptr; }
 
-        BufferHandle const& GetResourceHandle() const { return m_resourceHandle; }
+        RHI::RHIBuffer const* GetRHIBuffer() const { return m_pBuffer; }
         inline uint32_t GetNumElements() const { return m_byteSize / m_byteStride; }
 
     public:
 
-        uint32_t                m_ID;
-        uint32_t                m_slot = 0;
-        uint32_t                m_byteSize = 0;
-        uint32_t                m_byteStride = 0;
-        Usage                   m_usage = Usage::GPU_only;
-        Type                    m_type = Type::Unknown;
+        uint32_t                            m_ID;
+        uint32_t                            m_slot = 0;
+        uint32_t                            m_byteSize = 0;
+        uint32_t                            m_byteStride = 0;
+        Usage                               m_usage = Usage::GPU_only;
+        Type                                m_type = Type::Unknown;
 
     protected:
 
-        BufferHandle            m_resourceHandle;
+        RHI::RHIBuffer*                     m_pBuffer = nullptr;
     };
 
     //-------------------------------------------------------------------------
 
     class EE_BASE_API VertexBuffer : public RenderBuffer
     {
-        friend class RenderDevice;
+        friend class MeshLoader;
         EE_SERIALIZE( EE_SERIALIZE_BASE( RenderBuffer ), m_vertexFormat );
 
     public:

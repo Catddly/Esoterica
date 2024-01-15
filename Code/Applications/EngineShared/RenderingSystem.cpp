@@ -7,6 +7,7 @@
 #include "Engine/UpdateContext.h"
 #include "Base/Profiling.h"
 #include "Base/Math/ViewVolume.h"
+#include "Base/Render/RenderPipelineRegistry.h"
 #include "Engine/Entity/EntityWorld.h"
 #include <eastl/sort.h>
 
@@ -46,15 +47,15 @@ namespace EE::Render
         m_viewportRenderTargets.erase( pViewportRenderTarget );
     }
 
-    ViewSRVHandle const& RenderingSystem::GetRenderTargetTextureForViewport( Viewport const* pViewport ) const
+    RenderTarget const& RenderingSystem::GetRenderTargetForViewport( Viewport const* pViewport ) const
     {
         EE_ASSERT( pViewport != nullptr && pViewport->GetID().IsValid() );
 
-        auto pViewportRenderTarget = FindRenderTargetForViewport( pViewport );
+        auto* pViewportRenderTarget = FindRenderTargetForViewport( pViewport );
         EE_ASSERT( pViewportRenderTarget != nullptr );
         EE_ASSERT( pViewportRenderTarget->m_pRenderTarget != nullptr && pViewportRenderTarget->m_pRenderTarget->IsValid() );
 
-        return pViewportRenderTarget->m_pRenderTarget->GetRenderTargetShaderResourceView();
+        return *pViewportRenderTarget->m_pRenderTarget;
     }
 
     Render::PickingID RenderingSystem::GetViewportPickingID( Viewport const* pViewport, Int2 const& pixelCoords ) const
@@ -88,17 +89,24 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    void RenderingSystem::Initialize( RenderDevice* pRenderDevice, Float2 primaryWindowDimensions, RendererRegistry* pRegistry, EntityWorldManager* pWorldManager )
+    void RenderingSystem::Initialize( RenderDevice* pRenderDevice, PipelineRegistry* pRenderPipelineRegistry, Float2 primaryWindowDimensions, RendererRegistry* pRegistry, EntityWorldManager* pWorldManager )
     {
         EE_ASSERT( m_pRenderDevice == nullptr );
-        EE_ASSERT( pRenderDevice != nullptr && pRegistry != nullptr );
+        EE_ASSERT( m_pRenderPipelineRegistry == nullptr );
+        EE_ASSERT( pRenderDevice != nullptr && pRegistry != nullptr && pRenderPipelineRegistry != nullptr );
         EE_ASSERT( pWorldManager != nullptr );
 
-        m_pRenderDevice = pRenderDevice;
-        m_pWorldManager = pWorldManager;
+        // Initialize render graph system
+        //-------------------------------------------------------------------------
+
+        m_pRenderPipelineRegistry = pRenderPipelineRegistry;
+        m_renderGraph.AttachToPipelineRegistry( m_pRenderPipelineRegistry );
 
         // Set initial render device size
         //-------------------------------------------------------------------------
+
+        m_pRenderDevice = pRenderDevice;
+        m_pWorldManager = pWorldManager;
 
         m_pRenderDevice->LockDevice();
         m_pRenderDevice->ResizePrimaryWindowRenderTarget( primaryWindowDimensions );
@@ -171,8 +179,12 @@ namespace EE::Render
 
     void RenderingSystem::Shutdown()
     {
+        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
+
         // Destroy any viewport render targets created
         //-------------------------------------------------------------------------
+
+        m_renderGraph.DestroyAllResources( m_pRenderDevice );
 
         m_pRenderDevice->LockDevice();
         for ( auto& viewportRenderTarget : m_viewportRenderTargets )
@@ -187,6 +199,7 @@ namespace EE::Render
         // Clear ptrs
         //-------------------------------------------------------------------------
 
+        m_pRenderPipelineRegistry = nullptr;
         m_pWorldRenderer = nullptr;
 
         #if EE_DEVELOPMENT_TOOLS
@@ -228,14 +241,88 @@ namespace EE::Render
         EE_ASSERT( ctx.GetUpdateStage() == UpdateStage::FrameEnd );
         EE_PROFILE_SCOPE_RENDER( "Rendering Post-Physics" );
 
-        //-------------------------------------------------------------------------
-
         m_pRenderDevice->LockDevice();
-
-        RenderTarget* pPrimaryRT = m_pRenderDevice->GetPrimaryWindowRenderTarget();
 
         // Render into active viewports
         //-------------------------------------------------------------------------
+
+        RenderTarget const* pPrimaryRT = m_pRenderDevice->GetPrimaryWindowRenderTarget();
+
+        //for ( auto pWorld : m_pWorldManager->GetWorlds() )
+        //{
+        //    if ( pWorld->IsSuspended() )
+        //    {
+        //        continue;
+        //    }
+
+        //    RenderTarget const* pViewportRT = pPrimaryRT;
+
+        //    Render::Viewport* pViewport = pWorld->GetViewport();
+        //    ViewportRenderTarget const* pVRT = FindRenderTargetForViewport( pViewport );
+        //    // Note: Viewport of a world must have a valid render target pair with it.
+        //    //       Otherwise try render to primary render target.
+        //    if ( pVRT != nullptr )
+        //    {
+        //        pViewportRT = pVRT->m_pRenderTarget;
+        //        m_pWorldRenderer->RenderWorld_Test( m_renderGraph, ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+        //    }
+
+        //    //for ( auto const& pCustomRenderer : m_customRenderers )
+        //    //{
+        //    //    pCustomRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+        //    //    pCustomRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
+        //    //}
+
+        //    #if EE_DEVELOPMENT_TOOLS
+        //    //m_pDebugRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+        //    //m_pDebugRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
+        //    #endif
+        //}
+
+        // Draw development UI
+        //-------------------------------------------------------------------------
+
+        #if EE_DEVELOPMENT_TOOLS
+        if ( m_pImguiRenderer != nullptr )
+        {
+            m_pImguiRenderer->RenderViewport_Test( m_renderGraph, ctx.GetDeltaTime(), m_toolsViewport, *pPrimaryRT );
+        }
+        #endif
+
+        m_pRenderDevice->UnlockDevice();
+
+        // render graph rendering and presenting
+        //-------------------------------------------------------------------------
+
+        auto* pRhiDevice = m_pRenderDevice->GetRHIDevice();
+        pRhiDevice->BeginFrame();
+
+        bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
+        // TODO: when pipeline registry failed to update pipelines, use old pipelines
+        m_pRenderPipelineRegistry->UpdatePipelines( pRhiDevice );
+
+        if ( bCompileResult )
+        {
+            m_renderGraph.Execute( pRhiDevice );
+            m_renderGraph.Present( pRhiDevice, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
+
+            m_pRenderDevice->PresentFrame();
+        }
+
+        pRhiDevice->EndFrame();
+
+        m_renderGraph.Retire();
+
+        // Present frame
+        //-------------------------------------------------------------------------
+
+        //m_pRenderDevice->PresentFrame();
+
+    }
+
+    void RenderingSystem::ResizeWorldRenderTargets()
+    {
+        RenderTarget* pPrimaryRT = m_pRenderDevice->GetPrimaryWindowRenderTarget();
 
         for ( auto pWorld : m_pWorldManager->GetWorlds() )
         {
@@ -261,42 +348,8 @@ namespace EE::Render
                     m_pRenderDevice->ResizeRenderTarget( *pViewportRT, pViewport->GetDimensions() );
                 }
 
-                // Clear render target and depth stencil textures
-                //m_pRenderDevice->GetImmediateContext().ClearRenderTargetViews( *pViewportRT );
+                // TODO: Clear render target and depth stencil textures
             }
-
-            // Draw
-            //-------------------------------------------------------------------------
-
-            m_pWorldRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-
-            for ( auto const& pCustomRenderer : m_customRenderers )
-            {
-                pCustomRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-                pCustomRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
-            }
-
-            #if EE_DEVELOPMENT_TOOLS
-            m_pDebugRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-            m_pDebugRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
-            #endif
         }
-
-        // Draw development UI
-        //-------------------------------------------------------------------------
-
-        #if EE_DEVELOPMENT_TOOLS
-        if ( m_pImguiRenderer != nullptr )
-        {
-            m_pImguiRenderer->RenderViewport( ctx.GetDeltaTime(), m_toolsViewport, *pPrimaryRT );
-        }
-        #endif
-
-        // Present frame
-        //-------------------------------------------------------------------------
-
-        m_pRenderDevice->PresentFrame();
-
-        m_pRenderDevice->UnlockDevice();
     }
 }

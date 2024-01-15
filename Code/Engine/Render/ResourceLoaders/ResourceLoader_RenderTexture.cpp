@@ -1,8 +1,8 @@
 #include "ResourceLoader_RenderTexture.h"
 #include "Base/Serialization/BinarySerialization.h"
+#include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/Resource/RHITexture.h"
-
 
 //-------------------------------------------------------------------------
 
@@ -50,7 +50,16 @@ namespace EE::Render
         m_pRenderDevice->LockDevice();
 
         RHI::RHITextureBufferData bufferData;
-        bufferData.m_binary = pTextureResource->m_rawData;
+        bufferData.m_binary = eastl::move( pTextureResource->m_rawData );
+        bufferData.m_textureWidth = pTextureResource->GetDimensions().m_x;
+        bufferData.m_textureHeight = pTextureResource->GetDimensions().m_y;
+        bufferData.m_textureDepth = 1;
+        bufferData.m_pixelByteLength = 4;
+
+        RHI::RHITextureCreateDesc texDesc;
+        texDesc.NewInitData( bufferData, RHI::EPixelFormat::BGRA8Unorm );
+
+        m_pRenderDevice->GetRHIDevice()->CreateTexture( texDesc );
 
         //m_pRenderDevice->CreateDataTexture( *pTextureResource, pTextureResource->m_format, pTextureResource->m_rawData );
         m_pRenderDevice->UnlockDevice();
@@ -65,7 +74,7 @@ namespace EE::Render
         if ( pTextureResource != nullptr && pTextureResource->IsValid() )
         {
             m_pRenderDevice->LockDevice();
-            m_pRenderDevice->DestroyTexture( *pTextureResource );
+            m_pRenderDevice->GetRHIDevice()->DestroyTexture( pTextureResource->GetRHITexture() );
             m_pRenderDevice->UnlockDevice();
         }
     }

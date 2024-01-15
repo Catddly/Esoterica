@@ -32,9 +32,6 @@
 #include "Base/Threading/TaskSystem.h"
 #include "Base/Systems.h"
 
-#include "Base/RenderGraph/RenderGraph.h"
-#include "Base/Render/RenderPipelineRegistry.h"
-
 //-------------------------------------------------------------------------
 
 namespace EE::RHI
@@ -51,6 +48,10 @@ namespace EE
         EE_REFLECT_MODULE;
 
         static void GetListOfAllRequiredModuleResources( TVector<ResourceID>& outResourceIDs );
+
+    //public:
+
+    //    EngineModule() = default;
 
     public:
 
@@ -84,10 +85,6 @@ namespace EE
         inline ImGuiX::ImguiSystem* GetImguiSystem() { return &m_imguiSystem; }
         #endif
 
-        // TEMPORARY: Test
-        //-------------------------------------------------------------------------
-        inline Render::PipelineRegistry* GetRenderPipelineRegistry() { return &m_renderPipelineRegistry; }
-
     private:
 
         bool                                            m_moduleInitialized = false;
@@ -112,16 +109,13 @@ namespace EE
         EntityModel::EntityCollectionLoader             m_entityCollectionLoader;
 
         // Rendering
-        RG::RenderGraph                                 m_renderGraph;
-        Render::PipelineRegistry                        m_renderPipelineRegistry;
-        // Temporary
-        RHI::RHIRenderPass*                             m_pImguiRenderPass = nullptr;
-
         Render::RenderDevice*                           m_pRenderDevice = nullptr;
+        
         Render::MeshLoader                              m_renderMeshLoader;
         Render::ShaderLoader                            m_shaderLoader;
         Render::TextureLoader                           m_textureLoader;
         Render::MaterialLoader                          m_materialLoader;
+
         Render::RendererRegistry                        m_rendererRegistry;
         Render::WorldRenderer                           m_worldRenderer;
 

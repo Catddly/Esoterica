@@ -118,17 +118,23 @@ namespace EE::Render
 
 	class EE_BASE_API ComputePipelineEntry
 	{
-		friend class PipelineRegistry;
+    public:
 
-	public:
+        inline PipelineHandle GetID() const { return m_handle; }
+        inline bool IsReadyToCreatePipelineLayout() const { return m_computeShader.IsLoaded(); }
+        // A pipeline entry is visible means that it is ready to be used outside.
+        // If a pipeline is NOT fully ready, it is invisible to outside, as if it doesn't exist.
+        // This function should only be called with PipelineRegistry.
+        inline bool IsVisible() const { return m_pPipelineState != nullptr; }
 
-		inline PipelineHandle GetID() const { return m_handle; }
+    public:
 
-	private:
+        TResourcePtr<ComputeShader>			    m_computeShader;
 
-		//ComputeShader*					m_pComputeShader = nullptr;
+        RHI::RHIComputePipelineStateCreateDesc  m_desc;
 
-		PipelineHandle					m_handle;
+        RHI::RHIPipelineState*                  m_pPipelineState = nullptr;
+		PipelineHandle					        m_handle;
 	};
 
 	//-------------------------------------------------------------------------
@@ -139,7 +145,7 @@ namespace EE::Render
 	public:
 
 		PipelineRegistry() = default;
-		virtual ~PipelineRegistry();
+        ~PipelineRegistry();
 
 		PipelineRegistry( PipelineRegistry const& ) = delete;
 		PipelineRegistry& operator=( PipelineRegistry const& ) = delete;
@@ -155,7 +161,7 @@ namespace EE::Render
 		void Shutdown();
 
 		[[nodiscard]] inline PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
-		[[nodiscard]] inline PipelineHandle RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc );
+		[[nodiscard]] inline PipelineHandle RegisterComputePipeline( RHI::RHIComputePipelineStateCreateDesc const& computePipelineDesc );
 
         bool IsPipelineReady( PipelineHandle const& pipelineHandle ) const;
         inline bool IsBusy() const
@@ -170,17 +176,19 @@ namespace EE::Render
 
 		void Update();
 		bool UpdatePipelines( RHI::RHIDevice* pDevice );
-        void DestroyAllPipelineState( RHI::RHIDevice* pDevice );
+        void DestroyAllPipelineStates( RHI::RHIDevice* pDevice );
 
     protected:
 
         // Submit pipeline shader load tasks
-        virtual void UpdateLoadPipelineShaders();
+        void UpdateLoadPipelineShaders();
 
         // Mark some raster pipeline entry is loading
-        void MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry );
+        //void MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry );
 
 	private:
+
+        inline bool AreAllRequestShaderLoaded() const;
 
         // Update pipeline load status
         void UpdateLoadedPipelineShaders();
@@ -191,30 +199,33 @@ namespace EE::Render
         // Create RHI raster pipeline state for certain RasterPipelineEntry.
         // This function can't have any side-effects, since it may be call for the same entry multiple time.
         bool TryCreateRHIRasterPipelineStateForEntry( TSharedPtr<RasterPipelineEntry>& rasterEntry, RHI::RHIDevice* pDevice );
+        bool TryCreateRHIComputePipelineStateForEntry( TSharedPtr<ComputePipelineEntry>& computeEntry, RHI::RHIDevice* pDevice );
 
         // Unload all pipeline shaders inside all registries.
 		void UnloadAllPipelineShaders();
 
-    protected:
-
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToSubmitRasterPipelines;
-
 	private:
 
-		bool															    m_isInitialized = false;
+		bool															        m_isInitialized = false;
 
-		Resource::ResourceSystem*										    m_pResourceSystem = nullptr;
+		Resource::ResourceSystem*										        m_pResourceSystem = nullptr;
 
         // TODO: may be extract to single pipeline cache class
-		mutable TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>  m_rasterPipelineStatesCache;
-		THashMap<RHI::RHIRasterPipelineStateCreateDesc, PipelineHandle>     m_rasterPipelineHandlesCache;
+		mutable TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>      m_rasterPipelineStatesCache;
+		THashMap<RHI::RHIRasterPipelineStateCreateDesc, PipelineHandle>         m_rasterPipelineHandlesCache;
 
-        TIDVector<PipelineHandle, ComputePipelineEntry>					    m_computePipelineStates;
-        //THashMap<ComputePipelineDesc, PipelineHandle>					    m_computePipelineHandles;
+        mutable TIDVector<PipelineHandle, TSharedPtr<ComputePipelineEntry>>     m_computePipelineStatesCache;
+        THashMap<RHI::RHIComputePipelineStateCreateDesc, PipelineHandle>        m_computePipelineHandlesCache;
 
         // TODO: state machine update pattern
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToLoadRasterPipelines;
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToRegisteredRasterPipelines;
-        TVector<TSharedPtr<RasterPipelineEntry>>                            m_retryRasterPipelineCaches;
+        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToSubmitRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToLoadRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToRegisteredRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>                                m_retryRasterPipelineCaches;
+
+        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToSubmitComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToLoadComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToRegisteredComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>                               m_retryComputePipelineCaches;
 	};
 }

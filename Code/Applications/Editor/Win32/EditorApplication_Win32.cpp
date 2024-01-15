@@ -81,6 +81,12 @@ namespace EE
         m_engine.GetInputSystem()->ForwardInputMessageToInputDevices( { message, (uintptr_t) wParam, (uintptr_t) lParam } );
     }
 
+    void EditorApplication::ProcessWindowDestructionMessage()
+    {
+        m_engine.m_exitRequested = true;
+        Win32Application::ProcessWindowDestructionMessage();
+    }
+
     bool EditorApplication::ProcessCommandline( int32_t argc, char** argv )
     {
         cli::Parser cmdParser( argc, argv );

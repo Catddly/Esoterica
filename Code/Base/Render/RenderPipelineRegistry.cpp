@@ -4,6 +4,7 @@
 #include "Base/Threading/Threading.h"
 #include "Base/Threading/TaskSystem.h"
 #include "Base/RHI/RHIDevice.h"
+#include "Base/Network/NetworkSystem.h"
 
 namespace EE::Render
 {
@@ -122,12 +123,49 @@ namespace EE::Render
 		return PipelineHandle();
 	}
 
-	PipelineHandle PipelineRegistry::RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc )
+	PipelineHandle PipelineRegistry::RegisterComputePipeline( RHI::RHIComputePipelineStateCreateDesc const& computePipelineDesc )
 	{
-		EE_ASSERT( Threading::IsMainThread() );
-		EE_ASSERT( m_isInitialized );
+        EE_ASSERT( Threading::IsMainThread() );
+        EE_ASSERT( m_isInitialized );
+        EE_ASSERT( computePipelineDesc.IsValid() );
 
-		return PipelineHandle();
+        // Already exists, immediately return
+        //-------------------------------------------------------------------------
+
+        auto iter = m_computePipelineHandlesCache.find( computePipelineDesc );
+        if ( iter != m_computePipelineHandlesCache.end() )
+        {
+            return iter->second;
+        }
+
+        // Not exists, create new entry
+        //-------------------------------------------------------------------------
+
+        auto nextId = static_cast<uint32_t>( m_computePipelineHandlesCache.size() ) + 1;
+        PipelineHandle newHandle = PipelineHandle( PipelineType::Compute, nextId );
+
+        auto pEntry = MakeShared<ComputePipelineEntry>();
+        if ( pEntry )
+        {
+            pEntry->m_handle = newHandle;
+            pEntry->m_desc = computePipelineDesc;
+
+            EE_ASSERT( computePipelineDesc.m_pipelineShader.m_stage == Render::PipelineStage::Compute );
+
+            pEntry->m_computeShader = ResourceID( computePipelineDesc.m_pipelineShader.m_shaderPath );
+            EE_ASSERT( pEntry->m_computeShader.IsSet() );
+
+            m_computePipelineStatesCache.Add( pEntry );
+            m_computePipelineHandlesCache.insert( { computePipelineDesc, newHandle } );
+
+            EE_ASSERT( m_computePipelineStatesCache.size() == m_computePipelineHandlesCache.size() );
+
+            m_waitToSubmitComputePipelines.emplace_back( pEntry );
+
+            return newHandle;
+        }
+
+        return PipelineHandle();
 	}
 
 	void PipelineRegistry::Update()
@@ -145,10 +183,26 @@ namespace EE::Render
         EE_ASSERT( m_isInitialized );
         EE_ASSERT( pDevice != nullptr );
 
-        return TryCreatePipelineForLoadedPipelineShaders( pDevice );
+        // TODO: async mode. Now force all shaders loaded before this frame drawing started.
+        //       This can prevent some problems brought by the latency. (e.g. some render graph node
+        //       wants to execute only once at the frame start, but render graph can NOT execute the commands because
+        //       shader is NOT loaded yet. User thought the node is successfully executed and do NOT add it in the next frame.
+        //       The message is lost forever and none of them get the valid results. )
+
+        while ( !AreAllRequestShaderLoaded() )
+        {
+            Network::NetworkSystem::Update();
+            m_pResourceSystem->Update();
+            UpdateLoadedPipelineShaders();
+        }
+         
+        // No failure is allowed for now
+        EE_ASSERT( TryCreatePipelineForLoadedPipelineShaders( pDevice ) );
+
+        return true;
     }
 
-    void PipelineRegistry::DestroyAllPipelineState( RHI::RHIDevice* pDevice )
+    void PipelineRegistry::DestroyAllPipelineStates( RHI::RHIDevice* pDevice )
     {
         EE_ASSERT( Threading::IsMainThread() );
         EE_ASSERT( m_isInitialized );
@@ -163,8 +217,18 @@ namespace EE::Render
             }
         }
 
-        // Note: can NOT call m_rasterPipelineStatesCache here, because entry contains TResourcePtr.
+        // Note: can NOT clear m_rasterPipelineStatesCache here, because entry contains TResourcePtr.
         // We need to unload it first before we destroy the whole entry.
+
+        EE_ASSERT( m_computePipelineStatesCache.size() == m_computePipelineHandlesCache.size() );
+        for ( auto& entry : m_computePipelineStatesCache )
+        {
+            if ( entry->IsVisible() )
+            {
+                pDevice->DestroyComputePipelineState( entry->m_pPipelineState );
+                entry->m_pPipelineState = nullptr;
+            }
+        }
     }
 
     //-------------------------------------------------------------------------
@@ -194,15 +258,37 @@ namespace EE::Render
 
                 m_waitToSubmitRasterPipelines.clear();
             }
+
+            if ( !m_waitToSubmitComputePipelines.empty() )
+            {
+                for ( uint32_t i = 0; i < m_waitToSubmitComputePipelines.size(); ++i )
+                {
+                    auto const& pEntry = m_waitToSubmitComputePipelines[i];
+
+                    if ( pEntry->m_computeShader.IsSet() )
+                    {
+                        m_pResourceSystem->LoadResource( pEntry->m_computeShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
+                    }
+
+                    m_waitToLoadComputePipelines.push_back( pEntry );
+                }
+
+                m_waitToSubmitComputePipelines.clear();
+            }
         }
     }
 
-    void PipelineRegistry::MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry )
-    {
-        m_waitToLoadRasterPipelines.push_back( rasterPipelineEntry );
-    }
+    //void PipelineRegistry::MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry )
+    //{
+    //    m_waitToLoadRasterPipelines.push_back( rasterPipelineEntry );
+    //}
 
 	//-------------------------------------------------------------------------
+
+    bool PipelineRegistry::AreAllRequestShaderLoaded() const
+    {
+        return m_waitToLoadRasterPipelines.empty() && m_waitToLoadComputePipelines.empty();
+    }
 
     void PipelineRegistry::UpdateLoadedPipelineShaders()
     {
@@ -229,6 +315,31 @@ namespace EE::Render
                 }
             }
         }
+
+        if ( !m_waitToLoadComputePipelines.empty() )
+        {
+            for ( auto beg = m_waitToLoadComputePipelines.begin(); beg != m_waitToLoadComputePipelines.end(); ++beg )
+            {
+                auto const& pEntry = *beg;
+
+                // TODO: If not successfully loaded? check HasLoadFailed().
+                if ( pEntry->IsReadyToCreatePipelineLayout() )
+                {
+                    if ( m_waitToLoadComputePipelines.size() == 1 )
+                    {
+                        m_waitToRegisteredComputePipelines.push_back( pEntry );
+                        m_waitToLoadComputePipelines.clear();
+                        break;
+                    }
+                    else
+                    {
+                        m_waitToRegisteredComputePipelines.push_back( pEntry );
+                        beg = m_waitToLoadComputePipelines.erase_unsorted( beg );
+                    }
+                }
+            }
+        }
+
     }
 
     bool PipelineRegistry::TryCreatePipelineForLoadedPipelineShaders( RHI::RHIDevice* pDevice )
@@ -252,6 +363,27 @@ namespace EE::Render
         {
             m_waitToRegisteredRasterPipelines.clear();
             std::swap( m_waitToRegisteredRasterPipelines, m_retryRasterPipelineCaches );
+        }
+
+        //-------------------------------------------------------------------------
+
+        for ( auto& computeEntry : m_waitToRegisteredComputePipelines )
+        {
+            // double checked again in case pipeline entry is unloaded by chance.
+            if ( computeEntry->IsReadyToCreatePipelineLayout() )
+            {
+                if ( !TryCreateRHIComputePipelineStateForEntry( computeEntry, pDevice ) )
+                {
+                    m_retryComputePipelineCaches.push_back( computeEntry );
+                    bHasFailure = true;
+                }
+            }
+        }
+
+        if ( !m_waitToRegisteredComputePipelines.empty() )
+        {
+            m_waitToRegisteredComputePipelines.clear();
+            std::swap( m_waitToRegisteredComputePipelines, m_retryComputePipelineCaches );
         }
 
         return !bHasFailure;
@@ -301,6 +433,27 @@ namespace EE::Render
         return false;
     }
 
+    bool PipelineRegistry::TryCreateRHIComputePipelineStateForEntry( TSharedPtr<ComputePipelineEntry>& computeEntry, RHI::RHIDevice* pDevice )
+    {
+        EE_ASSERT( !computeEntry->IsVisible() );
+        EE_ASSERT( Threading::IsMainThread() );
+
+        // Safety: We make sure compute pipeline state layout will only be created by single thread,
+        //         and it ResourcePtr is loaded and will not be changed by RHIDevice.
+        auto* pPipelineState = pDevice->CreateComputePipelineState( computeEntry->m_desc, computeEntry->m_computeShader.GetPtr() );
+        if ( pPipelineState )
+        {
+            computeEntry->m_pPipelineState = pPipelineState;
+
+            // TODO: add render graph debug name
+            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", computeEntry->m_desc.GetHash() );
+
+            return true;
+        }
+
+        return false;
+    }
+
     bool PipelineRegistry::IsPipelineReady( PipelineHandle const& pipelineHandle ) const
     {
         if ( pipelineHandle.IsValid() )
@@ -314,8 +467,8 @@ namespace EE::Render
                 }
                 case PipelineType::Compute:
                 {
-                    EE_UNIMPLEMENTED_FUNCTION();
-                    return false;
+                    auto const& computeEntry = m_computePipelineStatesCache.Get( pipelineHandle );
+                    return ( *computeEntry )->IsVisible();
                 }
                 case PipelineType::Transfer:
                 case PipelineType::RayTracing:
@@ -346,7 +499,11 @@ namespace EE::Render
                 }
                 case PipelineType::Compute:
                 {
-                    EE_UNIMPLEMENTED_FUNCTION();
+                    auto& computeEntry = *m_computePipelineStatesCache.Get( pipelineHandle );
+                    if ( computeEntry->IsVisible() )
+                    {
+                        return computeEntry->m_pPipelineState;
+                    }
 
                     break;
                 }

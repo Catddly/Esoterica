@@ -199,7 +199,7 @@ namespace EE::Render
 
     class EE_BASE_API ComputeShader : public Shader
     {
-        EE_SERIALIZE( EE_SERIALIZE_BASE( Shader ) );
+        EE_SERIALIZE( EE_SERIALIZE_BASE( Shader ), m_threadGroupSize );
         EE_RESOURCE( 'csdr', "Compute Shader" );
 
         friend class RenderDevice;
@@ -211,5 +211,15 @@ namespace EE::Render
 
         ComputeShader() : Shader( PipelineStage::Compute ) {}
         ComputeShader( uint8_t const* pByteCode, size_t const byteCodeSize, TVector<RenderBuffer> const& constBuffers );
+
+    public:
+
+        inline uint32_t GetThreadGroupSizeX() const { return m_threadGroupSize[0]; }
+        inline uint32_t GetThreadGroupSizeY() const { return m_threadGroupSize[1]; }
+        inline uint32_t GetThreadGroupSizeZ() const { return m_threadGroupSize[2]; }
+
+    private:
+
+        uint32_t                    m_threadGroupSize[3];
     };   
 }

@@ -600,7 +600,7 @@ namespace EE
         // Map editor
         //-------------------------------------------------------------------------
 
-        if( request.m_type == WorkspaceCreationRequest::MapEditor )
+        if ( request.m_type == WorkspaceCreationRequest::MapEditor )
         {
             // Destroy the default created game world
             m_pWorldManager->DestroyWorld( m_pWorldManager->GetWorlds()[0] );
@@ -1102,7 +1102,7 @@ namespace EE
             if ( toolWindow.m_type == Workspace::ToolWindow::Type::Viewport )
             {
                 Workspace::ViewportInfo viewportInfo;
-                viewportInfo.m_pViewportRenderTargetTexture = (void*) &m_pRenderingSystem->GetRenderTargetTextureForViewport( pWorld->GetViewport() );
+                viewportInfo.m_pViewportRenderTargetTexture = (void*) m_pRenderingSystem->GetRenderTargetForViewport( pWorld->GetViewport() ).GetRHIRenderTarget();
                 viewportInfo.m_retrievePickingID = [this, pWorld] ( Int2 const& pixelCoords ) { return m_pRenderingSystem->GetViewportPickingID( pWorld->GetViewport(), pixelCoords ); };
 
                 ImGuiWindowFlags const viewportWindowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavFocus;

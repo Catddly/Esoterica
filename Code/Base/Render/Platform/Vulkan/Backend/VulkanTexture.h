@@ -60,7 +60,7 @@ namespace EE::Render
 
             void ForceDiscardAllUploadedData( RHI::RHIDevice* pDevice );
 
-            virtual RHI::RHITextureView  CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) override;
+            virtual RHI::RHITextureView  CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) const override;
             virtual void                 DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView& textureView ) override;
 
             uint32_t GetLayerByteSize( uint32_t layer );

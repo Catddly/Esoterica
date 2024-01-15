@@ -128,11 +128,21 @@ namespace EE::Render
             EE_ASSERT( pVkAcquireSemaphore );
 
             uint32_t acquireFrameIndex;
-            VK_SUCCEEDED( m_loadFuncs.m_pAcquireNextImageKHRFunc( m_pDevice->m_pHandle, m_pHandle, InfiniteWaitTimeOut, pVkAcquireSemaphore->m_pHandle, nullptr, &acquireFrameIndex ) );
+            VkResult result = m_loadFuncs.m_pAcquireNextImageKHRFunc( m_pDevice->m_pHandle, m_pHandle, InfiniteWaitTimeOut, pVkAcquireSemaphore->m_pHandle, nullptr, &acquireFrameIndex );
 
             EE_ASSERT( acquireFrameIndex == m_currentRenderFrameIndex );
-            
+
             AdvanceFrame();
+
+            if ( result == VK_ERROR_OUT_OF_DATE_KHR )
+            {
+                m_pDevice->WaitUntilIdle();
+                CreateOrRecreate( m_initConfig, m_pHandle );
+            }
+            else if ( result != VK_SUCCESS )
+            {
+                EE_LOG_FATAL_ERROR( "Render", "Vulkan Swapchain", "Failed to acquire next swapchain image." );
+            }
 
             return {
                 m_presentTextures[acquireFrameIndex],
@@ -160,7 +170,17 @@ namespace EE::Render
             presentInfo.waitSemaphoreCount = 1;
 
             VK_SUCCEEDED( m_loadFuncs.m_pQueuePresentKHR( m_pDevice->m_pGlobalGraphicQueue->m_pHandle, &presentInfo ) );
-            VK_SUCCEEDED( result );
+
+            if ( result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR )
+            {
+                // Try to recreate swapchain
+                m_pDevice->WaitUntilIdle();
+                CreateOrRecreate( m_initConfig, m_pHandle );
+            }
+            else if ( result != VK_SUCCESS )
+            {
+                EE_LOG_FATAL_ERROR( "Render", "Vulkan Swapchain", "Failed to present render result." );
+            }
         }
 
         //-------------------------------------------------------------------------

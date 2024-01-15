@@ -5,19 +5,13 @@
 #include "Base/Resource/ResourceProviders/NetworkResourceProvider.h"
 #include "Base/Resource/ResourceProviders/PackagedResourceProvider.h"
 #include "Base/Network/NetworkSystem.h"
+#include "Base/RHI/RHIDevice.h"
 
 //-------------------------------------------------------------------------
 
 #ifdef _WIN32
 #include "Base/Platform/PlatformUtils_Win32.h"
 #endif
-
-//-------------------------------------------------------------------------
-
-#include "Base/Render/RenderAPI.h"
-#include "Base/RenderGraph/RenderGraphResource.h"
-#include "Base/RHI/RHIDevice.h"
-#include "Base/RHI/Resource/RHIRenderPass.h"
 
 namespace EE
 {
@@ -155,6 +149,8 @@ namespace EE
             return false;
         }
 
+        //-------------------------------------------------------------------------
+
         #if EE_DEVELOPMENT_TOOLS
         m_imguiSystem.Initialize( m_pRenderDevice, &m_inputSystem, true );
         #endif
@@ -173,15 +169,15 @@ namespace EE
         }
 
         #if EE_DEVELOPMENT_TOOLS
-        if ( m_debugRenderer.Initialize( m_pRenderDevice ) )
-        {
-            m_rendererRegistry.RegisterRenderer( &m_debugRenderer );
-        }
-        else
-        {
-            EE_LOG_ERROR( "Render", nullptr, "Failed to initialize debug renderer" );
-            return false;
-        }
+        //if ( m_debugRenderer.Initialize( m_pRenderDevice ) )
+        //{
+        //    m_rendererRegistry.RegisterRenderer( &m_debugRenderer );
+        //}
+        //else
+        //{
+        //    EE_LOG_ERROR( "Render", nullptr, "Failed to initialize debug renderer" );
+        //    return false;
+        //}
 
         if ( m_imguiRenderer.Initialize( m_pRenderDevice ) )
         {
@@ -193,15 +189,15 @@ namespace EE
             return false;
         }
 
-        if ( m_physicsRenderer.Initialize( m_pRenderDevice ) )
-        {
-            m_rendererRegistry.RegisterRenderer( &m_physicsRenderer );
-        }
-        else
-        {
-            EE_LOG_ERROR( "Render", nullptr, "Failed to initialize physics renderer" );
-            return false;
-        }
+        //if ( m_physicsRenderer.Initialize( m_pRenderDevice ) )
+        //{
+        //    m_rendererRegistry.RegisterRenderer( &m_physicsRenderer );
+        //}
+        //else
+        //{
+        //    EE_LOG_ERROR( "Render", nullptr, "Failed to initialize physics renderer" );
+        //    return false;
+        //}
         #endif
 
         return true;
@@ -210,6 +206,8 @@ namespace EE
     void EngineModule::ShutdownCoreSystems()
     {
         EE_ASSERT( !m_moduleInitialized );
+
+        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
 
         bool const coreSystemsInitialized = m_pRenderDevice != nullptr;
 
@@ -344,83 +342,83 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        m_renderPipelineRegistry.Initialize( &m_resourceSystem );
-        m_renderGraph.AttachToPipelineRegistry( m_renderPipelineRegistry );
-        RHI::RHIDevice* pDevice = m_pRenderDevice->GetRHIDevice();
+        //m_renderPipelineRegistry.Initialize( &m_resourceSystem );
+        //m_renderGraph.AttachToPipelineRegistry( m_renderPipelineRegistry );
+        //RHI::RHIDevice* pDevice = m_pRenderDevice->GetRHIDevice();
 
-        //pDevice->BeginFrame();
-        //m_renderGraph.AllocateCommandContext( pDevice );
+        ////pDevice->BeginFrame();
+        ////m_renderGraph.AllocateCommandContext( pDevice );
 
-        auto bufferDesc = RG::BufferDesc::NewSize( 512 );
-        auto handle0 = m_renderGraph.CreateTemporaryResource( bufferDesc );
-        EE_ASSERT( handle0.GetDesc().m_desc.m_desireSize == 512 );
+        //auto bufferDesc = RG::BufferDesc::NewSize( 512 );
+        //auto handle0 = m_renderGraph.CreateTemporaryResource( bufferDesc );
+        //EE_ASSERT( handle0.GetDesc().m_desc.m_desireSize == 512 );
 
-        bufferDesc.m_desc.m_desireSize = 256;
-        auto handle1 = m_renderGraph.CreateTemporaryResource( bufferDesc );
-        EE_ASSERT( handle1.GetDesc().m_desc.m_desireSize == 256 );
+        //bufferDesc.m_desc.m_desireSize = 256;
+        //auto handle1 = m_renderGraph.CreateTemporaryResource( bufferDesc );
+        //EE_ASSERT( handle1.GetDesc().m_desc.m_desireSize == 256 );
 
-        auto textureDesc = RG::TextureDesc::New2D( 512, 512, RHI::EPixelFormat::BGRA8Unorm );
-        auto handle2 = m_renderGraph.CreateTemporaryResource( textureDesc );
-
-        {
-            auto node = m_renderGraph.AddNode( "Clear Color RT" );
-            auto handle0_ref = node.CommonRead( handle0, RHI::RenderResourceBarrierState::ComputeShaderReadOther );
-            auto handle1_ref = node.CommonRead( handle1, RHI::RenderResourceBarrierState::VertexBuffer );
-
-            RHI::RHIRenderPassCreateDesc renderPassCreateDesc = {};
-            renderPassCreateDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
-            m_pImguiRenderPass = m_pRenderDevice->GetRHIDevice()->CreateRenderPass( renderPassCreateDesc );
-
-            auto pipelineDesc = RHI::RHIRasterPipelineStateCreateDesc{};
-            pipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.vsdr" ) ));
-            pipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.psdr" ) ));
-            pipelineDesc.SetRasterizerState( RHI::RHIPipelineRasterizerState::NoCulling() );
-            pipelineDesc.SetBlendState( RHI::RHIPipelineBlendState::ColorAdditiveAlpha() );
-            pipelineDesc.SetRenderPass( m_pImguiRenderPass );
-            pipelineDesc.DepthTest( false );
-            pipelineDesc.DepthWrite( false );
-            node.RegisterRasterPipeline( std::move( pipelineDesc ) );
-
-            //EE_ASSERT( handle0_ref.GetDesc().m_desc.m_desireSize == 512 );
-            //EE_ASSERT( handle1_ref.GetDesc().m_desc.m_desireSize == 256 );
-        }
+        //auto textureDesc = RG::TextureDesc::New2D( 512, 512, RHI::EPixelFormat::BGRA8Unorm );
+        //auto handle2 = m_renderGraph.CreateTemporaryResource( textureDesc );
 
         //{
-        //    auto node = m_renderGraph.AddNode( "Draw Shadow" );
-        //    auto handle1_ref = node.RasterRead( handle1, RHI::RenderResourceBarrierState::ColorAttachmentRead );
-        //    auto handle2_ref = node.CommonWrite( handle2, RHI::RenderResourceBarrierState::ColorAttachmentWrite );
+        //    auto node = m_renderGraph.AddNode( "Clear Color RT" );
+        //    auto handle0_ref = node.CommonRead( handle0, RHI::RenderResourceBarrierState::ComputeShaderReadOther );
+        //    auto handle1_ref = node.CommonRead( handle1, RHI::RenderResourceBarrierState::VertexBuffer );
 
-        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_width == 512 );
-        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_height == 512 );
-        //    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_format == RHI::EPixelFormat::BGRA8Unorm );
+        //    RHI::RHIRenderPassCreateDesc renderPassCreateDesc = {};
+        //    renderPassCreateDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
+        //    m_pImguiRenderPass = m_pRenderDevice->GetRHIDevice()->CreateRenderPass( renderPassCreateDesc );
+
+        //    auto pipelineDesc = RHI::RHIRasterPipelineStateCreateDesc{};
+        //    pipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.vsdr" ) ));
+        //    pipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.psdr" ) ));
+        //    pipelineDesc.SetRasterizerState( RHI::RHIPipelineRasterizerState::NoCulling() );
+        //    pipelineDesc.SetBlendState( RHI::RHIPipelineBlendState::ColorAdditiveAlpha() );
+        //    pipelineDesc.SetRenderPass( m_pImguiRenderPass );
+        //    pipelineDesc.DepthTest( false );
+        //    pipelineDesc.DepthWrite( false );
+        //    node.RegisterRasterPipeline( std::move( pipelineDesc ) );
+
+        //    //EE_ASSERT( handle0_ref.GetDesc().m_desc.m_desireSize == 512 );
+        //    //EE_ASSERT( handle1_ref.GetDesc().m_desc.m_desireSize == 256 );
         //}
 
-        //m_renderGraph.AddNode( "Draw Opache" );
-        //m_renderGraph.AddNode( "Draw Transparent" );
-        //m_renderGraph.AddNode( "Post Processing" );
-        //m_renderGraph.AddNode( "Draw Debug" );
+        ////{
+        ////    auto node = m_renderGraph.AddNode( "Draw Shadow" );
+        ////    auto handle1_ref = node.RasterRead( handle1, RHI::RenderResourceBarrierState::ColorAttachmentRead );
+        ////    auto handle2_ref = node.CommonWrite( handle2, RHI::RenderResourceBarrierState::ColorAttachmentWrite );
 
-        m_renderGraph.LogGraphNodes();
+        ////    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_width == 512 );
+        ////    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_height == 512 );
+        ////    EE_ASSERT( handle2_ref.GetDesc().m_desc.m_format == RHI::EPixelFormat::BGRA8Unorm );
+        ////}
 
-        // force all loading and preparing ready at first frame
-        while ( m_renderPipelineRegistry.IsBusy() )
-        {
-            m_renderPipelineRegistry.Update();
-            m_renderPipelineRegistry.UpdatePipelines( pDevice );
+        ////m_renderGraph.AddNode( "Draw Opache" );
+        ////m_renderGraph.AddNode( "Draw Transparent" );
+        ////m_renderGraph.AddNode( "Post Processing" );
+        ////m_renderGraph.AddNode( "Draw Debug" );
 
-            while ( m_resourceSystem.IsBusy() )
-            {
-                Network::NetworkSystem::Update();
-                m_resourceSystem.Update( true );
-            }
-        }
+        //m_renderGraph.LogGraphNodes();
 
-        m_renderGraph.Compile( pDevice );
-        //m_renderGraph.Execute();
-        //m_renderGraph.Present();
+        //// force all loading and preparing ready at first frame
+        //while ( m_renderPipelineRegistry.IsBusy() )
+        //{
+        //    m_renderPipelineRegistry.Update();
+        //    m_renderPipelineRegistry.UpdatePipelines( pDevice );
 
-        //m_renderGraph.FlushCommandContext();
-        pDevice->EndFrame();
+        //    while ( m_resourceSystem.IsBusy() )
+        //    {
+        //        Network::NetworkSystem::Update();
+        //        m_resourceSystem.Update( true );
+        //    }
+        //}
+
+        //m_renderGraph.Compile( pDevice );
+        ////m_renderGraph.Execute();
+        ////m_renderGraph.Present();
+
+        ////m_renderGraph.FlushCommandContext();
+        //pDevice->EndFrame();
 
         //-------------------------------------------------------------------------
 
@@ -433,15 +431,13 @@ namespace EE
     {
         EE_ASSERT( m_pRenderDevice != nullptr );
 
-        //-------------------------------------------------------------------------
+        //m_pRenderDevice->GetRHIDevice()->DestroyRenderPass( m_pImguiRenderPass );
+        //m_renderPipelineRegistry.DestroyAllPipelineStates( m_pRenderDevice->GetRHIDevice() );
+        //m_pImguiRenderPass = nullptr;
 
-        m_pRenderDevice->GetRHIDevice()->DestroyRenderPass( m_pImguiRenderPass );
-        m_renderPipelineRegistry.DestroyAllPipelineState( m_pRenderDevice->GetRHIDevice() );
-        m_pImguiRenderPass = nullptr;
-
-        m_renderGraph.Retire();
-        m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
-        m_renderPipelineRegistry.Shutdown();
+        //m_renderGraph.Retire();
+        //m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
+        //m_renderPipelineRegistry.Shutdown();
 
         // Unregister resource loaders
         //-------------------------------------------------------------------------

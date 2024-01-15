@@ -28,7 +28,7 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
         void RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc pipelineDesc );
-        void RegisterComputePipeline( Render::ComputePipelineDesc pipelineDesc );
+        void RegisterComputePipeline( RHI::RHIComputePipelineStateCreateDesc pipelineDesc );
 
         // Node Render Resource Read And Write Operations
         //-------------------------------------------------------------------------

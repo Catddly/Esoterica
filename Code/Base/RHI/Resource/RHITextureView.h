@@ -6,7 +6,7 @@
 
 namespace EE::RHI
 {
-    struct RHITextureView
+    struct EE_BASE_API RHITextureView
     {
         inline bool IsValid() const { return m_pViewHandle != nullptr; }
 

@@ -219,20 +219,6 @@ namespace EE::Render
         //    }
         //}
 
-        // TODO: render graph auto render pass creation
-        if ( !m_pRenderPass )
-        {
-            RHI::RHIRenderPassCreateDesc renderPassDesc;
-            // TODO: automatically align with RHISwapchain texture format
-            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
-            m_pRenderPass = pRhiDevice->CreateRenderPass( renderPassDesc );
-
-            if ( !m_pRenderPass )
-            {
-                return false;
-            }
-        }
-
         // Create index buffer for IMGUI
         //m_indexBuffer.m_byteStride = sizeof( ImDrawIdx );
         //m_indexBuffer.m_byteSize = m_indexBuffer.m_byteStride * g_numInitialIndices;
@@ -354,6 +340,22 @@ namespace EE::Render
 
         io.Fonts->TexID = m_fontTexture;
 
+        //-------------------------------------------------------------------------
+
+        // TODO: render graph auto render pass creation
+        if ( !m_pRenderPass )
+        {
+            RHI::RHIRenderPassCreateDesc renderPassDesc;
+            // TODO: automatically align with RHISwapchain texture format
+            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
+            m_pRenderPass = pRhiDevice->CreateRenderPass( renderPassDesc );
+
+            if ( !m_pRenderPass )
+            {
+                return false;
+            }
+        }
+
         m_initialized = true;
         return true;
     }
@@ -370,15 +372,15 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        ImGui::DestroyPlatformWindows();
-
-        //-------------------------------------------------------------------------
-
         if ( m_pRenderPass )
         {
             pRhiDevice->DestroyRenderPass( m_pRenderPass );
             m_pRenderPass = nullptr;
         }
+
+        ImGui::DestroyPlatformWindows();
+
+        //-------------------------------------------------------------------------
 
         //m_PSO.Clear();
 
@@ -680,8 +682,8 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             RHI::RHIRasterPipelineStateCreateDesc rasterPipelineDesc = {};
-            rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.vsdr" ) ) );
-            rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/imgui.psdr" ) ) );
+            rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/Imgui.vsdr" ) ) );
+            rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/imgui/Imgui.psdr" ) ) );
             rasterPipelineDesc.SetRasterizerState( RHI::RHIPipelineRasterizerState::NoCulling() );
             rasterPipelineDesc.SetBlendState( RHI::RHIPipelineBlendState::ColorAdditiveAlpha() );
             rasterPipelineDesc.SetRenderPass( m_pRenderPass );
@@ -772,7 +774,7 @@ namespace EE::Render
 
                 auto boundPipeline = context.BindPipeline();
 
-                RHI::RHIBuffer* pVertexBuffers[] = { pVertexBuffer };
+                RHI::RHIBuffer const* pVertexBuffers[] = { pVertexBuffer };
                 context.BindVertexBuffer( 0, pVertexBuffers );
                 context.BindIndexBuffer( pIndexBuffer );
 

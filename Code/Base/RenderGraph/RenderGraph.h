@@ -15,6 +15,8 @@
 
 namespace EE::Render
 {
+    class RenderDevice;
+
     class RenderTarget;
     class SwapchainRenderTarget;
 }
@@ -43,7 +45,7 @@ namespace EE::RG
 		RenderGraph();
 		RenderGraph( String const& graphName );
             
-        inline void AttachToPipelineRegistry( Render::PipelineRegistry& pipelineRegistry ) { m_resourceRegistry.AttachToPipelineRegistry( pipelineRegistry ); }
+        inline void AttachToPipelineRegistry( Render::PipelineRegistry* pPipelineRegistry ) { m_resourceRegistry.AttachToPipelineRegistry( pPipelineRegistry ); }
 
 	public:
 
@@ -59,6 +61,9 @@ namespace EE::RG
         RGResourceHandle<RGResourceTagBuffer> ImportResource( RHI::RHIBuffer* pBuffer, RHI::RenderResourceBarrierState access );
         RGResourceHandle<RGResourceTagTexture> ImportResource( RHI::RHITexture* pTexture, RHI::RenderResourceBarrierState access );
 
+        RGResourceHandle<RGResourceTagBuffer> ImportResource( RHI::RHIBuffer const* pBuffer, RHI::RenderResourceBarrierState access );
+        RGResourceHandle<RGResourceTagTexture> ImportResource( RHI::RHITexture const* pTexture, RHI::RenderResourceBarrierState access );
+
         RGResourceHandle<RGResourceTagTexture> ImportResource( Render::RenderTarget const& renderTarget, RHI::RenderResourceBarrierState access );
 
 		[[nodiscard]] RGNodeBuilder AddNode( String const& nodeName );
@@ -70,7 +75,7 @@ namespace EE::RG
         // Compilation Stage
         //-------------------------------------------------------------------------
 
-        bool Compile( RHI::RHIDevice* pRhiDevice );
+        bool Compile( Render::RenderDevice* pDevice );
 
         // Execution Stage
         //-------------------------------------------------------------------------
@@ -83,7 +88,7 @@ namespace EE::RG
         //-------------------------------------------------------------------------
 
         void Retire();
-        void DestroyAllResources( RHI::RHIDevice* pRhiDevice );
+        void DestroyAllResources( Render::RenderDevice* pDevice );
 
     private:
 

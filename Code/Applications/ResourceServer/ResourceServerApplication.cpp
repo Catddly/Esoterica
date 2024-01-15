@@ -301,7 +301,7 @@ namespace EE
         //-------------------------------------------------------------------------
 
         m_pipelineRegistry.Initialize( &m_resourceSystem );
-        m_renderGraph.AttachToPipelineRegistry( m_pipelineRegistry );
+        m_renderGraph.AttachToPipelineRegistry( &m_pipelineRegistry );
 
         //-------------------------------------------------------------------------
 
@@ -327,8 +327,8 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        m_renderGraph.DestroyAllResources( m_pRenderDevice->GetRHIDevice() );
-        m_pipelineRegistry.DestroyAllPipelineState( m_pRenderDevice->GetRHIDevice() );
+        m_renderGraph.DestroyAllResources( m_pRenderDevice );
+        m_pipelineRegistry.DestroyAllPipelineStates( m_pRenderDevice->GetRHIDevice() );
         m_pipelineRegistry.Shutdown();
 
         //-------------------------------------------------------------------------
@@ -428,7 +428,7 @@ namespace EE
                 // TODO: defer resource creation
                 m_pRenderDevice->GetRHIDevice()->BeginFrame();
 
-                bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice->GetRHIDevice() );
+                bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
                 // TODO: when pipeline registry failed to update pipelines, use old pipelines
                 m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
  

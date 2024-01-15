@@ -1,3 +1,4 @@
+[[vk::binding(3)]]
 cbuffer Transforms : register( b0 )
 {
     matrix m_worldTransform; // TODO: move to per instance data and apply camera centric world transform in veretx shader(campos=(0, 0, 0)), currently done on CPU
@@ -37,6 +38,7 @@ struct PunctualLight
     float2 m_spotAngles;
 };
 
+[[vk::binding(4)]]
 cbuffer Lights : register( b0 )
 {
     float3        m_sunDir;

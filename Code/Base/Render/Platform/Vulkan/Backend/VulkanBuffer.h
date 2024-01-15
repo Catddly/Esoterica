@@ -39,7 +39,7 @@ namespace EE::Render
 
         public:
 
-            virtual void* Map( RHI::RHIDevice* pDevice ) override;
+            [[nodiscard]] virtual void* Map( RHI::RHIDevice* pDevice ) override;
             virtual void  Unmap( RHI::RHIDevice* pDevice ) override;
 
         private:

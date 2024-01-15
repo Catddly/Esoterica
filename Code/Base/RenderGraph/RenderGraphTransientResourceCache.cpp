@@ -3,6 +3,7 @@
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
 #include "Base/RHI/Resource/RHITexture.h"
+#include "Base/Render/RenderDevice.h"
 
 namespace EE::RG
 {
@@ -46,7 +47,7 @@ namespace EE::RG
         return nullptr;
     }
 
-    bool RGTransientResourceCache::UpdateDirtyNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc )
+    bool RGTransientResourceCache::UpdateDirtyNamedBuffer( String const& name, Render::RenderDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc )
     {
         auto iterator = m_namedBuffers.find( name );
         if ( iterator == m_namedBuffers.end() )
@@ -60,8 +61,10 @@ namespace EE::RG
         if ( pStaleBuffer->GetDesc() != bufferDesc )
         {
             // update stale buffer immediately
-            pDevice->DeferRelease( pStaleBuffer );
-            auto* pNewBuffer = pDevice->CreateBuffer( bufferDesc );
+            pDevice->GetRHIDevice()->DeferRelease( pStaleBuffer );
+            pDevice->LockDevice();
+            auto* pNewBuffer = pDevice->GetRHIDevice()->CreateBuffer( bufferDesc );
+            pDevice->UnlockDevice();
             EE_ASSERT( pNewBuffer );
 
             m_namedBuffers[name] = pNewBuffer;
@@ -72,7 +75,7 @@ namespace EE::RG
         return false;
     }
 
-    bool RGTransientResourceCache::UpdateDirtyNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc )
+    bool RGTransientResourceCache::UpdateDirtyNamedTexture( String const& name, Render::RenderDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc )
     {
         auto iterator = m_namedTextures.find( name );
         if ( iterator == m_namedTextures.end() )
@@ -86,8 +89,10 @@ namespace EE::RG
         if ( pStaleTexture->GetDesc() != textureDesc )
         {
             // update stale texture immediately
-            pDevice->DeferRelease( pStaleTexture );
-            auto* pNewTexture = pDevice->CreateTexture( textureDesc );
+            pDevice->GetRHIDevice()->DeferRelease( pStaleTexture );
+            pDevice->LockDevice();
+            auto* pNewTexture = pDevice->GetRHIDevice()->CreateTexture( textureDesc );
+            pDevice->UnlockDevice();
             EE_ASSERT( pNewTexture );
 
             m_namedTextures[name] = pNewTexture;
@@ -98,7 +103,7 @@ namespace EE::RG
         return false;
     }
 
-    RHI::RHIBuffer* RGTransientResourceCache::GetOrCreateNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc )
+    RHI::RHIBuffer* RGTransientResourceCache::GetOrCreateNamedBuffer( String const& name, Render::RenderDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc )
     {
         auto iterator = m_namedBuffers.find( name );
         if ( iterator != m_namedBuffers.end() )
@@ -106,14 +111,16 @@ namespace EE::RG
             return iterator->second;
         }
            
-        auto* pNewBuffer = pDevice->CreateBuffer( bufferDesc );
+        pDevice->LockDevice();
+        auto* pNewBuffer = pDevice->GetRHIDevice()->CreateBuffer( bufferDesc );
+        pDevice->UnlockDevice();
         EE_ASSERT( pNewBuffer );
         m_namedBuffers.insert( { name, pNewBuffer } );
 
         return pNewBuffer;
     }
 
-    RHI::RHITexture* RGTransientResourceCache::GetOrCreateNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc )
+    RHI::RHITexture* RGTransientResourceCache::GetOrCreateNamedTexture( String const& name, Render::RenderDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc )
     {
         auto iterator = m_namedTextures.find( name );
         if ( iterator != m_namedTextures.end() )
@@ -121,7 +128,9 @@ namespace EE::RG
             return iterator->second;
         }
 
-        auto* pNewTexture = pDevice->CreateTexture( textureDesc );
+        pDevice->LockDevice();
+        auto* pNewTexture = pDevice->GetRHIDevice()->CreateTexture( textureDesc );
+        pDevice->UnlockDevice();
         EE_ASSERT( pNewTexture );
         m_namedTextures.insert( { name, pNewTexture } );
 
@@ -162,19 +171,20 @@ namespace EE::RG
 
     //-------------------------------------------------------------------------
 
-    void RGTransientResourceCache::DestroyAllResource( RHI::RHIDevice* pDevice )
+    void RGTransientResourceCache::DestroyAllResource( Render::RenderDevice* pDevice )
     {
         EE_ASSERT( pDevice != nullptr );
 
+        pDevice->LockDevice();
         for ( auto& [name, namedBuffer] : m_namedBuffers )
         {
-            pDevice->DestroyBuffer( namedBuffer );
+            pDevice->GetRHIDevice()->DestroyBuffer( namedBuffer );
             namedBuffer = nullptr;
         }
 
         for ( auto& [name, namedTexture] : m_namedTextures )
         {
-            pDevice->DestroyTexture( namedTexture );
+            pDevice->GetRHIDevice()->DestroyTexture( namedTexture );
             namedTexture = nullptr;
         }
 
@@ -185,7 +195,7 @@ namespace EE::RG
         {
             for ( auto& pBuffer : buffers )
             {
-                pDevice->DestroyBuffer( pBuffer );
+                pDevice->GetRHIDevice()->DestroyBuffer( pBuffer );
                 pBuffer = nullptr;
             }
         }
@@ -194,10 +204,11 @@ namespace EE::RG
         {
             for ( auto& pTexture : textures )
             {
-                pDevice->DestroyTexture( pTexture );
+                pDevice->GetRHIDevice()->DestroyTexture( pTexture );
                 pTexture = nullptr;
             }
         }
+        pDevice->UnlockDevice();
 
         m_bufferCache.clear();
         m_textureCache.clear();

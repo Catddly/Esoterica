@@ -48,7 +48,9 @@ namespace EE::Render
         class VulkanCommandBuffer;
         class VulkanCommandBufferPool;
         class VulkanCommandQueue;
-        class VulkanPipelineState;
+
+        class VulkanRasterPipelineState;
+        class VulkanComputePipelineState;
 
 		class VulkanDevice final : public RHI::RHIDevice
 		{
@@ -142,6 +144,9 @@ namespace EE::Render
             virtual RHI::RHIPipelineState* CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) override;
             virtual void                   DestroyRasterPipelineState( RHI::RHIPipelineState* pPipelineState ) override;
 
+            virtual RHI::RHIPipelineState* CreateComputePipelineState( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) override;
+            virtual void                   DestroyComputePipelineState( RHI::RHIPipelineState* pPipelineState ) override;
+
 		private:
 
             using CombinedShaderBindingLayout = TMap<uint32_t, Render::Shader::ResourceBinding>;
@@ -164,13 +169,19 @@ namespace EE::Render
             // Resource
             //-------------------------------------------------------------------------
 
-            void ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureCreateDesc const& createDesc );
+            void ImmediateUploadBufferData( VulkanBuffer* pBuffer, RHI::RHIBufferUploadData const& uploadData );
+            void ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureBufferData const& uploadData );
 
             // Pipeline State
             //-------------------------------------------------------------------------
 
-            bool CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState );
-            void DestroyRasterPipelineStateLayout( VulkanPipelineState* pPipelineState );
+            bool CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanRasterPipelineState* pPipelineState );
+            // TODO: extract common destroy pattern
+            void DestroyRasterPipelineStateLayout( VulkanRasterPipelineState* pPipelineState );
+
+            bool CreateComputePipelineStateLayout( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader, VulkanComputePipelineState* pPipelineState );
+            void DestroyComputePipelineStateLayout( VulkanComputePipelineState* pPipelineState );
+            
             CombinedShaderSetLayout CombinedAllShaderSetLayouts( CompiledShaderArray const& compiledShaders );
             TPair<VkDescriptorSetLayout, TMap<uint32_t, RHI::EBindingResourceType>> CreateDescriptorSetLayout( uint32_t set, CombinedShaderBindingLayout const& combinedSetBindingLayout, VkShaderStageFlags stage );
 

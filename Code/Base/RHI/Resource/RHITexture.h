@@ -13,7 +13,7 @@ namespace EE::RHI
     class RHIDevice;
     class DeferReleaseQueue;
 
-    class EE_BASE_API RHITexture : public RHIResource, public RHIDynamicDeferReleasable
+    class RHITexture : public RHIResource, public RHIDynamicDeferReleasable
     {
         friend class DeferReleaseQueue;
 
@@ -28,7 +28,7 @@ namespace EE::RHI
 
         inline RHITextureCreateDesc const& GetDesc() const { return m_desc; }
 
-        RHITextureView GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
+        EE_BASE_API RHITextureView GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc );
         void ClearAllViews( RHIDevice* pDevice );
 
         virtual void* MapSlice( RHIDevice* pDevice, uint32_t layer ) = 0;
@@ -38,7 +38,7 @@ namespace EE::RHI
 
     protected:
 
-        virtual RHITextureView CreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc ) = 0;
+        virtual RHITextureView CreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc ) const = 0;
         virtual void           DestroyView( RHIDevice* pDevice, RHITextureView& textureView ) = 0;
 
     private:
@@ -49,7 +49,7 @@ namespace EE::RHI
 
     protected:
 
-        THashMap<RHITextureViewCreateDesc, RHITextureView>          m_viewCache;
-        RHITextureCreateDesc                                        m_desc;
+        THashMap<RHITextureViewCreateDesc, RHITextureView>              m_viewCache;
+        RHITextureCreateDesc                                            m_desc;
     };
 }

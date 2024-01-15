@@ -5,10 +5,11 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI { class RHITexture; }
+
 namespace EE::Render
 {
     class RenderDevice;
-    class Texture;
 
     //-------------------------------------------------------------------------
 
@@ -17,6 +18,6 @@ namespace EE::Render
         void Initialize( RenderDevice* pRenderDevice );
         void Shutdown( RenderDevice* pRenderDevice );
 
-        EE_BASE_API Texture const* GetMissingTexture();
+        EE_BASE_API RHI::RHITexture* GetMissingTexture();
     };
 }

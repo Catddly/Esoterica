@@ -32,12 +32,11 @@ namespace EE::Render
         VkImageLayout ToVulkanImageLayout( RHI::ETextureLayout layout );
         VkSampleCountFlagBits ToVulkanSampleCountFlags( TBitFlags<RHI::ESampleCount> sample );
         VkImageUsageFlagBits ToVulkanImageUsageFlags( TBitFlags<RHI::ETextureUsage> usage );
-        //VkImageLayout ToVulkanImageLayout();
         VkImageTiling ToVulkanImageTiling( RHI::ETextureMemoryTiling tiling );
         VkImageCreateFlagBits ToVulkanImageCreateFlags( TBitFlags<RHI::ETextureCreateFlag> createFlag );
         VkBufferUsageFlagBits ToVulkanBufferUsageFlags( TBitFlags<RHI::EBufferUsage> usage );
 
-        VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags );
+        VkImageAspectFlags ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags );
 
         //-------------------------------------------------------------------------
 
@@ -62,6 +61,10 @@ namespace EE::Render
         RHI::EBindingResourceType ToBindingResourceType( Render::Shader::EReflectedBindingResourceType ty );
         RHI::EBindingResourceType ToBindingResourceType( VkDescriptorType ty );
         VkDescriptorType ToVulkanBindingResourceType( RHI::EBindingResourceType ty );
+
+        //-------------------------------------------------------------------------
+    
+        RHI::RenderResourceBarrierState SpeculateBarrierStateFromUsage( TBitFlags<RHI::EBufferUsage> const& usage );
     }
 }
 

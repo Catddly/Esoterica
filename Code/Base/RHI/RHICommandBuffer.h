@@ -3,6 +3,7 @@
 #include "RHITaggedType.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
+#include "Base/Types/Color.h"
 #include "Base/Math/Math.h"
 #include "Resource/RHITextureView.h"
 #include "Resource/RHIResourceCreationCommons.h"
@@ -19,7 +20,7 @@
 
 namespace EE::RHI
 {
-    enum class RenderResourceBarrierState
+    enum class RenderResourceBarrierState : uint16_t
     {
         /// Undefined resource state, primarily use for initialization.
         Undefined = 0,
@@ -310,6 +311,14 @@ namespace EE::RHI
         }
     };
 
+    struct RenderPassClearValue
+    {
+        Color                   m_clearColor = Colors::Black;
+
+        float                   m_depth = 1.0f; // reverse z
+        uint32_t                m_stencil = 0;
+    };
+
     class RHICommandBuffer : public RHITaggedType
     {
     public:
@@ -331,10 +340,16 @@ namespace EE::RHI
         virtual void Draw( uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstInstance = 0 ) = 0;
         virtual void DrawIndexed( uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0 ) = 0;
 
+        // Compute Commands
+        //-------------------------------------------------------------------------
+
+        virtual void Dispatch( uint32_t groupX, uint32_t groupY, uint32_t groupZ ) = 0;
+
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
         virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews ) = 0;
+        virtual bool BeginRenderPassWithClearValue( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews, RenderPassClearValue const& clearValue ) = 0;
         virtual void EndRenderPass() = 0;
 
         virtual void PipelineBarrier(
@@ -349,19 +364,24 @@ namespace EE::RHI
         virtual void BindPipelineState( RHIPipelineState* pRhiPipelineState ) = 0;
         virtual void BindDescriptorSetInPlace( uint32_t set, RHIPipelineState const* pPipelineState, TSpan<RHIPipelineBinding const> const& bindings ) = 0;
 
-        virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHIBuffer*> pVertexBuffers, uint32_t offset = 0 ) = 0;
-        virtual void BindIndexBuffer( RHIBuffer* pIndexBuffer, uint32_t offset = 0 ) = 0;
+        virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHIBuffer const*> pVertexBuffers, uint32_t offset = 0 ) = 0;
+        virtual void BindIndexBuffer( RHIBuffer const* pIndexBuffer, uint32_t offset = 0 ) = 0;
 
         virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHIPipelineState const* pPipelineState, RHIPipelineBinding const& rhiBinding ) = 0;
 
         // State Settings
         //-------------------------------------------------------------------------
 
+        virtual void ClearColor( Color color ) = 0;
+        virtual void ClearDepthStencil( RHITexture* pTexture, TextureSubresourceRange range, ETextureLayout currentLayout, float depthValue, uint32_t stencil ) = 0;
+
         virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
         virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
 
         // Resource Copying
         //-------------------------------------------------------------------------
+
+        virtual void CopyBufferToBuffer( RHIBuffer* pSrcBuffer, RHIBuffer* pDstBuffer ) = 0;
 
         // TSpan<TextureSubresourceRangeUploadRef> represent the corresponding layer of a textures.
         // TSpan<TextureSubresourceRangeUploadRef>[0] is layer 0, and [1] is layer 1...

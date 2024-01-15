@@ -1,17 +1,26 @@
 #include "Common_Lit.hlsli"
 
+[[vk::binding(0, 1)]]
 Texture2D albedoTexture    : register( t0 );
+[[vk::binding(1, 1)]]
 Texture2D normalTexture    : register( t1 );
+[[vk::binding(2, 1)]]
 Texture2D metalnessTexture : register( t2 );
+[[vk::binding(3, 1)]]
 Texture2D roughnessTexture : register( t3 );
+[[vk::binding(4, 1)]]
 Texture2D aoTexture        : register( t4 );
 
+[[vk::binding(0)]]
 Texture2D   shadowMap       : register( t10 );
+[[vk::binding(1)]]
 Texture2D   precomputedBRDF : register( t11 );
+[[vk::binding(2)]]
 TextureCube globalEnvMap    : register( t12 );
 
 sampler shadowSampler : register( s2 );
 
+[[vk::binding(5)]]
 cbuffer Materials : register( b1 )
 {
 	uint   m_surfaceFlags;
@@ -22,6 +31,7 @@ cbuffer Materials : register( b1 )
 };
 
 #if WITH_PICKING
+[[vk::binding(6)]]
 cbuffer EntityID : register( b2 )
 {
 	uint	m_ID0;

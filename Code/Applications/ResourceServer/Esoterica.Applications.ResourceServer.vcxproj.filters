@@ -42,9 +42,6 @@
     <Filter Include="Resources">
       <UniqueIdentifier>{b4ecc04b-4314-4fb3-8461-5ad6e155d99a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Render">
-      <UniqueIdentifier>{c1b22de3-3903-4631-9e3c-561e40844de1}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources\Esoterica.Applications.ResourceServer.rc">

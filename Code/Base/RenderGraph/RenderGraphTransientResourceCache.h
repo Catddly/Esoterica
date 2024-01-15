@@ -7,10 +7,16 @@
 
 namespace EE::RHI
 {
-    class RHIDevice;
     class RHIBuffer;
     class RHITexture;
 }
+
+namespace EE::Render
+{
+    class RenderDevice;
+}
+
+//-------------------------------------------------------------------------
 
 namespace EE::RG
 {
@@ -33,13 +39,13 @@ namespace EE::RG
 
         // If the named buffer exists and it is updated successfully, return true. Otherwise, return false.
         // Buffer will be updated immediately.
-        bool UpdateDirtyNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
+        bool UpdateDirtyNamedBuffer( String const& name, Render::RenderDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
         // If the named texture exists and it is updated successfully, return true. Otherwise, return false.
         // Texture will be updated immediately.
-        bool UpdateDirtyNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
+        bool UpdateDirtyNamedTexture( String const& name, Render::RenderDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
 
-        RHI::RHIBuffer* GetOrCreateNamedBuffer( String const& name, RHI::RHIDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
-        RHI::RHITexture* GetOrCreateNamedTexture( String const& name, RHI::RHIDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
+        RHI::RHIBuffer* GetOrCreateNamedBuffer( String const& name, Render::RenderDevice* pDevice, RHI::RHIBufferCreateDesc const& bufferDesc );
+        RHI::RHITexture* GetOrCreateNamedTexture( String const& name, Render::RenderDevice* pDevice, RHI::RHITextureCreateDesc const& textureDesc );
 
         //-------------------------------------------------------------------------
 
@@ -48,7 +54,7 @@ namespace EE::RG
 
         //-------------------------------------------------------------------------
 
-        void DestroyAllResource( RHI::RHIDevice* pDevice );
+        void DestroyAllResource( Render::RenderDevice* pDevice );
 
     private:
 

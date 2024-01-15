@@ -93,7 +93,7 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        RHI::RHITextureView VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc )
+        RHI::RHITextureView VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc ) const
         {
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )

@@ -7,7 +7,7 @@
 
 namespace EE::RG
 {
-    RGCompiledResource RGResource::Compile( RHI::RHIDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&
+    RGCompiledResource RGResource::Compile( Render::RenderDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&
     {
         RGCompiledResource compiled;
 
@@ -25,8 +25,8 @@ namespace EE::RG
                     EE_ASSERT( pBuffer != nullptr );
 
                     // use last frame's resource barrier state if available
-                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceBarrierStates.find( m_name );
-                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceBarrierStates.end() )
+                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceAccessStates.find( m_name );
+                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceAccessStates.end() )
                     {
                         compiled.m_currentAccessState = lastFrameBarrierStateIterator->second;
                     }
@@ -43,7 +43,9 @@ namespace EE::RG
                     auto* pBuffer = cache.FetchAvailableTemporaryBuffer( desc.m_desc );
                     if ( !pBuffer )
                     {
-                        pBuffer = pDevice->CreateBuffer( desc.m_desc );
+                        pDevice->LockDevice();
+                        pBuffer = pDevice->GetRHIDevice()->CreateBuffer( desc.m_desc );
+                        pDevice->UnlockDevice();
                     }
 
                     EE_ASSERT( pBuffer != nullptr );
@@ -72,8 +74,8 @@ namespace EE::RG
                     auto* pTexture = cache.GetOrCreateNamedTexture( m_name, pDevice, desc.m_desc );
 
                     EE_ASSERT( pTexture != nullptr );
-                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceBarrierStates.find( m_name );
-                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceBarrierStates.end() )
+                    auto lastFrameBarrierStateIterator = registry.m_exportedResourceAccessStates.find( m_name );
+                    if ( lastFrameBarrierStateIterator != registry.m_exportedResourceAccessStates.end() )
                     {
                         compiled.m_currentAccessState = lastFrameBarrierStateIterator->second;
                     }
@@ -89,7 +91,9 @@ namespace EE::RG
                     auto* pTexture = cache.FetchAvailableTemporaryTexture( desc.m_desc );
                     if ( !pTexture )
                     {
-                        pTexture = pDevice->CreateTexture( desc.m_desc );
+                        pDevice->LockDevice();
+                        pTexture = pDevice->GetRHIDevice()->CreateTexture( desc.m_desc );
+                        pDevice->UnlockDevice();
                     }
 
                     EE_ASSERT( pTexture != nullptr );
@@ -132,14 +136,14 @@ namespace EE::RG
                 case RGResourceType::Buffer:
                 {
                     // remember access state of this exportable resource after this frame is ended
-                    resourceRegistry.m_exportedResourceBarrierStates.insert_or_assign( m_name, m_currentAccessState );
+                    resourceRegistry.m_exportedResourceAccessStates.insert_or_assign( m_name, m_currentAccessState );
                 }
                 break;
 
                 case RGResourceType::Texture:
                 {
                     // remember access state of this exportable resource after this frame is ended
-                    resourceRegistry.m_exportedResourceBarrierStates.insert_or_assign( m_name, m_currentAccessState );
+                    resourceRegistry.m_exportedResourceAccessStates.insert_or_assign( m_name, m_currentAccessState );
                 }
                 break;
 

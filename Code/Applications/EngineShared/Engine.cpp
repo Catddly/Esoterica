@@ -87,9 +87,6 @@ namespace EE
             return m_fatalErrorHandler( "Failed to initialize engine module!" );
         }
 
-        // Temp
-        m_pRenderPipelineResgistry = m_engineModule.GetRenderPipelineRegistry();
-
         ModuleContext moduleContext;
         moduleContext.m_pTaskSystem = m_pTaskSystem;
         moduleContext.m_pTypeRegistry = m_pTypeRegistry;
@@ -147,7 +144,8 @@ namespace EE
         }
 
         // Initialize rendering system
-        m_renderingSystem.Initialize( m_pRenderDevice, Float2( windowDimensions ), m_engineModule.GetRendererRegistry(), m_pEntityWorldManager );
+        m_renderPipelineRegistry.Initialize( m_pResourceSystem );
+        m_renderingSystem.Initialize( m_pRenderDevice, &m_renderPipelineRegistry, Float2( windowDimensions ), m_engineModule.GetRendererRegistry(), m_pEntityWorldManager );
         m_pSystemRegistry->RegisterSystem( &m_renderingSystem );
 
         // Create tools UI
@@ -183,6 +181,11 @@ namespace EE
             DestroyToolsUI();
             EE_ASSERT( m_pToolsUI == nullptr );
             #endif
+
+            m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
+
+            m_renderPipelineRegistry.DestroyAllPipelineStates( m_pRenderDevice->GetRHIDevice() );
+            m_renderPipelineRegistry.Shutdown();
 
             // Shutdown rendering system
             m_pSystemRegistry->UnregisterSystem( &m_renderingSystem );
@@ -251,9 +254,6 @@ namespace EE
             m_moduleInitStageReached = false;
         }
 
-        // Temp
-        m_pRenderPipelineResgistry = nullptr;
-
         //-------------------------------------------------------------------------
         // Shutdown Core
         //-------------------------------------------------------------------------
@@ -318,6 +318,10 @@ namespace EE
 
                 //-------------------------------------------------------------------------
 
+                // Note: To ensure UI system will NOT fetch the stale textures,
+                //       we must resize render target before UI drawing (i.e. before m_pToolsUI->StartFrame() )
+                m_renderingSystem.ResizeWorldRenderTargets();
+
                 m_pEntityWorldManager->StartFrame();
 
                 //-------------------------------------------------------------------------
@@ -329,7 +333,7 @@ namespace EE
 
                 //-------------------------------------------------------------------------
                 
-                m_pRenderPipelineResgistry->Update();
+                m_renderPipelineRegistry.Update();
 
                 //-------------------------------------------------------------------------
 
@@ -454,12 +458,11 @@ namespace EE
 
                 m_pEntityWorldManager->EndFrame();
 
-                // TODO: device locking
-                //m_pRenderDevice->LockDevice();
-                m_pRenderPipelineResgistry->UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
-                //m_pRenderDevice->UnlockDevice();
+                if ( !m_exitRequested )
+                {
+                    m_renderingSystem.Update( m_updateContext );
+                }
 
-                m_renderingSystem.Update( m_updateContext );
                 m_pInputSystem->ClearFrameState();
             }
         }

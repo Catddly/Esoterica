@@ -14,19 +14,15 @@ namespace EE::RG
 
         static_assert( std::is_base_of<RGResourceTagTypeBase<Tag>, Tag>::value, "Invalid render graph resource tag!" );
 
-        //typedef typename Tag::DescType DescType;
-
     public:
 
+        RGNodeResourceRef() = default;
         RGNodeResourceRef( _Impl::RGResourceID slotID );
-        //RGNodeResourceRef( DescType const& desc, _Impl::RGResourceID slotID );
-
-        //inline DescType const& GetDesc() const { return m_desc; }
 
         auto Bind() const;
 
     private:
-        //DescType						    m_desc;
+
         _Impl::RGResourceID				    m_slotID;
     };
 
@@ -37,12 +33,6 @@ namespace EE::RG
         : m_slotID( slotID )
     {
     }
-
-    //template<typename Tag, RGResourceViewType RVT>
-    //RGNodeResourceRef<Tag, RVT>::RGNodeResourceRef( DescType const& desc, _Impl::RGResourceID slotID )
-    //    : m_desc( desc ), m_slotID( slotID )
-    //{
-    //}
 
     //-------------------------------------------------------------------------
 
@@ -86,9 +76,9 @@ namespace EE::RG
         return nodeRef.Bind();
     }
 
-    inline RGPipelineRHIRawBinding BindRaw( RHI::RHIPipelineBinding rhiBinding )
+    inline RGPipelineRHIRawBinding BindRaw( RHI::RHIPipelineResourceBinding rhiBinding )
     {
-        return RGPipelineRHIRawBinding{ rhiBinding };
+        return RGPipelineRHIRawBinding{ RHI::RHIPipelineBinding{ rhiBinding } };
     }
 
     inline RGPipelineStaticSamplerBinding BindStaticSampler()

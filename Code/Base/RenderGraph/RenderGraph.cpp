@@ -4,6 +4,7 @@
 #include "Base/Logging/Log.h"
 #include "Base/Threading/Threading.h"
 #include "Base/Render/RenderTarget.h"
+#include "Base/Render/RenderDevice.h"
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/RHISwapchain.h"
 #include "Base/RHI/RHICommandQueue.h"
@@ -95,6 +96,49 @@ namespace EE
             return handle;
         }
 
+        RGResourceHandle<RGResourceTagBuffer> RenderGraph::ImportResource( RHI::RHIBuffer const* pBuffer, RHI::RenderResourceBarrierState access )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+
+            _Impl::RGBufferDesc rgDesc = {};
+            EE::RG::BufferDesc bufferDesc;
+            bufferDesc.m_desc = pBuffer->GetDesc();
+            rgDesc.m_desc = bufferDesc;
+
+            // TODO: break of the const consistency?
+            RGImportedResource importResource;
+            importResource.m_pImportedResource = const_cast<RHI::RHIBuffer*>( pBuffer );
+            importResource.m_currentAccess = access;
+
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGBufferDesc>( std::move( rgDesc ), std::move( importResource ) );
+            RGResourceHandle<RGResourceTagBuffer> handle;
+            handle.m_slotID = id;
+            handle.m_desc = bufferDesc;
+            return handle;
+        }
+        
+        RGResourceHandle<RGResourceTagTexture> RenderGraph::ImportResource( RHI::RHITexture const* pTexture, RHI::RenderResourceBarrierState access )
+        {
+            EE_ASSERT( Threading::IsMainThread() );
+
+            _Impl::RGTextureDesc rgDesc = {};
+            EE::RG::TextureDesc textureDesc;
+            textureDesc.m_desc = pTexture->GetDesc();
+            rgDesc.m_desc = textureDesc;
+
+            // TODO: break of the const consistency?
+            RGImportedResource importResource;
+            importResource.m_pImportedResource = const_cast<RHI::RHITexture*>( pTexture );
+            importResource.m_currentAccess = access;
+            EE_ASSERT( importResource.m_pImportedResource );
+
+            _Impl::RGResourceID const id = m_resourceRegistry.ImportResource<_Impl::RGTextureDesc>( std::move( rgDesc ), std::move( importResource ) );
+            RGResourceHandle<RGResourceTagTexture> handle;
+            handle.m_slotID = id;
+            handle.m_desc = textureDesc;
+            return handle;
+        }
+
         RGResourceHandle<RGResourceTagTexture> RenderGraph::ImportResource( Render::RenderTarget const& renderTarget, RHI::RenderResourceBarrierState access )
         {
             EE_ASSERT( Threading::IsMainThread() );
@@ -142,11 +186,11 @@ namespace EE
         // Compilation Stage
         //-------------------------------------------------------------------------
 
-        bool RenderGraph::Compile( RHI::RHIDevice* pRhiDevice )
+        bool RenderGraph::Compile( Render::RenderDevice* pDevice )
         {
             EE_ASSERT( Threading::IsMainThread() );
 
-            if ( pRhiDevice == nullptr )
+            if ( pDevice == nullptr )
             {
                 EE_LOG_WARNING("RenderGraph", "RenderGraph::Compile()", "RHI Device missing! Cannot compile render graph!");
                 return false;
@@ -161,7 +205,7 @@ namespace EE
             // Create actual RHI Resources
             //-------------------------------------------------------------------------
 
-            bool result = m_resourceRegistry.Compile( pRhiDevice, resolvedResult );
+            bool result = m_resourceRegistry.Compile( pDevice, resolvedResult );
 
             if ( !result )
             {
@@ -331,9 +375,9 @@ namespace EE
         // Cleanup Stage
         //-------------------------------------------------------------------------
 
-        void RenderGraph::DestroyAllResources( RHI::RHIDevice* pRhiDevice )
+        void RenderGraph::DestroyAllResources( Render::RenderDevice* pDevice )
         {
-            m_resourceRegistry.Shutdown( pRhiDevice );
+            m_resourceRegistry.Shutdown( pDevice );
         }
 
         //-------------------------------------------------------------------------

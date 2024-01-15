@@ -507,6 +507,22 @@ namespace EE::Render
         return true;
     }
 
+    static bool ReflectComputeThreadGroupSize( spirv_cross::Compiler& spirvCompiler, uint32_t threadGroupSize[3] )
+    {
+        auto executionModel = spirvCompiler.get_execution_model();
+        if ( executionModel == spv::ExecutionModelGLCompute )
+        {
+            threadGroupSize[0] = spirvCompiler.get_execution_mode_argument( spv::ExecutionMode::ExecutionModeLocalSize, 0 );
+            threadGroupSize[1] = spirvCompiler.get_execution_mode_argument( spv::ExecutionMode::ExecutionModeLocalSize, 1 );
+            threadGroupSize[2] = spirvCompiler.get_execution_mode_argument( spv::ExecutionMode::ExecutionModeLocalSize, 2 );
+            //spirvCompiler.get_execution_mode_argument( spv::ExecutionMode::ExecutionModeLocalSizeHint );
+        
+            return true;
+        }
+
+        return false;
+    }
+
     static bool ReflectResourceBindingDescsSpirv( spirv_cross::Compiler& spirvCompiler, TVector<TVector<Shader::ResourceBinding>>& resourceBindings )
     {
         auto shaderResources = spirvCompiler.get_shader_resources();
@@ -902,10 +918,15 @@ namespace EE::Render
             }
         }
 
-        //if ( !GetCBufferDescsSpirv( spirvCompiler, pShader->m_cbuffers ) )
-        //{
-        //    return Error( "Failed to get cbuffer!" );
-        //}
+        if ( pShader->GetPipelineStage() == PipelineStage::Compute )
+        {
+            auto* pComputeShader = static_cast<ComputeShader*>( pShader.get() );
+
+            if ( !ReflectComputeThreadGroupSize( spirvCompiler, pComputeShader->m_threadGroupSize ) )
+            {
+                return Error( "Failed to reflect compute shader thread group size!" );
+            }
+        }
 
         if ( !ReflectResourceBindingDescsSpirv( spirvCompiler, pShader->m_resourceBindings ) )
         {

@@ -53,6 +53,8 @@ namespace EE::RHI
         RGBA8Unorm,
         BGRA8Unorm,
 
+        RG16Float,
+
         RGBA32UInt,
 
         Depth32,
@@ -131,6 +133,26 @@ namespace EE::RHI
 
     struct EE_BASE_API RHITextureCreateDesc
     {
+    public:
+
+        void CopyIgnoreUploadData( RHITextureCreateDesc const& rhs )
+        {
+            m_width = rhs.m_width;
+            m_height = rhs.m_height;
+            m_depth = rhs.m_depth;
+            m_array = rhs.m_array;
+            m_mipmap = rhs.m_mipmap;
+            m_format = rhs.m_format;
+            m_usage = rhs.m_usage;
+            m_tiling = rhs.m_tiling;
+            m_sample = rhs.m_sample;
+            m_type = rhs.m_type;
+            m_flag = rhs.m_flag;
+            m_allocatedSize = rhs.m_allocatedSize;
+            m_memoryUsage = rhs.m_memoryUsage;
+            m_memoryFlag = rhs.m_memoryFlag;
+        }
+
     public:
 
         static RHITextureCreateDesc New1D( uint32_t width, EPixelFormat format );
@@ -248,7 +270,7 @@ namespace EE::RHI
         None
     };
 
-    struct RHITextureViewCreateDesc
+    struct EE_BASE_API RHITextureViewCreateDesc
     {
         // If this is not set, infer texture view type from ETextureType in RHITextureCreateDesc.
         TOptional<ETextureViewType>                   m_viewType = {};
@@ -288,8 +310,38 @@ namespace EE::RHI
         ShaderDeviceAddress,
     };
 
+    struct RHIBufferCreateDesc;
+
+    struct EE_BASE_API RHIBufferUploadData
+    {
+        void*               m_pData = nullptr;
+
+        inline bool HasValidData() const
+        {
+            return m_pData != nullptr;
+        }
+
+        // Return whether this buffer data can be used(initialized) within a buffer. 
+        inline bool CanBeUsedBy( RHIBufferCreateDesc const& bufferCreateDesc ) const
+        {
+            // TODO: safety check
+            return true;
+        }
+    };
+
     struct EE_BASE_API RHIBufferCreateDesc
     {
+    public:
+
+        void CopyIgnoreUploadData( RHIBufferCreateDesc const& rhs )
+        {
+            m_desireSize = rhs.m_desireSize;
+            m_usage = rhs.m_usage;
+            m_allocatedSize = rhs.m_allocatedSize;
+            m_memoryUsage = rhs.m_memoryUsage;
+            m_memoryFlag = rhs.m_memoryFlag;
+        }
+
     public:
 
         static RHIBufferCreateDesc NewSize( uint32_t sizeInByte );
@@ -299,6 +351,15 @@ namespace EE::RHI
         static RHIBufferCreateDesc NewIndexBuffer( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewUniformBuffer( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewStorageBuffer( uint32_t sizeInByte );
+
+        // User must ensure that pData must have the same size as the buffer.
+        void WithInitialData( RHIBufferUploadData initBufferData )
+        {
+            if ( initBufferData.HasValidData() && initBufferData.CanBeUsedBy( *this ) )
+            {
+                m_bufferUploadData = initBufferData;
+            }
+        }
 
         bool IsValid() const;
 
@@ -336,6 +397,8 @@ namespace EE::RHI
         uint32_t                                m_allocatedSize;
         ERenderResourceMemoryUsage              m_memoryUsage;
         TBitFlags<ERenderResourceMemoryFlag>    m_memoryFlag;
+
+        RHIBufferUploadData                     m_bufferUploadData;
     };
 
     //-------------------------------------------------------------------------
@@ -483,10 +546,15 @@ namespace EE::RHI
             return defaultState;
         }
 
+        static RHIPipelineRasterizerState EngineDefault()
+        {
+            return RHIPipelineRasterizerState{};
+        }
+
         Render::FillMode                m_fillMode = Render::FillMode::Solid;
         Render::CullMode                m_cullMode = Render::CullMode::BackFace;
         Render::WindingMode             m_WindingMode = Render::WindingMode::CounterClockwise;
-        bool                            m_enableScissorCulling = false;
+        bool                            m_enableScissorCulling = true;
     };
 
     struct RHIPipelineBlendState
@@ -502,6 +570,11 @@ namespace EE::RHI
             defaultState.m_dstAlphaValue = Render::BlendValue::InverseSourceAlpha;
             defaultState.m_blendOpAlpha = Render::BlendOp::Add;
             return defaultState;
+        }
+
+        static RHIPipelineBlendState NoBlend()
+        {
+            return RHIPipelineBlendState{};
         }
 
         Render::BlendValue              m_srcValue = Render::BlendValue::One;
@@ -526,6 +599,7 @@ namespace EE::RHI
 
     struct EE_BASE_API RHIPipelineShader
     {
+        RHIPipelineShader() = default;
         RHIPipelineShader( ResourcePath shaderPath, String entryName = "main" );
 
         inline RHIPipelineShader& SetShaderPath( ResourcePath shaderPath )
@@ -576,7 +650,7 @@ namespace EE::RHI
 
     public:
 
-        Render::PipelineStage   m_stage = Render::PipelineStage::Vertex;
+        Render::PipelineStage   m_stage = Render::PipelineStage::None;
         ResourcePath            m_shaderPath;
         String                  m_entryName = "main";
     };
@@ -645,6 +719,7 @@ namespace EE::RHI
         inline RHIRasterPipelineStateCreateDesc& SetRenderPass( RHIRenderPass* pRenderPass )
         {
             m_pRenderpass = pRenderPass;
+            return *this;
         }
 
         inline RHIRasterPipelineStateCreateDesc& DepthTest( bool enable )
@@ -695,6 +770,53 @@ namespace EE::RHI
         bool                            m_enableDepthTest = false;
         bool                            m_enableDepthWrite = false;
         bool                            m_enableDepthBias = false;
+    };
+
+    struct RHIComputePipelineStateCreateDesc
+    {
+        inline RHIComputePipelineStateCreateDesc& WithShader( RHIPipelineShader&& pipelineShader )
+        {
+            EE_ASSERT( pipelineShader.IsValid() );
+            EE_ASSERT( pipelineShader.m_stage == Render::PipelineStage::Compute );
+            this->m_pipelineShader = pipelineShader;
+            return *this;
+        }
+
+        inline RHIComputePipelineStateCreateDesc& WithThreadCount( uint32_t width, uint32_t height, uint32_t depth )
+        {
+            m_dispathGroupWidth = Math::Max( width, 1u );
+            m_dispathGroupHeight = Math::Max( height, 1u );
+            m_dispathGroupDepth = Math::Max( depth, 1u );
+            return *this;
+        }
+
+        inline bool IsValid() const
+        {
+            return m_pipelineShader.IsValid();
+        }
+
+    public:
+
+        size_t GetHash() const
+        {
+            size_t hash = 0;
+            Hash::HashCombine( hash, m_pipelineShader.m_shaderPath.c_str() );
+            Hash::HashCombine( hash, m_pipelineShader.m_entryName );
+            return hash;
+        }
+
+        friend bool operator==( RHIComputePipelineStateCreateDesc const& lhs, RHIComputePipelineStateCreateDesc const& rhs )
+        {
+            // TODO: this is not right for pipelines which share same set of shaders but have different pipeline states.
+            return lhs.GetHash() == rhs.GetHash();
+        }
+
+    public:
+
+        RHIPipelineShader               m_pipelineShader;
+        uint32_t                        m_dispathGroupWidth;
+        uint32_t                        m_dispathGroupHeight;
+        uint32_t                        m_dispathGroupDepth;
     };
 
     //-------------------------------------------------------------------------
@@ -898,4 +1020,12 @@ namespace eastl
         }
     };
 
+    template<>
+    struct hash<EE::RHI::RHIComputePipelineStateCreateDesc>
+    {
+        EE_FORCE_INLINE eastl_size_t operator()( EE::RHI::RHIComputePipelineStateCreateDesc const& pipelineDesc ) const noexcept
+        {
+            return pipelineDesc.GetHash();
+        }
+    };
 }

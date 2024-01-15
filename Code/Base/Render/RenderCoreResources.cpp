@@ -20,8 +20,6 @@ namespace EE::Render::CoreResources
 
     struct DefaultResourceContainer
     {
-        Texture m_defaultTexture;
-
         RHI::RHITexture* m_pDefaultTexture = nullptr;
     };
 
@@ -74,9 +72,9 @@ namespace EE::Render::CoreResources
         }
     }
 
-    Texture const* GetMissingTexture()
+    RHI::RHITexture* GetMissingTexture()
     {
         EE_ASSERT( g_pDefaultResources != nullptr );
-        return &g_pDefaultResources->m_defaultTexture;
+        return g_pDefaultResources->m_pDefaultTexture;
     }
 }

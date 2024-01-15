@@ -26,13 +26,13 @@ namespace EE::RHI
     public:
 
         template <typename T>
-        typename std::enable_if<std::is_pointer_v<T>, T>::type MapTo( RHIDevice* pDevice )
+        [[nodiscard]] typename std::enable_if<std::is_pointer_v<T>, T>::type MapTo( RHIDevice* pDevice )
         {
             void* pMappedData = Map( pDevice );
             return reinterpret_cast<T>( pMappedData );
         }
 
-        virtual void* Map( RHIDevice* pDevice ) = 0;
+        [[nodiscard]] virtual void* Map( RHIDevice* pDevice ) = 0;
         virtual void  Unmap( RHIDevice* pDevice ) = 0;
 
     private:

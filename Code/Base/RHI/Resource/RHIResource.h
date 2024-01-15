@@ -22,7 +22,7 @@ namespace EE::RHI
 
     class RHIDevice;
 
-    class IRHIResourceWrapper
+    class EE_BASE_API IRHIResourceWrapper
     {
     public:
 

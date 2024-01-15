@@ -17,6 +17,7 @@ namespace EE::Render
         {
             m_loadableTypes.push_back( PixelShader::GetStaticResourceTypeID() );
             m_loadableTypes.push_back( VertexShader::GetStaticResourceTypeID() );
+            m_loadableTypes.push_back( ComputeShader::GetStaticResourceTypeID() );
         }
 
         inline void SetRenderDevicePtr( RenderDevice* pRenderDevice )

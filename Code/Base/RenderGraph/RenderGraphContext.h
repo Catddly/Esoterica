@@ -7,6 +7,7 @@
 #include "Base/Render/RenderShader.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Optional.h"
+#include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RHI
@@ -115,12 +116,18 @@ namespace EE::RG
             TSpan<RGRenderTargetViewDesc> colorAttachemnts,
             TOptional<RGRenderTargetViewDesc> depthAttachment = {}
         );
+        bool BeginRenderPassWithClearValue(
+            RHI::RHIRenderPass* pRenderPass, Int2 extent,
+            RHI::RenderPassClearValue const& clearValue,
+            TSpan<RGRenderTargetViewDesc> colorAttachemnts,
+            TOptional<RGRenderTargetViewDesc> depthAttachment = {}
+        );
         inline void EndRenderPass() { EE_ASSERT( m_pCommandBuffer ); m_pCommandBuffer->EndRenderPass(); }
 
         RGBoundPipeline BindPipeline();
 
-        inline void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset = 0 );
-        inline void BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset = 0 );
+        inline void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer const*> pVertexBuffers, uint32_t offset = 0 );
+        inline void BindIndexBuffer( RHI::RHIBuffer const* pIndexBuffer, uint32_t offset = 0 );
 
         inline void Draw( uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstInstance = 0 )
         {
@@ -136,6 +143,20 @@ namespace EE::RG
         void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 );
         void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 );
 
+        void SetViewportAndScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 );
+
+        // Compute Commands
+        //-------------------------------------------------------------------------
+
+        void Dispatch();
+
+        // High level utility interfaces
+        //-------------------------------------------------------------------------
+        
+        // Note: default depth value is 0.0f, reverse z
+        template <RGResourceViewType RVT>
+        void ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RVT> const& depthStencilTexture, float depthValue = 0.0f, uint32_t stencilValue = 0 );
+
     private:
 
         // Submit commands to its command queue and reset all context.
@@ -143,6 +164,13 @@ namespace EE::RG
 
         void AddWaitSyncPoint( RHI::RHISemaphore* pWaitSemaphore, Render::PipelineStage waitStage );
         void AddSignalSyncPoint( RHI::RHISemaphore* pSignalSemaphore );
+
+        template <RGResourceViewType View>
+        inline RHI::RenderResourceBarrierState GetResourceCurrentBarrierState( RGNodeResourceRef<RGResourceTagTexture, View> const& resourceRef ) const
+        {
+            EE_ASSERT( m_pRenderGraph );
+            return m_pRenderGraph->GetResourceRegistry().GetCompiledResourceBarrierState( resourceRef );
+        }
 
     private:
 
@@ -164,4 +192,30 @@ namespace EE::RG
         TVector<Render::PipelineStage>      m_waitStages;
         TVector<RHI::RHISemaphore*>         m_signalSemaphores;
     };
+
+    //-------------------------------------------------------------------------
+
+    template <RGResourceViewType RVT>
+    void RGRenderCommandContext::ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RVT> const& depthStencilTexture, float depthValue, uint32_t stencilValue )
+    {
+        RHI::ETextureLayout layout = RHI::ETextureLayout::Undefined;
+        if constexpr ( RVT == RGResourceViewType::SRV )
+        {
+            layout = RHI::ETextureLayout::ShaderReadOnlyOptimal;
+        }
+        else if constexpr ( RVT == RGResourceViewType::UAV )
+        {
+            layout = RHI::ETextureLayout::General;
+        }
+        else if constexpr ( RVT == RGResourceViewType::RT )
+        {
+            layout = RHI::ETextureLayout::DepthStencilOptimal;
+        }
+
+        m_pCommandBuffer->ClearDepthStencil(
+            GetCompiledTextureResource( depthStencilTexture ),
+            RHI::TextureSubresourceRange::AllSubresources( TBitFlags<RHI::TextureAspectFlags>( RHI::TextureAspectFlags::Depth, RHI::TextureAspectFlags::Stencil ) ),
+            layout, depthValue, stencilValue
+        );
+    }
 }

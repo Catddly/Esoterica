@@ -71,7 +71,7 @@ namespace EE::Render
 
     bool RenderDevice::IsInitialized() const
     {
-        return m_pRHIDevice != nullptr || m_pDevice != nullptr;
+        return m_pRHIDevice != nullptr;
     }
 
     bool RenderDevice::Initialize( IniFile const& iniFile )
@@ -654,7 +654,7 @@ namespace EE::Render
         }
 
         // Create and store buffer
-        m_pDevice->CreateBuffer( &bufferDesc, pInitializationData == nullptr ? nullptr : &initData, (ID3D11Buffer**) &buffer.m_resourceHandle.m_pData );
+        //m_pDevice->CreateBuffer( &bufferDesc, pInitializationData == nullptr ? nullptr : &initData, (ID3D11Buffer**) &buffer.m_resourceHandle.m_pData );
         EE_ASSERT( buffer.IsValid() );
     }
 
@@ -663,8 +663,8 @@ namespace EE::Render
         EE_ASSERT( buffer.IsValid() && newSize % buffer.m_byteStride == 0 );
 
         // Release D3D buffer
-        ( (ID3D11Buffer*) buffer.m_resourceHandle.m_pData )->Release();
-        buffer.m_resourceHandle.m_pData = nullptr;
+        //( (ID3D11Buffer*) buffer.m_resourceHandle.m_pData )->Release();
+        //buffer.m_resourceHandle.m_pData = nullptr;
         buffer.m_byteSize = newSize;
         CreateBuffer( buffer );
     }
@@ -675,8 +675,8 @@ namespace EE::Render
 
         if ( buffer.IsValid() )
         {
-            ( (ID3D11Buffer*) buffer.m_resourceHandle.m_pData )->Release();
-            buffer.m_resourceHandle.Reset();
+            //( (ID3D11Buffer*) buffer.m_resourceHandle.m_pData )->Release();
+            //buffer.m_resourceHandle.Reset();
             buffer = RenderBuffer();
         }
     }
@@ -1045,8 +1045,8 @@ namespace EE::Render
         texture.m_dimensions = Int2( textureDesc.Width, textureDesc.Height );
 
         // Update handle
-        texture.m_textureHandle.m_pData = pTexture;
-        texture.m_shaderResourceView.m_pData = pTextureSRV;
+        //texture.m_textureHandle.m_pData = pTexture;
+        //texture.m_shaderResourceView.m_pData = pTextureSRV;
     }
 
     void RenderDevice::CreateTexture( Texture& texture, DataFormat format, Int2 dimensions, uint32_t usage )
@@ -1163,11 +1163,11 @@ namespace EE::Render
         // Update handle
         //-------------------------------------------------------------------------
 
-        texture.m_textureHandle.m_pData = pTexture;
-        texture.m_shaderResourceView.m_pData = pTextureSRV;
-        texture.m_unorderedAccessView.m_pData = pTextureUAV;
-        texture.m_renderTargetView.m_pData = pRTV;
-        texture.m_depthStencilView.m_pData = pDSV;
+        //texture.m_textureHandle.m_pData = pTexture;
+        //texture.m_shaderResourceView.m_pData = pTextureSRV;
+        //texture.m_unorderedAccessView.m_pData = pTextureUAV;
+        //texture.m_renderTargetView.m_pData = pRTV;
+        //texture.m_depthStencilView.m_pData = pDSV;
     }
 
     void RenderDevice::DestroyTexture( Texture& texture )
@@ -1381,13 +1381,13 @@ namespace EE::Render
             srcBox.front = 0;
             srcBox.back = 1;
 
-            auto pPickingTexture = (ID3D11Texture2D*) renderTarget.m_pickingRT.m_textureHandle.m_pData;
-            auto pStagingTexture = (ID3D11Texture2D*) renderTarget.m_pickingStagingTexture.m_textureHandle.m_pData;
-            m_immediateContext.m_pDeviceContext->CopySubresourceRegion( pStagingTexture, 0, 0, 0, 0, pPickingTexture, 0, &srcBox );
+            //auto pPickingTexture = (ID3D11Texture2D*) renderTarget.m_pickingRT.m_textureHandle.m_pData;
+            //auto pStagingTexture = (ID3D11Texture2D*) renderTarget.m_pickingStagingTexture.m_textureHandle.m_pData;
+            //m_immediateContext.m_pDeviceContext->CopySubresourceRegion( pStagingTexture, 0, 0, 0, 0, pPickingTexture, 0, &srcBox );
 
             // Map the staging texture and read back the value
             D3D11_MAPPED_SUBRESOURCE msr = {};
-            m_immediateContext.m_pDeviceContext->Map( pStagingTexture, 0, D3D11_MAP::D3D11_MAP_READ, 0, &msr );
+            //m_immediateContext.m_pDeviceContext->Map( pStagingTexture, 0, D3D11_MAP::D3D11_MAP_READ, 0, &msr );
 
             uint32_t* pData = reinterpret_cast<uint32_t*>( msr.pData );
             pickingID.m_0 = pData[1];
@@ -1398,7 +1398,7 @@ namespace EE::Render
             pickingID.m_1 = pickingID.m_1 << 32;
             pickingID.m_1 |= pData[2];
 
-            m_immediateContext.m_pDeviceContext->Unmap( pStagingTexture, 0 );
+            //m_immediateContext.m_pDeviceContext->Unmap( pStagingTexture, 0 );
         }
         UnlockDevice();
 

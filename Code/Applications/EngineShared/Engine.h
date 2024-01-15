@@ -3,6 +3,7 @@
 #include "RenderingSystem.h"
 #include "Engine/ToolsUI/IDevelopmentToolsUI.h"
 #include "Base/Types/Function.h"
+#include "Base/Render/RenderPipelineRegistry.h"
 #include "Engine/UpdateContext.h"
 
 #include "Engine/_Module/EngineModule.h"
@@ -69,7 +70,10 @@ namespace EE
         TypeSystem::TypeRegistry*                       m_pTypeRegistry = nullptr;
         Resource::ResourceSystem*                       m_pResourceSystem = nullptr;
         Render::RenderDevice*                           m_pRenderDevice = nullptr;
+
         Render::RenderingSystem                         m_renderingSystem;
+        Render::PipelineRegistry                        m_renderPipelineRegistry;
+
         EntityWorldManager*                             m_pEntityWorldManager = nullptr;
         Input::InputSystem*                             m_pInputSystem = nullptr;
 
@@ -77,10 +81,6 @@ namespace EE
         ImGuiX::ImguiSystem*                            m_pImguiSystem = nullptr;
         ImGuiX::IDevelopmentToolsUI*                    m_pToolsUI = nullptr;
         #endif
-
-        // Temporary: Test
-        //-------------------------------------------------------------------------
-        Render::PipelineRegistry*                       m_pRenderPipelineResgistry = nullptr;
 
         // Application data
         //-------------------------------------------------------------------------

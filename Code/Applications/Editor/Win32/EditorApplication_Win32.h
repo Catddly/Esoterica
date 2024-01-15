@@ -58,6 +58,7 @@ namespace EE
         virtual void GetBorderlessTitleBarInfo( Math::ScreenSpaceRectangle& outTitlebarRect, bool& isInteractibleWidgetHovered ) const override;
         virtual void ProcessWindowResizeMessage( Int2 const& newWindowSize ) override;
         virtual void ProcessInputMessage( UINT message, WPARAM wParam, LPARAM lParam ) override;
+        virtual void ProcessWindowDestructionMessage() override;
 
         virtual bool ApplicationLoop() override;
 

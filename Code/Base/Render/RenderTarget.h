@@ -28,7 +28,7 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    class RenderTarget : public RHI::IRHIResourceWrapper
+    class EE_BASE_API RenderTarget : public RHI::IRHIResourceWrapper
     {
         friend class RenderDevice;
 
@@ -55,12 +55,13 @@ namespace EE::Render
         inline bool operator==( RenderTarget const& rhs ) const { return m_pRenderTarget == rhs.m_pRenderTarget && m_pDepthStencil == rhs.m_pDepthStencil; }
         inline bool operator!=( RenderTarget const& rhs ) const { return !operator==(rhs); }
 
-        inline RHI::RHITexture* GetRHIRenderTarget() const { return m_pRenderTarget; }
+        inline RHI::RHITexture const* GetRHIRenderTarget() const { return m_pRenderTarget; }
+        inline RHI::RHITexture const* GetRHIDepthStencil() const { return m_pDepthStencil; }
+        inline RHI::RHITexture const* GetRHIPickingRenderTarget() const { return m_pPickingRT; }
 
-        //inline ViewSRVHandle const& GetRenderTargetShaderResourceView() const { EE_ASSERT( m_RT.IsValid() ); return m_RT.GetShaderResourceView(); }
-        //inline ViewRTHandle const& GetRenderTargetHandle() const { EE_ASSERT( m_RT.IsValid() ); return m_RT.GetRenderTargetView(); }
-        //inline ViewRTHandle const& GetPickingRenderTargetHandle() const { EE_ASSERT( m_pickingRT.IsValid() ); return m_pickingRT.GetRenderTargetView(); }
-        //inline ViewDSHandle const& GetDepthStencilHandle() const { EE_ASSERT( m_DS.IsValid() ); return m_DS.GetDepthStencilView(); }
+        inline RHI::RHITexture* GetRHIRenderTarget() { return m_pRenderTarget; }
+        inline RHI::RHITexture* GetRHIDepthStencil() { return m_pDepthStencil; }
+        inline RHI::RHITexture* GetRHIPickingRenderTarget() { return m_pPickingRT; }
 
     public:
 
@@ -118,9 +119,13 @@ namespace EE::Render
 
         bool AcquireNextFrame();
 
-        RHI::RHISwapchain* GetRHISwapchain() const { return m_pSwapchain; }
-        RHI::RHISemaphore* GetWaitSemaphore() const { return m_pTextureAcquireSemaphore; }
-        RHI::RHISemaphore* GetSignalSemaphore() const { return m_pRenderCompleteSemaphore; }
+        RHI::RHISwapchain const* GetRHISwapchain() const { return m_pSwapchain; }
+        RHI::RHISemaphore const* GetWaitSemaphore() const { return m_pTextureAcquireSemaphore; }
+        RHI::RHISemaphore const* GetSignalSemaphore() const { return m_pRenderCompleteSemaphore; }
+
+        RHI::RHISwapchain* GetRHISwapchain() { return m_pSwapchain; }
+        RHI::RHISemaphore* GetWaitSemaphore() { return m_pTextureAcquireSemaphore; }
+        RHI::RHISemaphore* GetSignalSemaphore() { return m_pRenderCompleteSemaphore; }
 
     private:
 

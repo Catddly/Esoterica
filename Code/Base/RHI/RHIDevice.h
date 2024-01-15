@@ -125,8 +125,11 @@ namespace EE::RHI
 
         //-------------------------------------------------------------------------
 
-        virtual RHIPipelineState* CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) = 0;
+        virtual RHIPipelineState* CreateRasterPipelineState( RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) = 0;
         virtual void              DestroyRasterPipelineState( RHIPipelineState* pPipelineState ) = 0;
+
+        virtual RHIPipelineState* CreateComputePipelineState( RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) = 0;
+        virtual void              DestroyComputePipelineState( RHIPipelineState* pPipelineState ) = 0;
 
         //-------------------------------------------------------------------------
 

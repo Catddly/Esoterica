@@ -7,6 +7,7 @@
 #include "Base/Types/Variant.h"
 #include "Base/Memory/Pointers.h"
 #include "Base/Render/RenderAPI.h"
+#include "Base/Render/RenderDevice.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/RHICommandBuffer.h"
 
@@ -19,6 +20,11 @@ namespace EE::RHI
     class RHIResource;
     class RHIBuffer;
     class RHITexture;
+}
+
+namespace EE::Render
+{
+    class RenderDevice;
 }
 
 //-------------------------------------------------------------------------
@@ -346,7 +352,7 @@ namespace EE::RG
 
         // This function only operates on rvalue.
         // You must give out the ownership of origin resource to get a compiled resource.
-        RGCompiledResource Compile( RHI::RHIDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&;
+        RGCompiledResource Compile( Render::RenderDevice* pDevice, RGResourceRegistry& registry, RGTransientResourceCache& cache ) &&;
 
         inline bool IsNamedResource() const { return m_bIsNamedResource; }
 

@@ -1,10 +1,11 @@
 #include "RenderGraphResourceRegistry.h"
 #include "RenderGraphResolver.h"
 #include "Base/Threading/Threading.h"
+#include "Base/Render/RenderDevice.h"
 
 namespace EE::RG
 {
-    bool RGResourceRegistry::Compile( RHI::RHIDevice* pDevice, RGResolveResult const& result )
+    bool RGResourceRegistry::Compile( Render::RenderDevice* pDevice, RGResolveResult const& result )
     {
         EE_ASSERT( Threading::IsMainThread() );
         EE_ASSERT( m_resourceState == ResourceState::Registering );
@@ -62,7 +63,7 @@ namespace EE::RG
         m_resourceState = ResourceState::Registering;
     }
 
-    void RGResourceRegistry::Shutdown( RHI::RHIDevice* pDevice )
+    void RGResourceRegistry::Shutdown( Render::RenderDevice* pDevice )
     {
         EE_ASSERT( Threading::IsMainThread() );
         EE_ASSERT( pDevice != nullptr );

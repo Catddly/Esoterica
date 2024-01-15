@@ -35,6 +35,14 @@ namespace EE::Render
             vkCmdDrawIndexed( m_pHandle, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance );
         }
 
+        // Compute Commands
+        //-------------------------------------------------------------------------
+
+        void VulkanCommandBuffer::Dispatch( uint32_t groupX, uint32_t groupY, uint32_t groupZ )
+        {
+            vkCmdDispatch( m_pHandle, groupX, groupY, groupZ );
+        }
+
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
@@ -66,9 +74,63 @@ namespace EE::Render
                     beginInfo.renderPass = pVkRenderPass->m_pHandle;
                     // Safety: here we make a copy of a VkFramebuffer pointer, so it is safe to write this without having the risk of dangling reference.
                     beginInfo.framebuffer = RHI::RHIDowncast<VulkanFramebuffer>( pFramebuffer )->m_pHandle;
-                    // TODO: initial clear value.
                     beginInfo.clearValueCount = 0;
                     beginInfo.pClearValues = nullptr;
+                    beginInfo.renderArea.extent.width = renderArea.m_width;
+                    beginInfo.renderArea.extent.height = renderArea.m_height;
+                    beginInfo.renderArea.offset.x = renderArea.m_OffsetX;
+                    beginInfo.renderArea.offset.y = renderArea.m_OffsetY;
+
+                    vkCmdBeginRenderPass( m_pHandle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+                    return true;
+                }
+            }
+
+            EE_LOG_WARNING( "Render", "VulkanCommandBuffer", "Pass in null render pass, reject to begin render pass!" );
+            return false;
+        }
+
+        bool VulkanCommandBuffer::BeginRenderPassWithClearValue( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews, RHI::RenderPassClearValue const& clearValue )
+        {
+            EE_ASSERT( pFramebuffer );
+            EE_ASSERT( renderArea.IsValid() );
+            EE_ASSERT( !textureViews.empty() );
+
+            if ( pRenderPass )
+            {
+                if ( auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
+                {
+                    Float4 const clearColor = clearValue.m_clearColor.ToFloat4();
+                    VkClearValue vkClearValue;
+                    vkClearValue.color.float32[0] = clearColor[0];
+                    vkClearValue.color.float32[1] = clearColor[1];
+                    vkClearValue.color.float32[2] = clearColor[2];
+                    vkClearValue.color.float32[3] = clearColor[3];
+
+                    vkClearValue.depthStencil.depth = clearValue.m_depth;
+                    vkClearValue.depthStencil.stencil = clearValue.m_stencil;
+
+                    TFixedVector<VkImageView, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> views;
+                    views.reserve( textureViews.size() );
+                    for ( RHI::RHITextureView const& texView : textureViews )
+                    {
+                        views.push_back( reinterpret_cast<VkImageView>( texView.m_pViewHandle ) );
+                    }
+
+                    VkRenderPassAttachmentBeginInfo attachmentBeginInfo = {};
+                    attachmentBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
+                    attachmentBeginInfo.attachmentCount = static_cast<uint32_t>( views.size() );
+                    attachmentBeginInfo.pAttachments = views.data();
+
+                    VkRenderPassBeginInfo beginInfo = {};
+                    beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                    beginInfo.pNext = &attachmentBeginInfo;
+                    beginInfo.renderPass = pVkRenderPass->m_pHandle;
+                    // Safety: here we make a copy of a VkFramebuffer pointer, so it is safe to write this without having the risk of dangling reference.
+                    beginInfo.framebuffer = RHI::RHIDowncast<VulkanFramebuffer>( pFramebuffer )->m_pHandle;
+                    beginInfo.clearValueCount = 1;
+                    beginInfo.pClearValues = &vkClearValue;
                     beginInfo.renderArea.extent.width = renderArea.m_width;
                     beginInfo.renderArea.extent.height = renderArea.m_height;
                     beginInfo.renderArea.offset.x = renderArea.m_OffsetX;
@@ -145,9 +207,9 @@ namespace EE::Render
         {
             if ( pRhiPipelineState )
             {
-                if ( auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pRhiPipelineState ) )
+                if ( auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pRhiPipelineState ) )
                 {
-                    vkCmdBindPipeline( m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipeline );
+                    vkCmdBindPipeline( m_pHandle, pVkPipelineState->m_pipelineState.m_pipelineBindPoint, pVkPipelineState->m_pipelineState.m_pPipeline );
                 }
             }
             else
@@ -161,7 +223,7 @@ namespace EE::Render
             static VkDescriptorSet lastBoundVkDescriptorSet = nullptr;
 
             EE_ASSERT( pPipelineState );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
 
             VulkanDescriptorSetHash const hash = {
@@ -198,13 +260,13 @@ namespace EE::Render
             }
 
             vkCmdBindDescriptorSets(
-                m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipelineLayout,
+                m_pHandle, pVkPipelineState->m_pipelineState.m_pipelineBindPoint, pVkPipelineState->m_pipelineState.m_pPipelineLayout,
                 set, 1, &vkSet,
                 static_cast<uint32_t>( dynOffsets.size() ), !dynOffsets.empty() ? dynOffsets.data() : nullptr
             );
         }
 
-        void VulkanCommandBuffer::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset )
+        void VulkanCommandBuffer::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer const*> pVertexBuffers, uint32_t offset )
         {
             VkDeviceSize const bufferOffset = static_cast<VkDeviceSize>( offset );
             uint32_t const bindingCount = static_cast<uint32_t>( pVertexBuffers.size() );
@@ -224,7 +286,7 @@ namespace EE::Render
             }
         }
 
-        void VulkanCommandBuffer::BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset )
+        void VulkanCommandBuffer::BindIndexBuffer( RHI::RHIBuffer const* pIndexBuffer, uint32_t offset )
         {
             VkDeviceSize bufferOffset = static_cast<VkDeviceSize>( offset );
             if ( auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pIndexBuffer ) )
@@ -236,7 +298,7 @@ namespace EE::Render
         void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
         {
             EE_ASSERT( pPipelineState );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState );
             
             RHI::RHIPipelineBinding const bindingsRef[] = { rhiBinding };
@@ -276,6 +338,40 @@ namespace EE::Render
         // State Settings
         //-------------------------------------------------------------------------
 
+        void VulkanCommandBuffer::ClearColor( Color color )
+        {
+            EE_UNIMPLEMENTED_FUNCTION();
+        }
+
+        void VulkanCommandBuffer::ClearDepthStencil( RHI::RHITexture* pTexture, RHI::TextureSubresourceRange range, RHI::ETextureLayout currentLayout, float depthValue, uint32_t stencil )
+        {
+            if ( auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture ) )
+            {
+                if ( !pVkTexture->GetDesc().m_usage.IsFlagSet( RHI::ETextureUsage::DepthStencil ) )
+                {
+                    EE_LOG_WARNING( "Render", "Vulkan Command Buffer", "Try to clear a non-depth stencil texture!" );
+                    return;
+                }
+
+                VkClearDepthStencilValue clearValue;
+                clearValue.depth = depthValue;
+                clearValue.stencil = stencil;
+
+                VkImageSubresourceRange vkRange;
+                vkRange.baseArrayLayer = range.m_baseArrayLayer;
+                vkRange.baseMipLevel = range.m_baseMipLevel;
+                vkRange.layerCount = range.m_layerCount;
+                vkRange.levelCount = range.m_levelCount;
+                vkRange.aspectMask = ToVulkanImageAspectFlags( range.m_aspectFlags );
+
+                vkCmdClearDepthStencilImage( 
+                    m_pHandle, pVkTexture->m_pHandle, ToVulkanImageLayout( currentLayout ),
+                    &clearValue,
+                    1u, &vkRange
+                );
+            }
+        }
+
         void VulkanCommandBuffer::SetViewport( uint32_t width, uint32_t height, int32_t xOffset, int32_t yOffset )
         {
             EE_ASSERT( static_cast<uint32_t>( Math::Abs( xOffset ) ) <= width );
@@ -300,6 +396,72 @@ namespace EE::Render
             cullRect.offset.x = xOffset;
             cullRect.offset.y = yOffset;
             vkCmdSetScissor( m_pHandle, 0, 1, &cullRect );
+        }
+
+        // Resource Copying
+        //-------------------------------------------------------------------------
+
+        void VulkanCommandBuffer::CopyBufferToBuffer( RHI::RHIBuffer* pSrcBuffer, RHI::RHIBuffer* pDstBuffer )
+        {
+            EE_ASSERT( pSrcBuffer->GetDesc().m_desireSize == pDstBuffer->GetDesc().m_desireSize );
+
+            auto* pVkSrcBuffer = RHI::RHIDowncast<VulkanBuffer>( pSrcBuffer );
+            auto* pVkDstBuffer = RHI::RHIDowncast<VulkanBuffer>( pDstBuffer );
+            EE_ASSERT( pVkSrcBuffer );
+            EE_ASSERT( pVkDstBuffer );
+
+            RHI::RenderResourceBarrierState prevSrcBarrierState = SpeculateBarrierStateFromUsage( pSrcBuffer->GetDesc().m_usage );
+            RHI::RenderResourceBarrierState prevDstBarrierState = SpeculateBarrierStateFromUsage( pDstBuffer->GetDesc().m_usage );
+            RHI::RenderResourceBarrierState nextSrcBarrierState = RHI::RenderResourceBarrierState::TransferRead;
+            RHI::RenderResourceBarrierState nextDstBarrierState = RHI::RenderResourceBarrierState::TransferWrite;
+
+            RHI::BufferBarrier bufferBarriers[2];
+            bufferBarriers[0].m_size = pSrcBuffer->GetDesc().m_desireSize;
+            bufferBarriers[0].m_offset = 0;
+            bufferBarriers[0].m_pRhiBuffer = pSrcBuffer;
+            // No queue resource ownership transfer happened
+            bufferBarriers[0].m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
+            bufferBarriers[0].m_dstQueueFamilyIndex = bufferBarriers[0].m_srcQueueFamilyIndex;
+            bufferBarriers[0].m_previousAccessesCount = 1;
+            bufferBarriers[0].m_pPreviousAccesses = &prevSrcBarrierState;
+            bufferBarriers[0].m_nextAccessesCount = 1;
+            bufferBarriers[0].m_pNextAccesses = &nextSrcBarrierState;
+
+            bufferBarriers[1].m_size = pDstBuffer->GetDesc().m_desireSize;
+            bufferBarriers[1].m_offset = 0;
+            bufferBarriers[1].m_pRhiBuffer = pDstBuffer;
+            // No queue resource ownership transfer happened
+            bufferBarriers[1].m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
+            bufferBarriers[1].m_dstQueueFamilyIndex = bufferBarriers[0].m_srcQueueFamilyIndex;
+            bufferBarriers[1].m_previousAccessesCount = 1;
+            bufferBarriers[1].m_pPreviousAccesses = &prevDstBarrierState;
+            bufferBarriers[1].m_nextAccessesCount = 1;
+            bufferBarriers[1].m_pNextAccesses = &nextDstBarrierState;
+
+            PipelineBarrier(
+                nullptr,
+                2, bufferBarriers,
+                0, nullptr
+            );
+
+            VkBufferCopy bufferCopy = {};
+            // TODO: support partial copy
+            bufferCopy.size = bufferBarriers[0].m_size;
+            bufferCopy.srcOffset = 0;
+            bufferCopy.dstOffset = 0;
+
+            vkCmdCopyBuffer( m_pHandle, pVkSrcBuffer->m_pHandle, pVkDstBuffer->m_pHandle, 1, &bufferCopy );
+
+            nextSrcBarrierState = prevSrcBarrierState;
+            nextDstBarrierState = prevDstBarrierState;
+            prevSrcBarrierState = RHI::RenderResourceBarrierState::TransferRead;
+            prevDstBarrierState = RHI::RenderResourceBarrierState::TransferWrite;
+
+            PipelineBarrier(
+                nullptr,
+                2, bufferBarriers,
+                0, nullptr
+            );
         }
 
         void VulkanCommandBuffer::CopyBufferToTexture( RHI::RHITexture* pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef )
@@ -346,7 +508,7 @@ namespace EE::Render
                         imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
                         imageCopy.imageSubresource.layerCount = 1;
                         imageCopy.imageSubresource.mipLevel = mip;
-                        imageCopy.imageSubresource.aspectMask = ToVkImageAspectFlags( subresourceRef.m_aspectFlags );
+                        imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
 
                         imageCopy.bufferRowLength = 0;
                         imageCopy.bufferImageHeight = 0;
@@ -370,7 +532,7 @@ namespace EE::Render
                     imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
                     imageCopy.imageSubresource.layerCount = 1;
                     imageCopy.imageSubresource.mipLevel = subresourceRef.m_baseMipLevel;
-                    imageCopy.imageSubresource.aspectMask = ToVkImageAspectFlags( subresourceRef.m_aspectFlags );
+                    imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
 
                     imageCopy.bufferRowLength = 0;
                     imageCopy.bufferImageHeight = 0;
@@ -742,7 +904,7 @@ namespace EE::Render
             barrier.m_barrier.dstQueueFamilyIndex = textureBarrier.m_dstQueueFamilyIndex;
             barrier.m_barrier.image = pVkTexture->m_pHandle;
 
-            barrier.m_barrier.subresourceRange.aspectMask = ToVkImageAspectFlags( textureBarrier.m_subresourceRange.m_aspectFlags );
+            barrier.m_barrier.subresourceRange.aspectMask = ToVulkanImageAspectFlags( textureBarrier.m_subresourceRange.m_aspectFlags );
             barrier.m_barrier.subresourceRange.baseMipLevel = textureBarrier.m_subresourceRange.m_baseMipLevel;
             barrier.m_barrier.subresourceRange.levelCount = textureBarrier.m_subresourceRange.m_levelCount;
             barrier.m_barrier.subresourceRange.baseArrayLayer = textureBarrier.m_subresourceRange.m_baseArrayLayer;
@@ -1009,7 +1171,7 @@ namespace EE::Render
             return true;
         }
 
-        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanPipelineState const* pVkPipelineState )
+        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanRasterPipelineState const* pVkPipelineState )
         {
             size_t const hashValue = hash.GetHash();
             auto iterator = m_updatedDescriptorSets.find( hashValue );

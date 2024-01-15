@@ -35,7 +35,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pVertexShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->VSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pVertexShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->VSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pVertexShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -55,7 +55,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pGeometryShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->GSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pGeometryShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->GSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pGeometryShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -73,7 +73,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pHullShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->HSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pHullShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->HSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pHullShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -91,7 +91,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pPixelShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->PSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pPixelShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->PSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pPixelShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -127,7 +127,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pComputeShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->CSSetConstantBuffers( (uint32_t)i, 1, (ID3D11Buffer**)&pipelineState.m_pComputeShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->CSSetConstantBuffers( (uint32_t)i, 1, (ID3D11Buffer**)&pipelineState.m_pComputeShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -291,8 +291,8 @@ namespace EE::Render
         D3D11_MAPPED_SUBRESOURCE mappedData;
         EE::Memory::MemsetZero( &mappedData, sizeof( D3D11_MAPPED_SUBRESOURCE ) );
 
-        auto result = m_pDeviceContext->Map( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData );
-        EE_ASSERT( SUCCEEDED( result ) );
+        //auto result = m_pDeviceContext->Map( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData );
+        //EE_ASSERT( SUCCEEDED( result ) );
         return (uint8_t*) mappedData.pData;
     }
 
@@ -300,7 +300,7 @@ namespace EE::Render
     {
         // Check that we have write access to this buffer and that the data to write is within the buffer size
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_usage == RenderBuffer::Usage::CPU_and_GPU );
-        m_pDeviceContext->Unmap( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0 );
+        //m_pDeviceContext->Unmap( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0 );
     }
 
     void RenderContext::WriteToBuffer( RenderBuffer const& buffer, void const* pData, size_t const dataSize ) const
@@ -314,13 +314,13 @@ namespace EE::Render
     void RenderContext::SetVertexBuffer( RenderBuffer const& buffer, uint32_t offset ) const
     {
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_type == RenderBuffer::Type::Vertex );
-        m_pDeviceContext->IASetVertexBuffers( 0, 1, (ID3D11Buffer**) &buffer.GetResourceHandle().m_pData, &buffer.m_byteStride, &offset );
+        //m_pDeviceContext->IASetVertexBuffers( 0, 1, (ID3D11Buffer**) &buffer.GetResourceHandle().m_pData, &buffer.m_byteStride, &offset );
     }
 
     void RenderContext::SetIndexBuffer( RenderBuffer const& buffer, uint32_t offset ) const
     {
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_type == RenderBuffer::Type::Index );
-        m_pDeviceContext->IASetIndexBuffer( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, buffer.m_byteStride == 4 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, offset );
+        //m_pDeviceContext->IASetIndexBuffer( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, buffer.m_byteStride == 4 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, offset );
     }
 
     //-------------------------------------------------------------------------

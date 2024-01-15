@@ -672,7 +672,7 @@ namespace EE::Render
 
         renderContext.SetShaderInputBinding( m_inputBinding );
         renderContext.SetSampler( PipelineStage::Pixel, 0, m_samplerState );
-        renderContext.SetShaderResource( PipelineStage::Pixel, 0, m_fontAtlasTexture.GetShaderResourceView() );
+        //renderContext.SetShaderResource( PipelineStage::Pixel, 0, m_fontAtlasTexture.GetShaderResourceView() );
         renderContext.SetPrimitiveTopology( Topology::TriangleList );
         renderContext.SetVertexBuffer( m_vertexBuffer );
         renderContext.SetIndexBuffer( m_indexBuffer );

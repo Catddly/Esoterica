@@ -34,6 +34,8 @@ namespace EE::Render
                 case RHI::EPixelFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
                 case RHI::EPixelFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
 
+                case RHI::EPixelFormat::RG16Float: return VK_FORMAT_R16G16_SFLOAT;
+
                 case RHI::EPixelFormat::RGBA32UInt: return VK_FORMAT_R32G32B32A32_UINT;
 
                 case RHI::EPixelFormat::Depth32: return VK_FORMAT_D32_SFLOAT;
@@ -337,7 +339,7 @@ namespace EE::Render
             return VkBufferUsageFlagBits( flag );
 		}
 
-        VkImageAspectFlags ToVkImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags )
+        VkImageAspectFlags ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags )
         {
             VkFlags vkFlag = 0;
             if ( flags.IsFlagSet( RHI::TextureAspectFlags::Color ) )
@@ -635,7 +637,22 @@ namespace EE::Render
             EE_UNREACHABLE_CODE();
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
-    }
+
+		RHI::RenderResourceBarrierState SpeculateBarrierStateFromUsage( TBitFlags<RHI::EBufferUsage> const& usage )
+		{
+            if ( usage.IsFlagSet( RHI::EBufferUsage::Vertex ) )
+            {
+                return RHI::RenderResourceBarrierState::VertexBuffer;
+            }
+            else if ( usage.IsFlagSet( RHI::EBufferUsage::Index ) )
+            {
+                return RHI::RenderResourceBarrierState::IndexBuffer;
+            }
+            
+            return RHI::RenderResourceBarrierState::Undefined;
+		}
+
+	}
 }
 
 #endif

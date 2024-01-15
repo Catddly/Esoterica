@@ -101,6 +101,7 @@ float2 IntegrateBRDF(float NdotV, float roughness)
 	return float2(A, B);
 }
 
+[[vk::binding(0)]]
 RWTexture2D<float2> dstTexture : register( u0 );
 
 [numthreads(16, 16, 1)]

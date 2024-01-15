@@ -25,6 +25,12 @@ namespace EE::Render
             archive << *pPixelShaderResource;
             pShaderResource = pPixelShaderResource;
         }
+        else if ( shaderResourceTypeID == ComputeShader::GetStaticResourceTypeID() )
+        {
+            auto pComputeShaderResource = EE::New<ComputeShader>();
+            archive << *pComputeShaderResource;
+            pShaderResource = pComputeShaderResource;
+        }
         else
         {
             return false;

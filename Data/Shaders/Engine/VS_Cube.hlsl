@@ -1,4 +1,5 @@
 // TODO convert to std: quads, fullscreen tri, cube, etc
+[[vk::binding(0)]]
 cbuffer Transforms : register( b0 )
 {;
     matrix m_modelViewProjTransform;

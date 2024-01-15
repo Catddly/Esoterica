@@ -1,5 +1,6 @@
 #include "Common_lit.hlsli"
 
+[[vk::binding(1)]]
 TextureCube skybox : register( t0 );
 
 struct VerteShaderOutput

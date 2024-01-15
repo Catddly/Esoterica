@@ -15,6 +15,7 @@
 #include "VulkanCommandQueue.h"
 #include "RHIToVulkanSpecification.h"
 #include "Base/RHI/RHIDowncastHelper.h"
+#include "Base/RHI/RHIHelper.h"
 #include "Base/Logging/Log.h"
 #include "Base/Types/List.h"
 #include "Base/Types/HashMap.h"
@@ -307,7 +308,7 @@ namespace EE::Render
             }
             else
             {
-                EE::Delete( pVkTexture );
+                return nullptr;
             }
             #else
             if ( pVkTexture )
@@ -316,7 +317,7 @@ namespace EE::Render
             }
             else
             {
-                EE::Delete( pVkTexture );
+                return nullptr;
             }
 
             VkMemoryRequirements memReqs = {};
@@ -333,10 +334,7 @@ namespace EE::Render
             vkBindImageMemory( m_pHandle, pVkTexture->m_pHandle, pVkTexture->m_allocation, 0);
             #endif // VULKAN_USE_VMA_ALLOCATION
 
-            pVkTexture->m_desc = createDesc;
-            // TODO: [WARNING] User's observation is different before render resource is created.
-            // We modified or overwrite some property during creation, but user doesn't know it at all.
-            // This is no a good design i think.
+            pVkTexture->m_desc.CopyIgnoreUploadData( createDesc );
             if ( bRequireDedicatedMemory )
             {
                 pVkTexture->m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::DedicatedMemory );
@@ -349,7 +347,7 @@ namespace EE::Render
             if ( createDesc.m_bufferData.HasValidData() && createDesc.m_bufferData.CanBeUsedBy( createDesc ) )
             {
                 pVkTexture->m_desc.m_usage.SetFlag( RHI::ETextureUsage::TransferDst );
-                ImmediateUploadTextureData( pVkTexture, createDesc );
+                ImmediateUploadTextureData( pVkTexture, createDesc.m_bufferData );
             }
 
             return pVkTexture;
@@ -410,6 +408,11 @@ namespace EE::Render
             bufferCreateInfo.usage = ToVulkanBufferUsageFlags( createDesc.m_usage );
             bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
+            if ( createDesc.m_bufferUploadData.HasValidData() && createDesc.m_bufferUploadData.CanBeUsedBy( createDesc ) )
+            {
+                bufferCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            }
+
             uint32_t allcatedMemorySize = 0;
 
             VulkanBuffer* pVkBuffer = EE::New<VulkanBuffer>();
@@ -436,17 +439,16 @@ namespace EE::Render
             }
             else
             {
-                EE::Delete( pVkBuffer );
+                return nullptr;
             }
             #else
             if ( pVkBuffer )
             {
                 VK_SUCCEEDED( vkCreateBuffer( m_pHandle, &bufferCreateInfo, nullptr, &(pVkBuffer->m_pHandle) ) );
-
             }
             else
             {
-                EE::Delete( pVkBuffer );
+                return nullptr;
             }
 
             VkMemoryRequirements memReqs;
@@ -475,8 +477,13 @@ namespace EE::Render
             VK_SUCCEEDED( vkBindBufferMemory( m_pHandle, pVkBuffer->m_pHandle, pVkBuffer->m_allocation, 0));
             #endif // VULKAN_USE_VMA_ALLOCATION
 
-            pVkBuffer->m_desc = createDesc;
+            pVkBuffer->m_desc.CopyIgnoreUploadData( createDesc );
             pVkBuffer->m_desc.m_allocatedSize = allcatedMemorySize;
+            if ( createDesc.m_bufferUploadData.HasValidData() && createDesc.m_bufferUploadData.CanBeUsedBy( createDesc ) )
+            {
+                pVkBuffer->m_desc.m_usage.SetFlag( RHI::EBufferUsage::TransferDst );
+                ImmediateUploadBufferData( pVkBuffer, createDesc.m_bufferUploadData );
+            }
 
             return pVkBuffer;
         }
@@ -655,7 +662,7 @@ namespace EE::Render
             EE_ASSERT( createDesc.IsValid() );
             EE_ASSERT( !compiledShaders.empty() );
 
-            VulkanPipelineState* pVkPipelineStage = EE::New<VulkanPipelineState>();
+            VulkanRasterPipelineState* pVkPipelineStage = EE::New<VulkanRasterPipelineState>();
             EE_ASSERT( pVkPipelineStage );
 
             // Create pipeline layout
@@ -841,7 +848,7 @@ namespace EE::Render
             graphicsPipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             graphicsPipelineCI.stageCount = static_cast<uint32_t>( pipelineShaderStages.size() );
             graphicsPipelineCI.pStages = pipelineShaderStages.data();
-            graphicsPipelineCI.layout = pVkPipelineStage->m_pPipelineLayout;
+            graphicsPipelineCI.layout = pVkPipelineStage->m_pipelineState.m_pPipelineLayout;
             graphicsPipelineCI.pVertexInputState = &vertexInputState;
             graphicsPipelineCI.pInputAssemblyState = &inputAssemblyState;
             graphicsPipelineCI.pRasterizationState = &rasterizationState;
@@ -853,7 +860,7 @@ namespace EE::Render
             graphicsPipelineCI.renderPass = pVkRenderPass->m_pHandle;
 
             // TODO: support batched pipeline creation
-            VK_SUCCEEDED( vkCreateGraphicsPipelines( m_pHandle, nullptr, 1, &graphicsPipelineCI, nullptr, &(pVkPipelineStage->m_pPipeline) ) );
+            VK_SUCCEEDED( vkCreateGraphicsPipelines( m_pHandle, nullptr, 1, &graphicsPipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
 
             EE_ASSERT( !pVkPipelineStage->m_setDescriptorLayouts.empty() );
             auto& poolSizes = pVkPipelineStage->m_setPoolSizes;
@@ -887,11 +894,94 @@ namespace EE::Render
         void VulkanDevice::DestroyRasterPipelineState( RHI::RHIPipelineState* pPipelineState )
         {
             EE_ASSERT( pPipelineState != nullptr );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanPipelineState>( pPipelineState );
-            EE_ASSERT( pVkPipelineState->m_pPipeline != nullptr );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+            EE_ASSERT( pVkPipelineState->m_pipelineState.m_pPipeline != nullptr );
 
             DestroyRasterPipelineStateLayout( pVkPipelineState );
-            vkDestroyPipeline( m_pHandle, pVkPipelineState->m_pPipeline, nullptr );
+            vkDestroyPipeline( m_pHandle, pVkPipelineState->m_pipelineState.m_pPipeline, nullptr );
+
+            EE::Delete( pVkPipelineState );
+        }
+
+        RHI::RHIPipelineState* VulkanDevice::CreateComputePipelineState( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader )
+        {
+            EE_ASSERT( createDesc.IsValid() );
+            EE_ASSERT( pCompiledShader );
+
+            VulkanComputePipelineState* pVkPipelineStage = EE::New<VulkanComputePipelineState>();
+            EE_ASSERT( pVkPipelineStage );
+
+            // Create pipeline layout
+            //-------------------------------------------------------------------------
+
+            if ( !CreateComputePipelineStateLayout( createDesc, pCompiledShader, pVkPipelineStage ) )
+            {
+                EE_LOG_WARNING( "RHI", "RHI::VulkanDevice", "Failed to create compute pipeline state!" );
+                EE::Delete( pVkPipelineStage );
+                return nullptr;
+            }
+
+            //-------------------------------------------------------------------------
+
+            EE_ASSERT( pCompiledShader->GetRHIShader() != nullptr );
+            VulkanShader const* pVkShader = static_cast<VulkanShader const*>( pCompiledShader->GetRHIShader() );
+
+            VkComputePipelineCreateInfo computePipelineCI = {};
+            computePipelineCI.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+            computePipelineCI.layout = pVkPipelineStage->m_pipelineState.m_pPipelineLayout;
+
+            computePipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            computePipelineCI.stage.flags = 0;
+            computePipelineCI.stage.pNext = nullptr;
+            computePipelineCI.stage.pSpecializationInfo = nullptr;
+            computePipelineCI.stage.pName = pCompiledShader->GetEntryName().c_str();
+            computePipelineCI.stage.stage = ToVulkanShaderStageFlags( pCompiledShader->GetPipelineStage() );
+            computePipelineCI.stage.module = pVkShader->m_pModule;
+
+            // TODO: support batched pipeline creation
+            VK_SUCCEEDED( vkCreateComputePipelines( m_pHandle, nullptr, 1, &computePipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
+
+            EE_ASSERT( !pVkPipelineStage->m_setDescriptorLayouts.empty() );
+            auto& poolSizes = pVkPipelineStage->m_setPoolSizes;
+            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_setDescriptorLayouts )
+            {
+                for ( auto const& [_binding, ty] : setDescriptorLayout )
+                {
+                    VkDescriptorType descriptorType = ToVulkanBindingResourceType( ty );
+                    VkDescriptorPoolSize* pPoolSize = eastl::find_if( poolSizes.begin(), poolSizes.end(), [&ty, &descriptorType] ( VkDescriptorPoolSize const& poolSize )
+                    {
+                        return poolSize.type == descriptorType;
+                    } );
+
+                    if ( pPoolSize )
+                    {
+                        pPoolSize->descriptorCount += 1;
+                    }
+                    else
+                    {
+                        VkDescriptorPoolSize poolSize;
+                        poolSize.type = descriptorType;
+                        poolSize.descriptorCount = 1;
+                        poolSizes.push_back( poolSize );
+                    }
+                }
+            }
+
+            pVkPipelineStage->m_dispathGroupWidth = pCompiledShader->GetThreadGroupSizeX();
+            pVkPipelineStage->m_dispathGroupHeight = pCompiledShader->GetThreadGroupSizeY();
+            pVkPipelineStage->m_dispathGroupDepth = pCompiledShader->GetThreadGroupSizeZ();
+
+            return pVkPipelineStage;
+        }
+
+        void VulkanDevice::DestroyComputePipelineState( RHI::RHIPipelineState* pPipelineState )
+        {
+            EE_ASSERT( pPipelineState != nullptr );
+            auto* pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+            EE_ASSERT( pVkPipelineState->m_pipelineState.m_pPipeline != nullptr );
+
+            DestroyComputePipelineStateLayout( pVkPipelineState );
+            vkDestroyPipeline( m_pHandle, pVkPipelineState->m_pipelineState.m_pPipeline, nullptr );
 
             EE::Delete( pVkPipelineState );
         }
@@ -1084,17 +1174,52 @@ namespace EE::Render
         // Resource
         //-------------------------------------------------------------------------
 
-        void VulkanDevice::ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureCreateDesc const& createDesc )
+        void VulkanDevice::ImmediateUploadBufferData( VulkanBuffer* pBuffer, RHI::RHIBufferUploadData const& uploadData )
+        {
+            EE_ASSERT( pBuffer->m_desc.m_usage.IsFlagSet( RHI::EBufferUsage::TransferDst ) );
+
+            // Create staging buffer
+            //-------------------------------------------------------------------------
+        
+            RHI::RHIBufferCreateDesc stagingBufferDesc = pBuffer->GetDesc();
+            stagingBufferDesc.m_usage.ClearAllFlags();
+            stagingBufferDesc.m_usage.SetFlag( RHI::EBufferUsage::TransferSrc );
+            stagingBufferDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+            auto* pStagingBuffer = CreateBuffer( stagingBufferDesc );
+            EE_ASSERT( pStagingBuffer );
+
+            // Copy data to staging buffer
+            //-------------------------------------------------------------------------
+
+            void* pMapped = pStagingBuffer->Map( this );
+            memcpy( pMapped, uploadData.m_pData, stagingBufferDesc.m_desireSize );
+            pStagingBuffer->Unmap( this );
+
+            // Copy staging buffer to buffer needs to upload
+            //-------------------------------------------------------------------------
+
+            DispatchImmediateCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            {
+                pCommandBuffer->CopyBufferToBuffer( pStagingBuffer, pBuffer );
+                return true;
+            } );
+
+            // Clear up
+            //-------------------------------------------------------------------------
+
+            DestroyBuffer( pBuffer );
+        }
+
+        void VulkanDevice::ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureBufferData const& uploadData )
         {
             if ( pTexture )
             {
-                EE_ASSERT( pTexture->m_desc.m_usage.IsFlagSet(RHI::ETextureUsage::TransferDst) );
+                EE_ASSERT( pTexture->m_desc.m_usage.IsFlagSet( RHI::ETextureUsage::TransferDst ) );
 
-                auto& bufferData = createDesc.m_bufferData;
-                if ( bufferData.HasValidData() && bufferData.CanBeUsedBy( createDesc ) )
+                if ( uploadData.HasValidData() && uploadData.CanBeUsedBy( pTexture->m_desc ) )
                 {
                     void* pMappedMemory = pTexture->MapSlice( this, 0 );
-                    memcpy( pMappedMemory, bufferData.m_binary.data(), bufferData.m_binary.size() );
+                    memcpy( pMappedMemory, uploadData.m_binary.data(), uploadData.m_binary.size() );
                     pTexture->UnmapSlice( this, 0 );
 
                     pTexture->UploadMappedData( this, RHI::RenderResourceBarrierState::AnyShaderReadSampledImageOrUniformTexelBuffer );
@@ -1105,11 +1230,11 @@ namespace EE::Render
         // Pipeline State
         //-------------------------------------------------------------------------
 
-        bool VulkanDevice::CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanPipelineState* pPipelineState )
+        bool VulkanDevice::CreateRasterPipelineStateLayout( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders, VulkanRasterPipelineState* pPipelineState )
         {
             EE_ASSERT( pPipelineState != nullptr );
-            EE_ASSERT( pPipelineState->m_pPipelineLayout == nullptr);
-            EE_ASSERT( pPipelineState->m_pPipeline == nullptr);
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout == nullptr);
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipeline == nullptr);
             EE_ASSERT( !createDesc.m_pipelineShaders.empty() );
 
             // Combined different shaders' set layout into one set layouts
@@ -1186,27 +1311,132 @@ namespace EE::Render
             pipelineLayoutCI.pushConstantRangeCount = ( pushConstantRange.size == 0 ) ? 0 : 1;
             pipelineLayoutCI.pPushConstantRanges = ( pushConstantRange.size == 0 ) ? nullptr : &pushConstantRange;
 
-            VK_SUCCEEDED( vkCreatePipelineLayout(m_pHandle, &pipelineLayoutCI, nullptr, &(pPipelineState->m_pPipelineLayout) ) );
+            VK_SUCCEEDED( vkCreatePipelineLayout(m_pHandle, &pipelineLayoutCI, nullptr, &(pPipelineState->m_pipelineState.m_pPipelineLayout) ) );
 
             //-------------------------------------------------------------------------
 
             pPipelineState->m_setLayouts = vkSetLayouts;
             pPipelineState->m_setDescriptorLayouts = vkSetDescripotrTypes;
-            pPipelineState->m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            pPipelineState->m_pipelineState.m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             return true;
         }
 
-        void VulkanDevice::DestroyRasterPipelineStateLayout( VulkanPipelineState* pPipelineState )
+        void VulkanDevice::DestroyRasterPipelineStateLayout( VulkanRasterPipelineState* pPipelineState )
         {
             EE_ASSERT( pPipelineState != nullptr );
-            EE_ASSERT( pPipelineState->m_pPipelineLayout != nullptr );
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout != nullptr );
 
             for ( auto& pSetLayout : pPipelineState->m_setLayouts )
             {
                 vkDestroyDescriptorSetLayout( m_pHandle, pSetLayout, nullptr );
             }
-            vkDestroyPipelineLayout( m_pHandle, pPipelineState->m_pPipelineLayout, nullptr );
+            vkDestroyPipelineLayout( m_pHandle, pPipelineState->m_pipelineState.m_pPipelineLayout, nullptr );
+        }
+
+        bool VulkanDevice::CreateComputePipelineStateLayout( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader, VulkanComputePipelineState* pPipelineState )
+        {
+            EE_ASSERT( pPipelineState != nullptr );
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout == nullptr );
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipeline == nullptr );
+            EE_ASSERT( createDesc.m_pipelineShader.IsValid() );
+
+            // Combined different shaders' set layout into one set layouts
+            //-------------------------------------------------------------------------
+
+            CompiledShaderArray compiledShaders = { pCompiledShader };
+            CombinedShaderSetLayout combinedSetLayouts = CombinedAllShaderSetLayouts( compiledShaders );
+
+            // Find the number of set
+            //-------------------------------------------------------------------------
+
+            uint32_t setCount = 0;
+            for ( auto const& combineSetLayout : combinedSetLayouts )
+            {
+                setCount = Math::Max( combineSetLayout.first + 1, setCount );
+            }
+
+            // Create descriptor set layout
+            //-------------------------------------------------------------------------
+            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet> vkSetLayouts;
+            TInlineVector<TMap<uint32_t, RHI::EBindingResourceType>, RHI::NumMaxResourceBindingSet> vkSetDescripotrTypes;
+            for ( uint32_t set = 0; set < setCount; ++set )
+            {
+                auto layout = CreateDescriptorSetLayout( set, combinedSetLayouts[set], VK_SHADER_STAGE_COMPUTE_BIT );
+                vkSetLayouts.push_back( layout.first );
+                vkSetDescripotrTypes.push_back( layout.second );
+            }
+
+            // Combine all push constants
+            //-------------------------------------------------------------------------
+
+            TBitFlags<PipelineStage> pipelineStageFlag = {};
+            VkPushConstantRange pushConstantRange = {};
+            // do check after first pushConstantRange assignment
+            bool bDoConsistencyCheck = false;
+            uint32_t checkID = 0;
+
+            for ( auto const& compiledShader : compiledShaders )
+            {
+                auto const& pushConstant = compiledShader->GetPushConstant();
+
+                // if the size of a push constant is zero, it has no push constant.
+                if ( pushConstant.m_size == 0 )
+                {
+                    continue;
+                }
+
+                if ( bDoConsistencyCheck )
+                {
+                    EE_ASSERT( checkID == pushConstant.m_ID );
+                    EE_ASSERT( pushConstantRange.size == pushConstant.m_size );
+                    EE_ASSERT( pushConstantRange.offset == pushConstant.m_offset );
+
+                    pipelineStageFlag.SetFlag( compiledShader->GetPipelineStage() );
+                    continue;
+                }
+
+                checkID = pushConstant.m_ID;
+                pushConstantRange.size = pushConstant.m_size;
+                pushConstantRange.offset = pushConstant.m_offset;
+
+                pipelineStageFlag.SetFlag( compiledShader->GetPipelineStage() );
+                bDoConsistencyCheck = true;
+            }
+
+            pushConstantRange.stageFlags = ToVulkanShaderStageFlags( pipelineStageFlag );
+
+            //-------------------------------------------------------------------------
+
+            VkPipelineLayoutCreateInfo pipelineLayoutCI = {};
+            pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutCI.pNext = nullptr;
+            pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>( vkSetLayouts.size() );
+            pipelineLayoutCI.pSetLayouts = vkSetLayouts.data();
+            pipelineLayoutCI.pushConstantRangeCount = ( pushConstantRange.size == 0 ) ? 0 : 1;
+            pipelineLayoutCI.pPushConstantRanges = ( pushConstantRange.size == 0 ) ? nullptr : &pushConstantRange;
+
+            VK_SUCCEEDED( vkCreatePipelineLayout( m_pHandle, &pipelineLayoutCI, nullptr, &(pPipelineState->m_pipelineState.m_pPipelineLayout) ) );
+
+            //-------------------------------------------------------------------------
+
+            pPipelineState->m_setLayouts = vkSetLayouts;
+            pPipelineState->m_setDescriptorLayouts = vkSetDescripotrTypes;
+            pPipelineState->m_pipelineState.m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+
+            return true;
+        }
+
+        void VulkanDevice::DestroyComputePipelineStateLayout( VulkanComputePipelineState* pPipelineState )
+        {
+            EE_ASSERT( pPipelineState != nullptr );
+            EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout != nullptr );
+
+            for ( auto& pSetLayout : pPipelineState->m_setLayouts )
+            {
+                vkDestroyDescriptorSetLayout( m_pHandle, pSetLayout, nullptr );
+            }
+            vkDestroyPipelineLayout( m_pHandle, pPipelineState->m_pipelineState.m_pPipelineLayout, nullptr );
         }
 
         VulkanDevice::CombinedShaderSetLayout VulkanDevice::CombinedAllShaderSetLayouts( CompiledShaderArray const& compiledShaders )

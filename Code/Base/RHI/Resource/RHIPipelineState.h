@@ -53,6 +53,12 @@ namespace EE::RHI
 
         inline virtual RHIPipelineType GetPipelineType() const override { return RHIPipelineType::Compute; }
 
+        virtual uint32_t GetThreadGroupSizeX() const = 0;
+        virtual uint32_t GetThreadGroupSizeY() const = 0;
+        virtual uint32_t GetThreadGroupSizeZ() const = 0;
+
     protected:
+
+        RHIComputePipelineStateCreateDesc                m_desc;
     };
 }

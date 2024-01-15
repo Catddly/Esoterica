@@ -180,6 +180,65 @@ namespace EE::RG
         return m_pCommandBuffer->BeginRenderPass( pRenderPass, pFramebuffer, renderArea, textureViews );
     }
 
+    bool RGRenderCommandContext::BeginRenderPassWithClearValue(
+        RHI::RHIRenderPass* pRenderPass, Int2 extent,
+        RHI::RenderPassClearValue const& clearValue,
+        TSpan<RGRenderTargetViewDesc> colorAttachemnts, TOptional<RGRenderTargetViewDesc> depthAttachment
+    )
+    {
+        EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
+        EE_ASSERT( extent.m_x > 0 && extent.m_y > 0 );
+
+        // get or create necessary framebuffer
+        //-------------------------------------------------------------------------
+
+        RHI::RHIFramebufferCacheKey key;
+        key.m_extentX = static_cast<uint32_t>( extent.m_x );
+        key.m_extentY = static_cast<uint32_t>( extent.m_y );
+
+        for ( RGRenderTargetViewDesc const& color : colorAttachemnts )
+        {
+            auto const& desc = GetDesc( color.m_rgRenderTargetRef );
+            key.m_attachmentHashs.emplace_back( desc.m_usage, desc.m_flag );
+        }
+
+        if ( depthAttachment.has_value() )
+        {
+            auto const& desc = GetDesc( depthAttachment->m_rgRenderTargetRef );
+            key.m_attachmentHashs.emplace_back( desc.m_usage, desc.m_flag );
+        }
+
+        auto* pFramebuffer = pRenderPass->GetOrCreateFramebuffer( m_pDevice, key );
+        if ( !pFramebuffer )
+        {
+            EE_LOG_WARNING( "RenderGraph", "RenderGraphCommandContext", "Failed to fetch framebuffer!" );
+            return false;
+        }
+
+        // collect texture views
+        //-------------------------------------------------------------------------
+
+        TFixedVector<RHI::RHITextureView, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> textureViews;
+
+        for ( RGRenderTargetViewDesc const& color : colorAttachemnts )
+        {
+            RHI::RHITexture* pRenderTarget = m_pRenderGraph->GetResourceRegistry().GetCompiledTextureResource( color.m_rgRenderTargetRef );
+            RHI::RHITextureView pRenderTargetView = pRenderTarget->GetOrCreateView( m_pDevice, color.m_viewDesc );
+            textureViews.push_back( pRenderTargetView );
+        }
+
+        if ( depthAttachment.has_value() )
+        {
+            RHI::RHITexture* pRenderTarget = m_pRenderGraph->GetResourceRegistry().GetCompiledTextureResource( depthAttachment->m_rgRenderTargetRef );
+            RHI::RHITextureView pRenderTargetView = pRenderTarget->GetOrCreateView( m_pDevice, depthAttachment->m_viewDesc );
+            textureViews.push_back( pRenderTargetView );
+        }
+
+        auto renderArea = RHI::RenderArea{ key.m_extentX, key.m_extentY, 0u, 0u };
+        return m_pCommandBuffer->BeginRenderPassWithClearValue( pRenderPass, pFramebuffer, renderArea, textureViews, clearValue );
+    }
+
     RGBoundPipeline RGRenderCommandContext::BindPipeline()
     {
         EE_ASSERT( IsValid() );
@@ -192,14 +251,14 @@ namespace EE::RG
         return RGBoundPipeline( m_pDevice, m_pCommandBuffer, pPipelineState, m_pRenderGraph );
     }
 
-    void RGRenderCommandContext::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer*> pVertexBuffers, uint32_t offset )
+    void RGRenderCommandContext::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer const*> pVertexBuffers, uint32_t offset )
     {
         EE_ASSERT( IsValid() );
         EE_ASSERT( m_pExecutingNode );
         m_pCommandBuffer->BindVertexBuffer( firstBinding, pVertexBuffers, offset );
     }
 
-    void RGRenderCommandContext::BindIndexBuffer( RHI::RHIBuffer* pIndexBuffer, uint32_t offset )
+    void RGRenderCommandContext::BindIndexBuffer( RHI::RHIBuffer const* pIndexBuffer, uint32_t offset )
     {
         EE_ASSERT( IsValid() );
         EE_ASSERT( m_pExecutingNode );
@@ -219,7 +278,33 @@ namespace EE::RG
         EE_ASSERT( m_pExecutingNode );
         m_pCommandBuffer->SetScissor( width, height, xOffset, yOffset );
     }
+
+    void RGRenderCommandContext::SetViewportAndScissor( uint32_t width, uint32_t height, int32_t xOffset /*= 0*/, int32_t yOffset /*= 0 */ )
+    {
+        EE_ASSERT( IsValid() );
+        EE_ASSERT( m_pExecutingNode );
+        m_pCommandBuffer->SetViewport( width, height, xOffset, yOffset );
+        m_pCommandBuffer->SetScissor( width, height, xOffset, yOffset );
+    }
     
+    //-------------------------------------------------------------------------
+
+    void RGRenderCommandContext::Dispatch()
+    {
+        EE_ASSERT( m_pCommandBuffer );
+        EE_ASSERT( m_pExecutingNode->m_pPipelineState );
+        EE_ASSERT( m_pExecutingNode->m_pPipelineState->GetPipelineType() == RHI::RHIPipelineType::Compute );
+
+        auto* pPipelineState = m_pExecutingNode->m_pPipelineState;
+        auto* pComputePipelineState = static_cast<RHI::RHIComputePipelineState*>( pPipelineState );
+
+        m_pCommandBuffer->Dispatch(
+            pComputePipelineState->GetThreadGroupSizeX(),
+            pComputePipelineState->GetThreadGroupSizeY(),
+            pComputePipelineState->GetThreadGroupSizeZ()
+        );
+    }
+
     //-------------------------------------------------------------------------
 
     void RGRenderCommandContext::SubmitAndReset( RHI::RHIDevice* pDevice )
