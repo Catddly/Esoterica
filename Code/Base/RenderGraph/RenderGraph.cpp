@@ -192,7 +192,7 @@ namespace EE
 
             if ( pDevice == nullptr )
             {
-                EE_LOG_WARNING("RenderGraph", "RenderGraph::Compile()", "RHI Device missing! Cannot compile render graph!");
+                EE_LOG_WARNING( "RenderGraph", "RenderGraph::Compile()", "RHI Device missing! Cannot compile render graph!" );
                 return false;
             }
 

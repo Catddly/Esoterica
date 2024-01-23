@@ -45,15 +45,15 @@ cbuffer Lights : register( b0 )
     float         m_skyboxLightIntensity; // TODO: either we use color+intensity of bake that into envmap.
     float3        m_sunColor;
     float         m_roughnessOneLevel;
-    Matrix        m_sunShadowMapMatrix;
+    matrix        m_sunShadowMapMatrix;
     float         m_manualExposure;
     uint          m_lightingFlags;
     uint          m_numPunctualLights;
     PunctualLight m_punctualLights[MAX_PUNCTUAL_LIGHTS];
 };
 
-sampler bilinearSampler : register( s0 );
-sampler bilinearClampedSampler : register( s1 );
+// sampler bilinearSampler : register( s0 );
+// sampler bilinearClampedSampler : register( s1 );
 
 static const float PI = 3.14159265359;
 

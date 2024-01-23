@@ -166,35 +166,30 @@ namespace EE::Render
         bool IsPipelineReady( PipelineHandle const& pipelineHandle ) const;
         inline bool IsBusy() const
         {
-            return !m_waitToSubmitRasterPipelines.empty()
-                || !m_waitToLoadRasterPipelines.empty()
+            return !m_waitToLoadRasterPipelines.empty()
                 || !m_waitToRegisteredRasterPipelines.empty()
-                || !m_retryRasterPipelineCaches.empty();
+                || !m_retryRasterPipelineCaches.empty()
+                || !m_waitToLoadComputePipelines.empty()
+                || !m_waitToRegisteredComputePipelines.empty()
+                || !m_retryComputePipelineCaches.empty();
         }
 
         RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
 
-		void Update();
-		bool UpdatePipelines( RHI::RHIDevice* pDevice );
+        // Update pipeline registry.
+        // This function will block until all pipeline loading is completed.
+        bool UpdateBlock( RHI::RHIDevice* pDevice );
+        
         void DestroyAllPipelineStates( RHI::RHIDevice* pDevice );
-
-    protected:
-
-        // Submit pipeline shader load tasks
-        void UpdateLoadPipelineShaders();
-
-        // Mark some raster pipeline entry is loading
-        //void MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry );
 
 	private:
 
-        inline bool AreAllRequestShaderLoaded() const;
-
-        // Update pipeline load status
+        // Update pipeline loading status
         void UpdateLoadedPipelineShaders();
-
         // Registered loaded pipelines to create actual RHI resources
         bool TryCreatePipelineForLoadedPipelineShaders( RHI::RHIDevice* pDevice );
+
+        inline bool AreAllRequestedPipelineLoaded() const;
 
         // Create RHI raster pipeline state for certain RasterPipelineEntry.
         // This function can't have any side-effects, since it may be call for the same entry multiple time.
@@ -218,12 +213,12 @@ namespace EE::Render
         THashMap<RHI::RHIComputePipelineStateCreateDesc, PipelineHandle>        m_computePipelineHandlesCache;
 
         // TODO: state machine update pattern
-        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToSubmitRasterPipelines;
+        //TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToSubmitRasterPipelines;
         TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToLoadRasterPipelines;
         TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToRegisteredRasterPipelines;
         TVector<TSharedPtr<RasterPipelineEntry>>                                m_retryRasterPipelineCaches;
 
-        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToSubmitComputePipelines;
+        //TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToSubmitComputePipelines;
         TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToLoadComputePipelines;
         TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToRegisteredComputePipelines;
         TVector<TSharedPtr<ComputePipelineEntry>>                               m_retryComputePipelineCaches;

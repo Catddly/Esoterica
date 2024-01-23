@@ -80,9 +80,4 @@ namespace EE::RG
     {
         return RGPipelineRHIRawBinding{ RHI::RHIPipelineBinding{ rhiBinding } };
     }
-
-    inline RGPipelineStaticSamplerBinding BindStaticSampler()
-    {
-        return RGPipelineStaticSamplerBinding{};
-    }
 }

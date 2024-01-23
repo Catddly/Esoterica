@@ -5,7 +5,9 @@
 #include "Base/Serialization/BinarySerialization.h"
 #include "Base/Memory/Pointers.h"
 #include "Base/Types/String.h"
+#include "Base/Types/Set.h"
 #include "Base/Utils/Sort.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #include "EngineTools/Render/ResourceCompilers/Platform/DxcShaderCompiler.h"
 
@@ -116,7 +118,7 @@ namespace EE::Render
             result = pShaderReflection->GetResourceBindingDesc( i, &desc );
             if ( SUCCEEDED( result ) )
             {
-                Shader::ResourceBinding binding = { Hash::GetHash32( desc.Name ), desc.BindPoint };
+                Shader::ResourceBinding binding = { desc.Name, desc.BindPoint };
                 resourceBindings[0].push_back( binding );
             }
             else
@@ -188,27 +190,27 @@ namespace EE::Render
             // Determine DXGI format
             if ( paramDesc.Mask == 1 )
             {
-                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = DataFormat::UInt_R32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = DataFormat::SInt_R32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = DataFormat::Float_R32;
+                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::R32UInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::R32SInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::R32Float;
             }
             else if ( paramDesc.Mask <= 3 )
             {
-                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = DataFormat::UInt_R32G32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = DataFormat::SInt_R32G32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = DataFormat::Float_R32G32;
+                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RG32UInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RG32SInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RG32Float;
             }
             else if ( paramDesc.Mask <= 7 )
             {
-                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = DataFormat::UInt_R32G32B32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = DataFormat::SInt_R32G32B32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = DataFormat::Float_R32G32B32;
+                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGB32UInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGB32SInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGB32Float;
             }
             else if ( paramDesc.Mask <= 15 )
             {
-                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = DataFormat::UInt_R32G32B32A32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = DataFormat::SInt_R32G32B32A32;
-                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = DataFormat::Float_R32G32B32A32;
+                if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGBA32UInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGBA32SInt;
+                else if ( paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32 ) elementDesc.m_format = VertexLayoutDescriptor::VertexDataFormat::RGBA32Float;
             }
 
             vertexLayoutDesc.m_elementDescriptors.push_back( elementDesc );
@@ -320,7 +322,7 @@ namespace EE::Render
         return GetSemanticForName( semanticStr );
     }
 
-    static DataFormat GetVertexLayoutElementDataFormat( DataSemantic semantic, spirv_cross::Compiler& spirvCompiler, spirv_cross::SPIRType const& spirvType )
+    static VertexLayoutDescriptor::VertexDataFormat GetVertexLayoutElementDataFormat( DataSemantic semantic, spirv_cross::Compiler& spirvCompiler, spirv_cross::SPIRType const& spirvType )
     {
         if ( spirvType.basetype == spirv_cross::SPIRType::UByte )
         {
@@ -328,15 +330,15 @@ namespace EE::Render
             {
                 if ( spirvType.vecsize == 1 )
                 {
-                    return DataFormat::UInt_R8;
+                    return VertexLayoutDescriptor::VertexDataFormat::R8UInt;
                 }
                 else if ( spirvType.vecsize == 2 )
                 {
-                    return DataFormat::UInt_R8G8;
+                    return VertexLayoutDescriptor::VertexDataFormat::RG8UInt;
                 }
                 else if ( spirvType.vecsize == 4 )
                 {
-                    return DataFormat::UInt_R8G8B8A8;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGBA8UInt;
                 }
 
                 EE_UNIMPLEMENTED_FUNCTION();
@@ -348,19 +350,19 @@ namespace EE::Render
             {
                 if ( spirvType.vecsize == 1 )
                 {
-                    return DataFormat::UInt_R32;
+                    return VertexLayoutDescriptor::VertexDataFormat::R32UInt;
                 }
                 else if ( spirvType.vecsize == 2 )
                 {
-                    return DataFormat::UInt_R32G32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RG32UInt;
                 }
                 else if ( spirvType.vecsize == 3 )
                 {
-                    return DataFormat::UInt_R32G32B32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGB32UInt;
                 }
                 else if ( spirvType.vecsize == 4 )
                 {
-                    return DataFormat::UInt_R32G32B32A32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGBA32UInt;
                 }
 
                 EE_UNIMPLEMENTED_FUNCTION();
@@ -372,19 +374,20 @@ namespace EE::Render
             {
                 if ( spirvType.vecsize == 1 )
                 {
-                    return DataFormat::SInt_R32;
+                    return VertexLayoutDescriptor::VertexDataFormat::R32SInt;
                 }
                 else if ( spirvType.vecsize == 2 )
                 {
-                    return DataFormat::SInt_R32G32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RG32SInt;
                 }
                 else if ( spirvType.vecsize == 3 )
                 {
-                    return DataFormat::SInt_R32G32B32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGB32SInt;
                 }
                 else if ( spirvType.vecsize == 4 )
                 {
-                    return DataFormat::SInt_R32G32B32A32;
+                    EE_UNIMPLEMENTED_FUNCTION();
+                    return VertexLayoutDescriptor::VertexDataFormat::RGBA32SInt;
                 }
 
                 EE_UNIMPLEMENTED_FUNCTION();
@@ -396,15 +399,15 @@ namespace EE::Render
             {
                 if ( spirvType.vecsize == 1 )
                 {
-                    return DataFormat::Float_R16;
+                    return VertexLayoutDescriptor::VertexDataFormat::R16Float;
                 }
                 else if ( spirvType.vecsize == 2 )
                 {
-                    return DataFormat::Float_R16G16;
+                    return VertexLayoutDescriptor::VertexDataFormat::RG16Float;
                 }
                 else if ( spirvType.vecsize == 4 )
                 {
-                    return DataFormat::Float_R16G16B16A16;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGBA16Float;
                 }
 
                 EE_UNIMPLEMENTED_FUNCTION();
@@ -418,29 +421,27 @@ namespace EE::Render
                 {
                     // Note: It is robust? what can we do if we want unorm float?
                     //       We just assume that all these value should be in range [0, 1].
-                    if ( semantic == DataSemantic::Color ||
-                         semantic == DataSemantic::Normal ||
+                    if ( semantic == DataSemantic::Normal ||
                          semantic == DataSemantic::Tangent || 
                          semantic == DataSemantic::BiTangent ) 
                     {
-                        return DataFormat::UNorm_R8;
+                        return VertexLayoutDescriptor::VertexDataFormat::R8Unorm;
                     }
 
-                    return DataFormat::Float_R32;
+                    return VertexLayoutDescriptor::VertexDataFormat::R32Float;
                 }
                 else if ( spirvType.vecsize == 2 )
                 {
                     // Note: It is robust? what can we do if we want unorm float?
                     //       We just assume that all these value should be in range [0, 1].
-                    if ( semantic == DataSemantic::Color ||
-                         semantic == DataSemantic::Normal ||
+                    if ( semantic == DataSemantic::Normal ||
                          semantic == DataSemantic::Tangent ||
                          semantic == DataSemantic::BiTangent )
                     {
-                        return DataFormat::UNorm_R8G8;
+                        return VertexLayoutDescriptor::VertexDataFormat::RG8Unorm;
                     }
 
-                    return DataFormat::Float_R32G32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RG32Float;
                 }
                 else if ( spirvType.vecsize == 3 )
                 {
@@ -452,10 +453,10 @@ namespace EE::Render
                          semantic == DataSemantic::BiTangent )
                     {
                         EE_UNREACHABLE_CODE();
-                        return DataFormat::Count;
+                        return VertexLayoutDescriptor::VertexDataFormat::Unknown;
                     }
 
-                    return DataFormat::Float_R32G32B32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGB32Float;
                 }
                 else if ( spirvType.vecsize == 4 )
                 {
@@ -466,10 +467,10 @@ namespace EE::Render
                          semantic == DataSemantic::Tangent ||
                          semantic == DataSemantic::BiTangent )
                     {
-                        return DataFormat::UNorm_R8G8B8A8;
+                        return VertexLayoutDescriptor::VertexDataFormat::RGBA8Unorm;
                     }
 
-                    return DataFormat::Float_R32G32B32A32;
+                    return VertexLayoutDescriptor::VertexDataFormat::RGBA32Float;
                 }
 
                 EE_UNIMPLEMENTED_FUNCTION();
@@ -477,7 +478,7 @@ namespace EE::Render
         }
 
         EE_UNREACHABLE_CODE();
-        return DataFormat::Count;
+        return VertexLayoutDescriptor::VertexDataFormat::Unknown;
     }
 
     static bool ReflectVertexLayoutSpirv( spirv_cross::Compiler& spirvCompiler, VertexLayoutDescriptor& vertexLayoutDesc )
@@ -524,14 +525,25 @@ namespace EE::Render
     }
 
     static bool ReflectResourceBindingDescsSpirv( spirv_cross::Compiler& spirvCompiler, TVector<TVector<Shader::ResourceBinding>>& resourceBindings )
-    {
+     {
         auto shaderResources = spirvCompiler.get_shader_resources();
         
+        TSet<String> bindingResourceNames;
         TVector<TPair<uint32_t, Shader::ResourceBinding>> bindings;
 
         for ( auto& ubo : shaderResources.uniform_buffers )
         {
             char const* name = spirvCompiler.get_name( ubo.id ).c_str();
+         
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( ubo.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( ubo.type_id );
@@ -539,12 +551,22 @@ namespace EE::Render
             auto bindingCount = GetBindingCount( spirvType );
             Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::UniformBuffer;
 
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" });
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, "" });
         }
 
         for ( auto& sbo : shaderResources.storage_buffers )
         {
             char const* name = spirvCompiler.get_name( sbo.id ).c_str();
+
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( sbo.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( sbo.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( sbo.type_id );
@@ -552,12 +574,22 @@ namespace EE::Render
             auto bindingCount = GetBindingCount( spirvType );
             Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::StorageBuffer;
 
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, "" } );
         }
 
         for ( auto& img : shaderResources.sampled_images )
         {
             char const* name = spirvCompiler.get_name( img.id ).c_str();
+
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( img.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( img.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( img.type_id );
@@ -565,12 +597,22 @@ namespace EE::Render
             auto bindingCount = GetBindingCount( spirvType );
             Shader::EReflectedBindingResourceType resourceType = Shader::EReflectedBindingResourceType::CombinedTextureSampler;
 
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, "" } );
         }
 
         for ( auto& img : shaderResources.separate_images )
         {
             char const* name = spirvCompiler.get_name( img.id ).c_str();
+
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( img.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( img.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( img.type_id );
@@ -587,12 +629,22 @@ namespace EE::Render
                 resourceType = Shader::EReflectedBindingResourceType::SampleTexture;
             }
             
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, "" } );
         }
 
         for ( auto& img : shaderResources.storage_images )
         {
             char const* name = spirvCompiler.get_name( img.id ).c_str();
+
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( img.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( img.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( img.type_id );
@@ -608,12 +660,22 @@ namespace EE::Render
                 resourceType = Shader::EReflectedBindingResourceType::StorageTexture;
             }
 
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, "" } );
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, "" } );
         }
 
         for ( auto& sampler : shaderResources.separate_samplers )
         {
             String const name = spirvCompiler.get_name( sampler.id ).c_str();
+
+            auto iterator = bindingResourceNames.find( name );
+            if ( iterator != bindingResourceNames.end() )
+            {
+                // Name collision
+                return false;
+            }
+
+            bindingResourceNames.emplace( name );
+
             auto const set = spirvCompiler.get_decoration( sampler.id, spv::DecorationDescriptorSet );
             auto const binding = spirvCompiler.get_decoration( sampler.id, spv::DecorationBinding );
             auto const& spirvType = spirvCompiler.get_type( sampler.type_id );
@@ -623,7 +685,7 @@ namespace EE::Render
 
             size_t const underscorePos = name.find_first_of( '_' ) + 1;
             String const nameSuffix = name.substr( underscorePos, name.size() - underscorePos );
-            bindings.emplace_back( set, Shader::ResourceBinding{ Hash::GetHash32( name ), binding, bindingCount, resourceType, nameSuffix } );
+            bindings.emplace_back( set, Shader::ResourceBinding{ name, binding, bindingCount, resourceType, nameSuffix } );
         }
 
         //for ( auto& acc : shaderResources.acceleration_structures )

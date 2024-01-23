@@ -48,21 +48,70 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
+    // Note: If you modified this enum, please keep data in these functions consistent:
+    //     [RHIResourceCreationCommons.cpp] GetPixelFormatByteSize()
+    //     [RHIToVulkanSpecification.cpp] ToVulkanFormat()
+    //     [RHICommandBuffer.cpp] PixelFormatToAspectFlags()
+    //     [RenderUtils.cpp] ToEnginePixelFormat()
+
     enum class EPixelFormat : uint8_t
     {
-        RGBA8Unorm,
-        BGRA8Unorm,
+        R8UInt,
+        R8Unorm,
+
+        R32UInt,
+        R32SInt,
+
+        R16Float,
+        R32Float,
+
+        RG8UInt,
+        RG8Unorm,
+
+        RG32UInt,
+        RG32SInt,
 
         RG16Float,
+        RG32Float,
+
+        RGB32UInt,
+        RGB32SInt,
+
+        RGB32Float,
+
+        RGBA8UInt,
+        RGBA8Unorm,
 
         RGBA32UInt,
 
+        RGBA16Float,
+        RGBA32Float,
+
+        BGRA8Unorm,
+        BGRA8Srgb,
+
         Depth32,
+
+        //-------------------------------------------------------------------------
+        // DirectX Block Compression Format
+
+        BC1Unorm,
+        BC1Srgb,
+        BC2Unorm,
+        BC2Srgb,
+        BC3Unorm,
+        BC3Srgb,
+        BC4Unorm,
+        BC5Unorm,
+        BC6HUFloat16,
+        BC6HSFloat16,
+        BC7Unorm,
+        BC7Srgb,
 
         Undefined
     };
 
-    uint32_t GetPixelFormatByteSize( EPixelFormat format );
+    void GetPixelFormatByteSize( uint32_t width, uint32_t height, EPixelFormat format, uint32_t& outNumBytes, uint32_t& outNumBytesPerRow );
 
     enum class ETextureType : uint8_t
     {
@@ -120,11 +169,11 @@ namespace EE::RHI
         uint32_t            m_textureHeight = 0;
         uint32_t            m_textureDepth = 1;
         uint32_t            m_pixelByteLength = 0;
+        uint16_t            m_totalMipmaps = 1;
 
         inline bool HasValidData() const
         {
-            return !m_binary.empty()
-                && m_binary.size() == m_textureWidth * m_textureHeight * m_textureDepth * m_pixelByteLength;
+            return !m_binary.empty() && m_textureWidth != 0 && m_textureHeight != 0;
         }
 
         // Return whether this texture buffer data can be used(initialized) within a texture. 
@@ -155,6 +204,8 @@ namespace EE::RHI
 
     public:
 
+        static RHITextureCreateDesc GetDefault();
+
         static RHITextureCreateDesc New1D( uint32_t width, EPixelFormat format );
         static RHITextureCreateDesc New1DArray( uint32_t width, EPixelFormat format, uint32_t array );
         static RHITextureCreateDesc New2D( uint32_t width, uint32_t height, EPixelFormat format );
@@ -166,9 +217,13 @@ namespace EE::RHI
         // Pass by value, accept both lvalue and rvalue
         void WithInitialData( RHITextureBufferData initBufferData )
         {
-            if ( initBufferData.HasValidData() && initBufferData.CanBeUsedBy( *this ) )
+            if ( initBufferData.HasValidData() )
             {
-                m_bufferData = initBufferData;
+                m_width = initBufferData.m_textureWidth;
+                m_height = initBufferData.m_textureHeight;
+                m_depth = initBufferData.m_textureDepth;
+                m_mipmap = initBufferData.m_totalMipmaps;
+                m_bufferData = eastl::exchange( initBufferData, {} );
             }
         }
 
@@ -218,10 +273,6 @@ namespace EE::RHI
                                rhs.m_usage, rhs.m_tiling, rhs.m_sample,
                                rhs.m_type, rhs.m_flag, rhs.m_memoryUsage, rhs.m_memoryFlag );
         }
-
-    private:
-
-        static RHITextureCreateDesc GetDefault();
 
     public:
 
@@ -534,7 +585,9 @@ namespace EE::RHI
     {
         Raster,
         Compute,
-        Transfer
+        Transfer,
+
+        Unknown
     };
 
     struct RHIPipelineRasterizerState

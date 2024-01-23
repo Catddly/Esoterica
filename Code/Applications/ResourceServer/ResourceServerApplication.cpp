@@ -365,11 +365,6 @@ namespace EE
         {
             ScopedTimer<PlatformClock> frameTimer( deltaTime );
 
-            // Update pipeline registry load requests
-            //-------------------------------------------------------------------------
-
-            m_pipelineRegistry.Update();
-
             // Update resource server
             //-------------------------------------------------------------------------
 
@@ -428,9 +423,8 @@ namespace EE
                 // TODO: defer resource creation
                 m_pRenderDevice->GetRHIDevice()->BeginFrame();
 
+                m_pipelineRegistry.UpdateBlock( m_pRenderDevice->GetRHIDevice() );
                 bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
-                // TODO: when pipeline registry failed to update pipelines, use old pipelines
-                m_pipelineRegistry.UpdatePipelines( m_pRenderDevice->GetRHIDevice() );
  
                 if ( bCompileResult )
                 {

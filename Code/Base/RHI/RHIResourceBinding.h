@@ -87,18 +87,18 @@ namespace EE::RHI
     };
 
     // Use as a placeholder
-    struct RHIStaticSamplerBinding
-    {
-        inline friend bool operator==( RHIStaticSamplerBinding const&, RHIStaticSamplerBinding const& )
-        {
-            return true;
-        }
+    //struct RHIStaticSamplerBinding
+    //{
+    //    inline friend bool operator==( RHIStaticSamplerBinding const&, RHIStaticSamplerBinding const& )
+    //    {
+    //        return true;
+    //    }
 
-        inline friend bool operator!=( RHIStaticSamplerBinding const& lhs, RHIStaticSamplerBinding const& rhs )
-        {
-            return !operator==( lhs, rhs );
-        }
-    };
+    //    inline friend bool operator!=( RHIStaticSamplerBinding const& lhs, RHIStaticSamplerBinding const& rhs )
+    //    {
+    //        return !operator==( lhs, rhs );
+    //    }
+    //};
 
     // Use as a placeholder
     struct RHIUnknownBinding
@@ -119,7 +119,6 @@ namespace EE::RHI
         RHIDynamicBufferBinding,
         RHITextureBinding,
         RHITextureArrayBinding,
-        RHIStaticSamplerBinding,
         RHIUnknownBinding
     >;
 

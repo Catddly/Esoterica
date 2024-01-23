@@ -207,10 +207,24 @@ namespace EE::Render
         {
             if ( pRhiPipelineState )
             {
-                if ( auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pRhiPipelineState ) )
+                RHI::RHIPipelineType const pipelineType = pRhiPipelineState->GetPipelineType();
+
+                VulkanCommonPipelineStates const* pVkPipelineState = nullptr;
+                if ( pipelineType == RHI::RHIPipelineType::Raster )
                 {
-                    vkCmdBindPipeline( m_pHandle, pVkPipelineState->m_pipelineState.m_pipelineBindPoint, pVkPipelineState->m_pipelineState.m_pPipeline );
+                    auto* pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pRhiPipelineState );
+                    EE_ASSERT( pVkRasterPipelineState );
+                    pVkPipelineState = &pVkRasterPipelineState->m_pipelineState;
                 }
+                else if ( pipelineType == RHI::RHIPipelineType::Compute )
+                {
+                    auto* pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pRhiPipelineState );
+                    EE_ASSERT( pVkComputePipelineState );
+                    pVkPipelineState = &pVkComputePipelineState->m_pipelineState;
+                }
+                EE_ASSERT( pVkPipelineState );
+
+                vkCmdBindPipeline( m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipeline );
             }
             else
             {
@@ -222,16 +236,33 @@ namespace EE::Render
         {
             static VkDescriptorSet lastBoundVkDescriptorSet = nullptr;
 
+            VulkanDescriptorSetHash const hash = { set, bindings };
+
             EE_ASSERT( pPipelineState );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+            
+            RHI::RHIPipelineType const pipelineType = pPipelineState->GetPipelineType();
+
+            VulkanCommonPipelineInfo const* pVkPipelineInfo = nullptr;
+            VulkanCommonPipelineStates const* pVkPipelineState = nullptr;
+            if ( pipelineType == RHI::RHIPipelineType::Raster )
+            {
+                auto* pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+                EE_ASSERT( pVkRasterPipelineState );
+                pVkPipelineInfo = &pVkRasterPipelineState->m_pipelineInfo;
+                pVkPipelineState = &pVkRasterPipelineState->m_pipelineState;
+            }
+            else if ( pipelineType == RHI::RHIPipelineType::Compute )
+            {
+                auto* pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+                EE_ASSERT( pVkComputePipelineState );
+                pVkPipelineInfo = &pVkComputePipelineState->m_pipelineInfo;
+                pVkPipelineState = &pVkComputePipelineState->m_pipelineState;
+            }
+            EE_ASSERT( pVkPipelineInfo );
             EE_ASSERT( pVkPipelineState );
 
-            VulkanDescriptorSetHash const hash = {
-                set,
-                bindings
-            };
+            auto vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, *pVkPipelineInfo );
 
-            VkDescriptorSet vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, pVkPipelineState );
             if ( !vkSet )
             {
                 return;
@@ -253,14 +284,14 @@ namespace EE::Render
             {
                 TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
                 TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
-                auto writes = WriteDescriptorSets( vkSet, pVkPipelineState->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
+                auto writes = WriteDescriptorSets( vkSet, pVkPipelineInfo->m_setDescriptorLayouts[set], bindings, bufferInfos, textureInfos, dynOffsets );
 
                 vkUpdateDescriptorSets( pVkDevice->m_pHandle, static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
                 MarkAsUpdated( setHashValue, vkSet );
             }
 
             vkCmdBindDescriptorSets(
-                m_pHandle, pVkPipelineState->m_pipelineState.m_pipelineBindPoint, pVkPipelineState->m_pipelineState.m_pPipelineLayout,
+                m_pHandle, pVkPipelineState->m_pipelineBindPoint, pVkPipelineState->m_pPipelineLayout,
                 set, 1, &vkSet,
                 static_cast<uint32_t>( dynOffsets.size() ), !dynOffsets.empty() ? dynOffsets.data() : nullptr
             );
@@ -298,8 +329,23 @@ namespace EE::Render
         void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
         {
             EE_ASSERT( pPipelineState );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
-            EE_ASSERT( pVkPipelineState );
+
+            RHI::RHIPipelineType const pipelineType = pPipelineState->GetPipelineType();
+
+            VulkanCommonPipelineInfo const* pVkPipelineInfo = nullptr;
+            if ( pipelineType == RHI::RHIPipelineType::Raster )
+            {
+                auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+                EE_ASSERT( pVkPipelineState );
+                pVkPipelineInfo = &pVkPipelineState->m_pipelineInfo;
+            }
+            else if ( pipelineType == RHI::RHIPipelineType::Compute )
+            {
+                auto* pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+                EE_ASSERT( pVkPipelineState );
+                pVkPipelineInfo = &pVkPipelineState->m_pipelineInfo;
+            }
+            EE_ASSERT( pVkPipelineInfo );
             
             RHI::RHIPipelineBinding const bindingsRef[] = { rhiBinding };
             VulkanDescriptorSetHash const hash = {
@@ -313,7 +359,7 @@ namespace EE::Render
                 return;
             }
 
-            VkDescriptorSet vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, pVkPipelineState );
+            VkDescriptorSet vkSet = CreateOrFindInPlaceUpdatedDescriptorSet( hash, *pVkPipelineInfo );
             if ( !vkSet )
             {
                 return;
@@ -327,7 +373,7 @@ namespace EE::Render
             TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
             TInlineVector<uint32_t, 4> dynOffsets;
             auto write = WriteDescriptorSet(
-                vkSet, binding, pVkPipelineState->m_setDescriptorLayouts[set], rhiBinding,
+                vkSet, binding, pVkPipelineInfo->m_setDescriptorLayouts[set], rhiBinding,
                 bufferInfos, textureInfos, dynOffsets
             );
 
@@ -486,8 +532,15 @@ namespace EE::Render
                         uint32_t const width = Math::Max( texDesc.m_width >> mip, 1u );
                         uint32_t const height = Math::Max( texDesc.m_height >> mip, 1u );
                         uint32_t const depth = Math::Max( texDesc.m_depth >> mip, 1u );
-                              
-                        uint32_t const currentMipByteSize = width * height * depth * GetPixelFormatByteSize( texDesc.m_format );
+                        
+                        // Note: not support 3D texture for nows
+                        EE_ASSERT( depth == 1 );
+
+                        uint32_t currentMipByteSize = 0;
+                        uint32_t currentMipByteSizePerRow = 0;
+                        GetPixelFormatByteSize( width, height, texDesc.m_format, currentMipByteSize, currentMipByteSizePerRow );
+
+                        EE_ASSERT( currentMipByteSize != 0 && currentMipByteSizePerRow != 0 );
 
                         VkDeviceSize currentBufferOffset = 0;
                         if ( remainingBufferSize >= currentMipByteSize )
@@ -1009,7 +1062,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         VkWriteDescriptorSet VulkanCommandBuffer::WriteDescriptorSet(
-            VkDescriptorSet set, uint32_t binding, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
+            VkDescriptorSet set, uint32_t binding, RHI::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
             TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets )
         {
             auto iterator = setDescriptorLayout.find( binding );
@@ -1113,10 +1166,10 @@ namespace EE::Render
                     write.descriptorCount = 1;
                 }
             }
-            else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIStaticSamplerBinding>() )
-            {
-                // do nothing
-            }
+            //else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIStaticSamplerBinding>() )
+            //{
+            //    // do nothing
+            //}
             else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIUnknownBinding>() )
             {
                 EE_LOG_WARNING( "RHI", "Command Buffer", "Found unknown binding while binding pipline descriptor set!" );
@@ -1126,31 +1179,33 @@ namespace EE::Render
         }
 
         TVector<VkWriteDescriptorSet> VulkanCommandBuffer::WriteDescriptorSets(
-            VkDescriptorSet set, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
+            VkDescriptorSet set, RHI::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
             TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
         )
         {
             TVector<VkWriteDescriptorSet> writes;
 
             uint32_t bindingIndex = 0;
-            for ( auto const& binding : bindings )
+            uint32_t currentBinding = 0;
+            for ( auto const& [ _unused, bindingType ] : setDescriptorLayout )
             {
-                auto iterator = setDescriptorLayout.find(bindingIndex);
-                if ( iterator == setDescriptorLayout.end() )
+                // skip static sampler binding
+                if ( bindingType != RHI::EBindingResourceType::Sampler )
                 {
-                    // must match shader descriptor layouts
-                    continue;
+                    // skip static sampler binding
+                    VkWriteDescriptorSet write = WriteDescriptorSet(
+                        set, bindingIndex, setDescriptorLayout, bindings[currentBinding],
+                        bufferInfos, textureInfos, dynOffsets
+                    );
+
+                    if ( write.descriptorCount > 0 )
+                    {
+                        writes.push_back( write );
+                    }
+
+                    ++currentBinding;
                 }
 
-                VkWriteDescriptorSet write = WriteDescriptorSet(
-                    set, bindingIndex, setDescriptorLayout, binding,
-                    bufferInfos, textureInfos, dynOffsets
-                );
-
-                if ( write.descriptorCount > 0 )
-                {
-                    writes.push_back( write );
-                }
                 ++bindingIndex;
             }
 
@@ -1171,7 +1226,7 @@ namespace EE::Render
             return true;
         }
 
-        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanRasterPipelineState const* pVkPipelineState )
+        VkDescriptorSet VulkanCommandBuffer::CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanCommonPipelineInfo const& vkPipelineInfo )
         {
             size_t const hashValue = hash.GetHash();
             auto iterator = m_updatedDescriptorSets.find( hashValue );
@@ -1184,7 +1239,7 @@ namespace EE::Render
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
             EE_ASSERT( pVkDevice );
 
-            if ( pVkPipelineState->m_setDescriptorLayouts.empty() || pVkPipelineState->m_setDescriptorLayouts.size() <= hash.m_set )
+            if ( vkPipelineInfo.m_setDescriptorLayouts.empty() || vkPipelineInfo.m_setDescriptorLayouts.size() <= hash.m_set )
             {
                 return nullptr;
             }
@@ -1193,7 +1248,7 @@ namespace EE::Render
             poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolCI.maxSets = 1;
             poolCI.poolSizeCount = 1;
-            poolCI.pPoolSizes = &pVkPipelineState->m_setPoolSizes[hash.m_set];
+            poolCI.pPoolSizes = &vkPipelineInfo.m_setPoolSizes[hash.m_set];
             // TODO: pool update after bind
 
             VkDescriptorPool vkPool;
@@ -1208,7 +1263,7 @@ namespace EE::Render
             VkDescriptorSetAllocateInfo setAllocateInfo = {};
             setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             setAllocateInfo.descriptorSetCount = 1;
-            setAllocateInfo.pSetLayouts = &pVkPipelineState->m_setLayouts[hash.m_set];
+            setAllocateInfo.pSetLayouts = &vkPipelineInfo.m_setLayouts[hash.m_set];
             setAllocateInfo.descriptorPool = vkPool;
 
             VkDescriptorSet vkSet = nullptr;

@@ -825,7 +825,6 @@ namespace EE::Render
                             // Bind descriptor
                             RG::RGPipelineBinding const binding[] = {
                                 RG::Bind( uboBinding ),
-                                RG::BindStaticSampler(),
                                 RG::BindRaw( { eastl::move( imguiTexBinding ) } )
                             };
                             boundPipeline.Bind( 0, binding );

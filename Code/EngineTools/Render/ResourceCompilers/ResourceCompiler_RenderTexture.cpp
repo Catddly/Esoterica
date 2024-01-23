@@ -49,7 +49,7 @@ namespace EE::Render
         }
 
         Texture texture;
-        texture.m_format = TextureFormat::DDS;
+        texture.m_format = RawTextureDataFormat::DDS;
 
         if ( !ConvertTexture( textureFilePath, resourceDescriptor.m_type, texture.m_rawData ) )
         {
@@ -85,7 +85,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         CubemapTexture texture;
-        texture.m_format = TextureFormat::DDS;
+        texture.m_format = RawTextureDataFormat::DDS;
 
         FileSystem::Path const sourceTexturePath = resourceDescriptor.m_path.ToFileSystemPath( m_rawResourceDirectoryPath );
         if ( !FileSystem::Exists( sourceTexturePath ) )

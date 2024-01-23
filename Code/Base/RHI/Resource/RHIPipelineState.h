@@ -8,12 +8,10 @@ namespace EE::RHI
     // Pipeline State
     //-------------------------------------------------------------------------
 
+    using SetDescriptorLayout = TMap<uint32_t, EBindingResourceType>;
+
     class EE_BASE_API RHIPipelineState : public RHIResource
     {
-    public:
-
-        using SetDescriptorLayout = TMap<uint32_t, EBindingResourceType>;
-
     public:
 
         RHIPipelineState( ERHIType rhiType = ERHIType::Invalid )
@@ -35,7 +33,13 @@ namespace EE::RHI
         {}
         virtual ~RHIRasterPipelineState() = default;
 
-        inline virtual RHIPipelineType GetPipelineType() const override { return RHIPipelineType::Raster; }
+    public:
+
+        RHIRasterPipelineStateCreateDesc const& GetDesc() const { return m_desc; }
+
+        //-------------------------------------------------------------------------
+
+        inline virtual RHI::RHIPipelineType GetPipelineType() const override { return RHI::RHIPipelineType::Raster; }
 
     protected:
 
@@ -51,7 +55,13 @@ namespace EE::RHI
         {}
         virtual ~RHIComputePipelineState() = default;
 
-        inline virtual RHIPipelineType GetPipelineType() const override { return RHIPipelineType::Compute; }
+    public:
+
+        RHIComputePipelineStateCreateDesc const& GetDesc() const { return m_desc; }
+
+        //-------------------------------------------------------------------------
+
+        inline virtual RHI::RHIPipelineType GetPipelineType() const override { return RHI::RHIPipelineType::Compute; }
 
         virtual uint32_t GetThreadGroupSizeX() const = 0;
         virtual uint32_t GetThreadGroupSizeY() const = 0;

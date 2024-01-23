@@ -11,7 +11,7 @@ namespace EE::Render
 {
     namespace Backend
     {
-        struct VulkanCommonPipelineState
+        struct VulkanCommonPipelineStates
         {
             VkPipeline                                                              m_pPipeline = nullptr;
             VkPipelineLayout                                                        m_pPipelineLayout = nullptr;
@@ -19,7 +19,14 @@ namespace EE::Render
             VkPipelineBindPoint                                                     m_pipelineBindPoint;
         };
 
-        class VulkanRasterPipelineState : public RHI::RHIRasterPipelineState
+        struct VulkanCommonPipelineInfo
+        {
+            TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet>  m_setDescriptorLayouts;
+            TVector<VkDescriptorPoolSize>                                           m_setPoolSizes;
+            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
+        };
+
+        class VulkanRasterPipelineState final : public RHI::RHIRasterPipelineState
         {
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
@@ -35,18 +42,15 @@ namespace EE::Render
 
         public:
 
-            inline virtual TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_setDescriptorLayouts; }
+            inline virtual TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_pipelineInfo.m_setDescriptorLayouts; }
 
         private:
 
-            VulkanCommonPipelineState                                               m_pipelineState;
-
-            TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet>       m_setDescriptorLayouts;
-            TVector<VkDescriptorPoolSize>                                           m_setPoolSizes;
-            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
+            VulkanCommonPipelineStates                                           m_pipelineState;
+            VulkanCommonPipelineInfo                                                m_pipelineInfo;
         };
 
-        class VulkanComputePipelineState : public RHI::RHIComputePipelineState
+        class VulkanComputePipelineState final : public RHI::RHIComputePipelineState
         {
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
@@ -63,7 +67,7 @@ namespace EE::Render
 
         public:
 
-            inline virtual TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_setDescriptorLayouts; }
+            inline virtual TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_pipelineInfo.m_setDescriptorLayouts; }
 
             inline virtual uint32_t GetThreadGroupSizeX() const override { return m_dispathGroupWidth; };
             inline virtual uint32_t GetThreadGroupSizeY() const override { return m_dispathGroupHeight; };
@@ -71,11 +75,8 @@ namespace EE::Render
 
         private:
 
-            VulkanCommonPipelineState                                               m_pipelineState;
-
-            TInlineVector<SetDescriptorLayout, RHI::NumMaxResourceBindingSet>       m_setDescriptorLayouts;
-            TVector<VkDescriptorPoolSize>                                           m_setPoolSizes;
-            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
+            VulkanCommonPipelineStates                                           m_pipelineState;
+            VulkanCommonPipelineInfo                                                m_pipelineInfo;
 
             uint32_t                                                                m_dispathGroupWidth = 1;
             uint32_t                                                                m_dispathGroupHeight = 1;

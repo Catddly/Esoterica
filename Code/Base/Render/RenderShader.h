@@ -72,20 +72,21 @@ namespace EE::Render
 
         struct ResourceBinding
         {
-            EE_SERIALIZE( m_ID, m_slot, m_bindingCount, m_bindingResourceType, m_extraInfos );
+            EE_SERIALIZE( m_resourceName, m_ID, m_slot, m_bindingCount, m_bindingResourceType, m_extraInfos );
 
             ResourceBinding() : m_slot( 0 ) {}
-            ResourceBinding( uint32_t ID, uint32_t slot ) : m_ID( ID ), m_slot( slot ) {}
-            ResourceBinding( uint32_t ID, uint32_t slot, ReflectedBindingCount bindingCount, EReflectedBindingResourceType resourceType, String const& extraInfos )
-                : m_ID( ID ), m_slot( slot ), m_bindingCount( bindingCount ), m_bindingResourceType( resourceType ), m_extraInfos( extraInfos ) {}
+            ResourceBinding( String resourceName, uint32_t slot ) : m_resourceName( resourceName ), m_ID( Hash::GetHash32( resourceName ) ), m_slot( slot ) {}
+            ResourceBinding( String resourceName, uint32_t slot, ReflectedBindingCount bindingCount, EReflectedBindingResourceType resourceType, String const& extraInfos )
+                : m_resourceName( resourceName ), m_ID( Hash::GetHash32( resourceName ) ), m_slot( slot ), m_bindingCount( bindingCount ), m_bindingResourceType( resourceType ), m_extraInfos( extraInfos ) {}
 
             inline bool operator<( ResourceBinding const& rhs ) const { return m_slot < rhs.m_slot; }
 
+            String                              m_resourceName;
             uint32_t                            m_ID;
             uint32_t                            m_slot;
 
             ReflectedBindingCount               m_bindingCount;
-            EReflectedBindingResourceType              m_bindingResourceType;
+            EReflectedBindingResourceType       m_bindingResourceType;
             String                              m_extraInfos;
         };
 

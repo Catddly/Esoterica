@@ -63,6 +63,8 @@ namespace EE::Render
             {
                 auto& uploadRef = uploadRefs.emplace_back();
                 uploadRef.m_pStagingBuffer = stagingBuffer.second;
+                uploadRef.m_aspectFlags.ClearAllFlags();
+                // TODO: proper aspect flags
                 uploadRef.m_aspectFlags.SetFlag( RHI::TextureAspectFlags::Color );
                 uploadRef.m_layer = stagingBuffer.first;
                 uploadRef.m_baseMipLevel = 0;
@@ -82,7 +84,7 @@ namespace EE::Render
                 pDevice->DestroyBuffer( stagingBuffer.second );
             }
 
-            // Not use clear() here, we want to free all memory immediately
+            // Do NOT use clear() here, we want to free all memory immediately
             {
                 TMap<uint32_t, RHI::RHIBuffer*> emptyMap;
                 m_waitToFlushMappedMemory.swap( emptyMap );
@@ -174,15 +176,29 @@ namespace EE::Render
             EE_ASSERT( layer < m_desc.m_array );
 
             uint32_t totalByteSize = 0;
-            uint32_t const pixelByteWidth = GetPixelFormatByteSize( m_desc.m_format );
             for ( uint32_t mip = 0; mip < m_desc.m_mipmap; ++mip )
             {
                 uint32_t const width = Math::Max( m_desc.m_width >> mip, 1u );
                 uint32_t const height = Math::Max( m_desc.m_height >> mip, 1u );
                 uint32_t const depth = Math::Max( m_desc.m_depth >> mip, 1u );
 
-                totalByteSize += width * height * depth * pixelByteWidth;
+                // Not support 3D texture for now
+                EE_ASSERT( depth == 1 );
+
+                uint32_t numBytes = 0;
+                uint32_t numBytesPerRow = 0;
+                GetPixelFormatByteSize( width, height, m_desc.m_format, numBytes, numBytesPerRow );
+
+                if ( numBytes > 0 )
+                {
+                    totalByteSize += numBytes;
+                }
+                else
+                {
+                    EE_LOG_FATAL_ERROR( "Render", "Vulkan Backend", "Failed to calculate pixel format byte size!" );
+                }
             }
+
             return totalByteSize;
         }
 	}

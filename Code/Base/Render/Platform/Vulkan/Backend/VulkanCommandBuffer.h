@@ -75,7 +75,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         class VulkanCommandBufferPool;
-        class VulkanRasterPipelineState;
+        struct VulkanCommonPipelineInfo;
 
 		class VulkanCommandBuffer : public RHI::RHICommandBuffer
 		{
@@ -166,19 +166,19 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             VkWriteDescriptorSet WriteDescriptorSet(
-                VkDescriptorSet set, uint32_t binding, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
+                VkDescriptorSet set, uint32_t binding, RHI::SetDescriptorLayout const& setDescriptorLayout, RHI::RHIPipelineBinding const& rhiBinding,
                 TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
             );
 
             TVector<VkWriteDescriptorSet> WriteDescriptorSets(
-                VkDescriptorSet set, RHI::RHIPipelineState::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
+                VkDescriptorSet set, RHI::SetDescriptorLayout const& setDescriptorLayout, TSpan<RHI::RHIPipelineBinding const> const& bindings,
                 TSInlineList<VkDescriptorBufferInfo, 8>& bufferInfos, TSInlineList<VkDescriptorImageInfo, 8>& textureInfos, TInlineVector<uint32_t, 4> dynOffsets
             );
 
             inline void MarkAsUpdated( size_t setHashValue, VkDescriptorSet vkSet );
             inline bool IsInPlaceDescriptorSetUpdated( size_t setHashValue );
             
-            VkDescriptorSet CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanRasterPipelineState const* pVkPipelineState );
+            VkDescriptorSet CreateOrFindInPlaceUpdatedDescriptorSet( VulkanDescriptorSetHash const& hash, VulkanCommonPipelineInfo const& vkPipelineInfo );
 
             //-------------------------------------------------------------------------
 

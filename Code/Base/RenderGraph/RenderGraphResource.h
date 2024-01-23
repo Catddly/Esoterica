@@ -543,10 +543,6 @@ namespace EE::RG
         TInlineVector<RGPipelineTextureBinding, 16>     m_bindings;
     };
 
-    struct RGPipelineStaticSamplerBinding
-    {
-    };
-
     struct RGPipelineUnknownBinding
     {
     };
@@ -561,7 +557,6 @@ namespace EE::RG
         RGPipelineDynamicBufferBinding,
         RGPipelineTextureBinding,
         RGPipelineTextureArrayBinding,
-        RGPipelineStaticSamplerBinding,
         RGPipelineUnknownBinding,
         RGPipelineRHIRawBinding
     >;

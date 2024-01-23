@@ -677,6 +677,10 @@ namespace EE::Render
         auto node = renderGraph.AddNode( "Compute Brdf Lut" );
 
         auto brdfLutDesc = RG::TextureDesc::New2D( 512, 512, RHI::EPixelFormat::RG16Float );
+        // TODO: automatically usage flag analyze
+        brdfLutDesc.m_desc.m_usage.ClearAllFlags();
+        brdfLutDesc.m_desc.m_usage.SetFlag( RHI::ETextureUsage::Sampled );
+        brdfLutDesc.m_desc.m_usage.SetFlag( RHI::ETextureUsage::Storage );
         auto brdfLutResource = renderGraph.GetOrCreateNamedResource( "Brdf Lut", brdfLutDesc );
 
         //-------------------------------------------------------------------------
@@ -1773,9 +1777,9 @@ namespace EE::Render
         RenderSunShadows( renderGraph, viewport, pDirectionalLightComponent );
         {
             //immediateContext.SetRenderTarget( renderTarget );
-            RenderStaticMeshes( renderGraph, viewport, renderTarget );
+            //RenderStaticMeshes( renderGraph, viewport, renderTarget );
             //RenderSkeletalMeshes( viewport, renderTarget );
         }
-        RenderSkybox( renderGraph, viewport, renderTarget );
+        //RenderSkybox( renderGraph, viewport, renderTarget );
     }
 }

@@ -23,6 +23,12 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace EE::RHI
+{
+    struct RHITextureBufferData;
+}
+
+//-------------------------------------------------------------------------
 
 namespace DirectX
 {
@@ -37,6 +43,21 @@ namespace DirectX
         DDS_ALPHA_MODE_CUSTOM = 4,
     };
     #endif
+
+    // Load utility functions
+
+    DXGI_FORMAT ReadDDSTextureFormat(
+        _In_reads_bytes_( ddsDataSize ) const uint8_t* ddsData,
+        size_t ddsDataSize
+    ) noexcept;
+
+    HRESULT LoadDDSTextureFromMemory(
+        _In_reads_bytes_( ddsDataSize ) const uint8_t* ddsData,
+        size_t ddsDataSize,
+        EE::RHI::RHITextureBufferData& outBufferData
+    ) noexcept;
+
+    //-------------------------------------------------------------------------
 
     // Standard version
     HRESULT CreateDDSTextureFromMemory(

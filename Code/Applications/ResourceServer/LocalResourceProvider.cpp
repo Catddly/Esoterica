@@ -30,8 +30,9 @@ namespace EE::Resource
         if ( !m_pendingRequests.empty() )
         {
             // Process all pending requests
-            for ( auto* pRequest : m_pendingRequests )
+            for ( uint32_t i = 0; i < m_pendingRequests.size(); ++i )
             {
+                auto* pRequest = m_pendingRequests[i];
                 m_pResourceServer->CompileResource( pRequest->GetResourceID() );
 
                 m_sentRequests.emplace_back( pRequest );

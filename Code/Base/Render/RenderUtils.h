@@ -1,6 +1,7 @@
 #pragma once
 #include "Base/_Module/API.h"
 #include "Base/Esoterica.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 //-------------------------------------------------------------------------
 
@@ -20,6 +21,10 @@ namespace EE::Render
     {
         EE_BASE_API bool CreateTextureFromFile( RenderDevice* pRenderDevice, FileSystem::Path const& path, Texture& texture );
         EE_BASE_API bool CreateTextureFromBase64( RenderDevice* pRenderDevice, uint8_t const* pData, size_t size, Texture& texture );
+
+        EE_BASE_API RHI::EPixelFormat ReadDDSTextureFormat( uint8_t* pRawDDSTextureData, size_t ddsTextureSize );
+
+        EE_BASE_API bool FetchRawDDSTextureBufferDataFromMemory( RHI::RHITextureBufferData& bufferData, uint8_t* pRawDDSTextureData, size_t ddsTextureSize );
 
         EE_BASE_API bool FetchTextureBufferDataFromFile( RHI::RHITextureBufferData& bufferData, FileSystem::Path const& path );
         EE_BASE_API bool FetchTextureBufferDataFromBase64( RHI::RHITextureBufferData& bufferData, uint8_t const* pData, size_t size );

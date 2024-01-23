@@ -1,9 +1,10 @@
 #pragma once
-#if defined(_WIN32)
+//#if defined(_WIN32)
 
 #include "RenderContext_DX11.h"
 #include "Base/Types/Color.h"
 #include "Base/Threading/Threading.h"
+#include "Base/Render/RenderTexture.h"
 
 #include <D3D11.h>
 
@@ -89,9 +90,9 @@ namespace EE::Render
         void DestroyBlendState( BlendState& state );
 
         // Textures and Sampling
-        void CreateDataTexture( Texture& texture, TextureFormat format, uint8_t const* rawData, size_t size );
-        inline void CreateDataTexture( Texture& texture, TextureFormat format, Blob const& rawData ) { CreateDataTexture( texture, format, rawData.data(), rawData.size() ); }
-        void CreateTexture( Texture& texture, DataFormat format, Int2 dimensions, uint32_t usage );
+        void CreateDataTexture( Texture& texture, RawTextureDataFormat format, uint8_t const* rawData, size_t size );
+        inline void CreateDataTexture( Texture& texture, RawTextureDataFormat format, Blob const& rawData ) { CreateDataTexture( texture, format, rawData.data(), rawData.size() ); }
+        void CreateTexture( Texture& texture, VertexLayoutDescriptor::VertexDataFormat format, Int2 dimensions, uint32_t usage );
         inline void DestroyTexture( Texture& texture );
 
         void CreateSamplerState( SamplerState& state );
@@ -136,4 +137,4 @@ namespace EE::Render
     };
 }
 
-#endif
+//#endif

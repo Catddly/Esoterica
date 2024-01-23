@@ -23,7 +23,7 @@ namespace EE::Render
 
         // TODO: merge these two together.
         VkFormat ToVulkanFormat( RHI::EPixelFormat format );
-        VkFormat ToVulkanFormat( Render::DataFormat format );
+        VkFormat ToVulkanFormat( VertexLayoutDescriptor::VertexDataFormat format );
 
         VkImageType ToVulkanImageType( RHI::ETextureType type );
         VkImageViewType ToVulkanImageViewType( RHI::ETextureType type );

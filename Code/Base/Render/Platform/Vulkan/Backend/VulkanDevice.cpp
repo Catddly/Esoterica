@@ -658,7 +658,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         RHI::RHIPipelineState* VulkanDevice::CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders )
-        {
+         {
             EE_ASSERT( createDesc.IsValid() );
             EE_ASSERT( !compiledShaders.empty() );
 
@@ -862,9 +862,9 @@ namespace EE::Render
             // TODO: support batched pipeline creation
             VK_SUCCEEDED( vkCreateGraphicsPipelines( m_pHandle, nullptr, 1, &graphicsPipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
 
-            EE_ASSERT( !pVkPipelineStage->m_setDescriptorLayouts.empty() );
-            auto& poolSizes = pVkPipelineStage->m_setPoolSizes;
-            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_setDescriptorLayouts )
+            EE_ASSERT( !pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts.empty() );
+            auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes;
+            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts )
             {
                 for ( auto const& [_binding, ty] : setDescriptorLayout )
                 {
@@ -887,6 +887,8 @@ namespace EE::Render
                     }
                 }
             }
+
+            pVkPipelineStage->m_desc = createDesc;
 
             return pVkPipelineStage;
         }
@@ -941,9 +943,9 @@ namespace EE::Render
             // TODO: support batched pipeline creation
             VK_SUCCEEDED( vkCreateComputePipelines( m_pHandle, nullptr, 1, &computePipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
 
-            EE_ASSERT( !pVkPipelineStage->m_setDescriptorLayouts.empty() );
-            auto& poolSizes = pVkPipelineStage->m_setPoolSizes;
-            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_setDescriptorLayouts )
+            EE_ASSERT( !pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts.empty() );
+            auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes;
+            for ( auto const& setDescriptorLayout : pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts )
             {
                 for ( auto const& [_binding, ty] : setDescriptorLayout )
                 {
@@ -967,6 +969,7 @@ namespace EE::Render
                 }
             }
 
+            pVkPipelineStage->m_desc = createDesc;
             pVkPipelineStage->m_dispathGroupWidth = pCompiledShader->GetThreadGroupSizeX();
             pVkPipelineStage->m_dispathGroupHeight = pCompiledShader->GetThreadGroupSizeY();
             pVkPipelineStage->m_dispathGroupDepth = pCompiledShader->GetThreadGroupSizeZ();
@@ -1195,7 +1198,7 @@ namespace EE::Render
             memcpy( pMapped, uploadData.m_pData, stagingBufferDesc.m_desireSize );
             pStagingBuffer->Unmap( this );
 
-            // Copy staging buffer to buffer needs to upload
+            // Copy staging buffer to buffer
             //-------------------------------------------------------------------------
 
             DispatchImmediateCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
@@ -1207,7 +1210,7 @@ namespace EE::Render
             // Clear up
             //-------------------------------------------------------------------------
 
-            DestroyBuffer( pBuffer );
+            DestroyBuffer( pStagingBuffer );
         }
 
         void VulkanDevice::ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureBufferData const& uploadData )
@@ -1315,8 +1318,8 @@ namespace EE::Render
 
             //-------------------------------------------------------------------------
 
-            pPipelineState->m_setLayouts = vkSetLayouts;
-            pPipelineState->m_setDescriptorLayouts = vkSetDescripotrTypes;
+            pPipelineState->m_pipelineInfo.m_setLayouts = vkSetLayouts;
+            pPipelineState->m_pipelineInfo.m_setDescriptorLayouts = vkSetDescripotrTypes;
             pPipelineState->m_pipelineState.m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             return true;
@@ -1327,7 +1330,7 @@ namespace EE::Render
             EE_ASSERT( pPipelineState != nullptr );
             EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout != nullptr );
 
-            for ( auto& pSetLayout : pPipelineState->m_setLayouts )
+            for ( auto& pSetLayout : pPipelineState->m_pipelineInfo.m_setLayouts )
             {
                 vkDestroyDescriptorSetLayout( m_pHandle, pSetLayout, nullptr );
             }
@@ -1420,8 +1423,8 @@ namespace EE::Render
 
             //-------------------------------------------------------------------------
 
-            pPipelineState->m_setLayouts = vkSetLayouts;
-            pPipelineState->m_setDescriptorLayouts = vkSetDescripotrTypes;
+            pPipelineState->m_pipelineInfo.m_setLayouts = vkSetLayouts;
+            pPipelineState->m_pipelineInfo.m_setDescriptorLayouts = vkSetDescripotrTypes;
             pPipelineState->m_pipelineState.m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
 
             return true;
@@ -1432,7 +1435,7 @@ namespace EE::Render
             EE_ASSERT( pPipelineState != nullptr );
             EE_ASSERT( pPipelineState->m_pipelineState.m_pPipelineLayout != nullptr );
 
-            for ( auto& pSetLayout : pPipelineState->m_setLayouts )
+            for ( auto& pSetLayout : pPipelineState->m_pipelineInfo.m_setLayouts )
             {
                 vkDestroyDescriptorSetLayout( m_pHandle, pSetLayout, nullptr );
             }

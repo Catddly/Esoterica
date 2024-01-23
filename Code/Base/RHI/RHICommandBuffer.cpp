@@ -171,13 +171,45 @@ namespace EE::RHI
     {
         switch ( format )
         {
-            case EPixelFormat::RGBA8Unorm:
-            case EPixelFormat::BGRA8Unorm:
-            {
-                return TextureAspectFlags::Color;
-            }
+            case EE::RHI::EPixelFormat::R8UInt:
+            case EE::RHI::EPixelFormat::R8Unorm:
+            case EE::RHI::EPixelFormat::R32UInt:
+            case EE::RHI::EPixelFormat::R32SInt:
+            case EE::RHI::EPixelFormat::R16Float:
+            case EE::RHI::EPixelFormat::R32Float:
+            case EE::RHI::EPixelFormat::RG8UInt:
+            case EE::RHI::EPixelFormat::RG8Unorm:
+            case EE::RHI::EPixelFormat::RG32UInt:
+            case EE::RHI::EPixelFormat::RG32SInt:
+            case EE::RHI::EPixelFormat::RG16Float:
+            case EE::RHI::EPixelFormat::RG32Float:
+            case EE::RHI::EPixelFormat::RGB32UInt:
+            case EE::RHI::EPixelFormat::RGB32SInt:
+            case EE::RHI::EPixelFormat::RGB32Float:
+            case EE::RHI::EPixelFormat::RGBA8UInt:
+            case EE::RHI::EPixelFormat::RGBA8Unorm:
+            case EE::RHI::EPixelFormat::RGBA32UInt:
+            case EE::RHI::EPixelFormat::RGBA16Float:
+            case EE::RHI::EPixelFormat::RGBA32Float:
+            case EE::RHI::EPixelFormat::BGRA8Unorm:
+            case EE::RHI::EPixelFormat::BGRA8Srgb:
+            case EE::RHI::EPixelFormat::BC1Unorm:
+            case EE::RHI::EPixelFormat::BC1Srgb:
+            case EE::RHI::EPixelFormat::BC2Unorm:
+            case EE::RHI::EPixelFormat::BC2Srgb:
+            case EE::RHI::EPixelFormat::BC3Unorm:
+            case EE::RHI::EPixelFormat::BC3Srgb:
+            case EE::RHI::EPixelFormat::BC4Unorm:
+            case EE::RHI::EPixelFormat::BC5Unorm:
+            case EE::RHI::EPixelFormat::BC6HUFloat16:
+            case EE::RHI::EPixelFormat::BC6HSFloat16:
+            case EE::RHI::EPixelFormat::BC7Unorm:
+            case EE::RHI::EPixelFormat::BC7Srgb: return TextureAspectFlags::Color;
+
+            case EE::RHI::EPixelFormat::Depth32: return TextureAspectFlags::Depth;
+
+            case EE::RHI::EPixelFormat::Undefined:
             default:
-            EE_UNREACHABLE_CODE();
             break;
         }
 

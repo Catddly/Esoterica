@@ -1,4 +1,9 @@
-#if defined(_WIN32)
+#if defined(EE_VULKAN)
+#include "Base/Render/Platform/Vulkan/Backend/VulkanDevice.h"
+#include "Base/Render/Platform/Vulkan/Backend/VulkanSwapchain.h"
+#endif
+
+//#if defined(_WIN32)
 
 #include "RenderDevice_DX11.h"
 #include "Base/Render/RenderCoreResources.h"
@@ -10,15 +15,7 @@
 #include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
-#ifdef _WIN32
 #include "Base/Render/Platform/Windows/TextureLoader_Win32.h"
-#endif
-
-// TODO: move to RenderDevice_Vulkan
-#if defined(EE_VULKAN)
-#include "Base/Render/Platform/Vulkan/Backend/VulkanDevice.h"
-#include "Base/Render/Platform/Vulkan/Backend/VulkanSwapchain.h"
-#endif
 
 //-------------------------------------------------------------------------
 
@@ -145,7 +142,7 @@ namespace EE::Render
 
         #if defined(EE_VULKAN)
         Backend::VulkanDevice::InitConfig deviceConfig = Backend::VulkanDevice::InitConfig::GetDefault( true );
-        deviceConfig.m_activeWindowHandle = reinterpret_cast<void*>( pActiveWindow );
+         deviceConfig.m_activeWindowHandle = reinterpret_cast<void*>( pActiveWindow );
 
         auto pVkRHIDevice = EE::New<Backend::VulkanDevice>( deviceConfig );
         m_pRHIDevice = pVkRHIDevice;
@@ -693,7 +690,7 @@ namespace EE::Render
             return g_semanticNames[(uint8_t) semantic];
         }
 
-        static const DXGI_FORMAT g_formatConversion[(size_t) DataFormat::Count] =
+        static const DXGI_FORMAT g_formatConversion[(size_t) VertexLayoutDescriptor::VertexDataFormat::Count] =
         {
             DXGI_FORMAT_UNKNOWN,
             DXGI_FORMAT_R8_UINT,
@@ -726,17 +723,17 @@ namespace EE::Render
             DXGI_FORMAT_R32_TYPELESS
         };
 
-        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat( DataFormat format  )
+        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat( VertexLayoutDescriptor::VertexDataFormat format  )
         {
-            EE_ASSERT( format < DataFormat::Count );
+            EE_ASSERT( format < VertexLayoutDescriptor::VertexDataFormat::Count );
             return g_formatConversion[(uint8_t) format];
         }
 
-        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat_SRV_UAV( DataFormat format )
+        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat_SRV_UAV( VertexLayoutDescriptor::VertexDataFormat format )
         {
-            EE_ASSERT( format < DataFormat::Count );
+            EE_ASSERT( format < VertexLayoutDescriptor::VertexDataFormat::Count );
 
-            if ( format == DataFormat::Float_X32 )
+            if ( format == VertexLayoutDescriptor::VertexDataFormat::X32Float )
             {
                 return DXGI_FORMAT_R32_FLOAT;
             }
@@ -744,11 +741,11 @@ namespace EE::Render
             return g_formatConversion[(uint8_t) format];
         }
 
-        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat_RT_DS( DataFormat format )
+        EE_FORCE_INLINE static DXGI_FORMAT GetDXGIFormat_RT_DS( VertexLayoutDescriptor::VertexDataFormat format )
         {
-            EE_ASSERT( format < DataFormat::Count );
+            EE_ASSERT( format < VertexLayoutDescriptor::VertexDataFormat::Count );
 
-            if ( format == DataFormat::Float_X32 )
+            if ( format == VertexLayoutDescriptor::VertexDataFormat::X32Float )
             {
                 return DXGI_FORMAT_D32_FLOAT;
             }
@@ -756,9 +753,9 @@ namespace EE::Render
             return g_formatConversion[(uint8_t) format];
         }
 
-        EE_FORCE_INLINE static bool IsDepthStencilFormat( DataFormat format )
+        EE_FORCE_INLINE static bool IsDepthStencilFormat( VertexLayoutDescriptor::VertexDataFormat format )
         {
-            return format == DataFormat::Float_X32;
+            return format == VertexLayoutDescriptor::VertexDataFormat::X32Float;
         }
     }
 
@@ -940,12 +937,12 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    void RenderDevice::CreateDataTexture( Texture& texture, TextureFormat format, uint8_t const* pRawData, size_t rawDataSize )
+    void RenderDevice::CreateDataTexture( Texture& texture, RawTextureDataFormat format, uint8_t const* pRawData, size_t rawDataSize )
     {
         switch ( format )
         {
-            case TextureFormat::Raw: CreateRawTexture( texture, pRawData, rawDataSize ); break;
-            case TextureFormat::DDS: CreateDDSTexture( texture, pRawData, rawDataSize ); break;
+            case RawTextureDataFormat::Raw: CreateRawTexture( texture, pRawData, rawDataSize ); break;
+            case RawTextureDataFormat::DDS: CreateDDSTexture( texture, pRawData, rawDataSize ); break;
         }
     }
 
@@ -1049,7 +1046,7 @@ namespace EE::Render
         //texture.m_shaderResourceView.m_pData = pTextureSRV;
     }
 
-    void RenderDevice::CreateTexture( Texture& texture, DataFormat format, Int2 dimensions, uint32_t usage )
+    void RenderDevice::CreateTexture( Texture& texture, VertexLayoutDescriptor::VertexDataFormat format, Int2 dimensions, uint32_t usage )
     {
         EE_ASSERT( IsInitialized() && !texture.IsValid() );
 
@@ -1406,4 +1403,4 @@ namespace EE::Render
     }
 }
 
-#endif
+//#endif

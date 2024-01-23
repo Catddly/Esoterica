@@ -49,7 +49,7 @@ namespace EE::Render
         GeneralAndPresentation,
     };
 
-    enum class TextureFormat : uint8_t
+    enum class RawTextureDataFormat : uint8_t
     {
         Raw,
         DDS,
@@ -135,7 +135,7 @@ namespace EE::Render
         //ViewRTHandle            m_renderTargetView;
         //ViewDSHandle            m_depthStencilView;
         Int2                    m_dimensions = Int2(0, 0);
-        TextureFormat           m_format;
+        RawTextureDataFormat           m_format;
         Blob                    m_rawData; // Temporary storage for the raw data used during installation, cleared when installation completes
     };
 

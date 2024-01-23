@@ -112,9 +112,6 @@
     <ClCompile Include="Render\Platform\DX11\RenderDevice_DX11.cpp">
       <Filter>Render\Platform</Filter>
     </ClCompile>
-    <ClCompile Include="Render\Platform\Windows\TextureLoader_Win32.cpp">
-      <Filter>Render\Platform</Filter>
-    </ClCompile>
     <ClCompile Include="Imgui\ImguiFont.cpp">
       <Filter>Imgui</Filter>
     </ClCompile>
@@ -488,6 +485,7 @@
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClCompile>
     <ClCompile Include="RHI\RHIResourceBinding.cpp" />
+    <ClCompile Include="Render\Platform\Windows\TextureLoader_Win32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -1550,9 +1548,6 @@
     <ClInclude Include="Render\Platform\DX11\RenderDevice_DX11.h">
       <Filter>Render\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="Render\Platform\Windows\TextureLoader_Win32.h">
-      <Filter>Render\Platform</Filter>
-    </ClInclude>
     <ClInclude Include="Imgui\ImguiFont.h">
       <Filter>Imgui</Filter>
     </ClInclude>
@@ -2119,6 +2114,7 @@
     <ClInclude Include="RHI\RHIResourceBinding.h">
       <Filter>RHI</Filter>
     </ClInclude>
+    <ClInclude Include="Render\Platform\Windows\TextureLoader_Win32.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

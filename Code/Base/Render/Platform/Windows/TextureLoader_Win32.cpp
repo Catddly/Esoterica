@@ -15,6 +15,7 @@
 //--------------------------------------------------------------------------------------
 
 #include "TextureLoader_Win32.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #include <algorithm>
 #include <cassert>
@@ -1720,6 +1721,303 @@ namespace
         #endif
     }
 } // anonymous namespace
+
+DXGI_FORMAT DirectX::ReadDDSTextureFormat(
+    _In_reads_bytes_( ddsDataSize ) const uint8_t* ddsData,
+    size_t ddsDataSize
+) noexcept
+{
+    DDS_HEADER const* header;
+
+    // read header
+    //-------------------------------------------------------------------------
+
+    auto hdr = reinterpret_cast<const DDS_HEADER*>( ddsData + sizeof( uint32_t ) );
+
+    // Verify header to validate DDS file
+    if ( hdr->size != sizeof( DDS_HEADER ) ||
+        hdr->ddspf.size != sizeof( DDS_PIXELFORMAT ) )
+    {
+        return DXGI_FORMAT_UNKNOWN;
+    }
+
+    // Check for DX10 extension
+    bool bDXT10Header = false;
+    if ( ( hdr->ddspf.flags & DDS_FOURCC ) &&
+        ( MAKEFOURCC( 'D', 'X', '1', '0' ) == hdr->ddspf.fourCC ) )
+    {
+        // Must be long enough for both headers and magic value
+        if ( ddsDataSize < ( sizeof( uint32_t ) + sizeof( DDS_HEADER ) + sizeof( DDS_HEADER_DXT10 ) ) )
+        {
+            return DXGI_FORMAT_UNKNOWN;
+        }
+
+        bDXT10Header = true;
+    }
+
+    // setup the pointers in the process request
+    header = hdr;
+
+    // read format from header
+    //-------------------------------------------------------------------------
+
+    DXGI_FORMAT format;
+    uint32_t arraySize;
+    bool isCubeMap = false;
+    uint32_t width = header->width;
+    uint32_t height = header->height;
+    uint32_t depth = header->depth;
+
+    if ( ( header->ddspf.flags & DDS_FOURCC ) &&
+            ( MAKEFOURCC( 'D', 'X', '1', '0' ) == header->ddspf.fourCC ) )
+    {
+        auto d3d10ext = reinterpret_cast<const DDS_HEADER_DXT10*>( reinterpret_cast<const uint8_t*>( header ) + sizeof( DDS_HEADER ) );
+
+        arraySize = d3d10ext->arraySize;
+        if ( arraySize == 0 )
+        {
+            return DXGI_FORMAT_UNKNOWN;
+        }
+
+        switch ( d3d10ext->dxgiFormat )
+        {
+            case DXGI_FORMAT_AI44:
+            case DXGI_FORMAT_IA44:
+            case DXGI_FORMAT_P8:
+            case DXGI_FORMAT_A8P8:
+            return DXGI_FORMAT_UNKNOWN;
+
+            default:
+            if ( BitsPerPixel( d3d10ext->dxgiFormat ) == 0 )
+            {
+                return DXGI_FORMAT_UNKNOWN;
+            }
+        }
+
+        format = d3d10ext->dxgiFormat;
+
+        switch ( d3d10ext->resourceDimension )
+        {
+            case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+            // D3DX writes 1D textures with a fixed Height of 1
+            if ( ( header->flags & DDS_HEIGHT ) && height != 1 )
+            {
+                return DXGI_FORMAT_UNKNOWN;
+            }
+            height = depth = 1;
+            break;
+
+            case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+            if ( d3d10ext->miscFlag & D3D11_RESOURCE_MISC_TEXTURECUBE )
+            {
+                arraySize *= 6;
+                isCubeMap = true;
+            }
+            depth = 1;
+            break;
+
+            case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+            if ( !( header->flags & DDS_HEADER_FLAGS_VOLUME ) )
+            {
+                return DXGI_FORMAT_UNKNOWN;
+            }
+
+            if ( arraySize > 1 )
+            {
+                return DXGI_FORMAT_UNKNOWN;
+            }
+            break;
+
+            default:
+            return DXGI_FORMAT_UNKNOWN;
+        }
+    }
+    else
+    {
+        format = GetDXGIFormat( header->ddspf );
+
+        if ( format == DXGI_FORMAT_UNKNOWN )
+        {
+            return DXGI_FORMAT_UNKNOWN;
+        }
+
+        if ( header->flags & DDS_HEADER_FLAGS_VOLUME )
+        {
+            //resDim = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+        }
+        else
+        {
+            if ( header->caps2 & DDS_CUBEMAP )
+            {
+                // We require all six faces to be defined
+                if ( ( header->caps2 & DDS_CUBEMAP_ALLFACES ) != DDS_CUBEMAP_ALLFACES )
+                {
+                    return DXGI_FORMAT_UNKNOWN;
+                }
+
+                arraySize = 6;
+                isCubeMap = true;
+            }
+
+            depth = 1;
+        }
+
+        assert( BitsPerPixel( format ) != 0 );
+    }
+
+    return format;
+}
+
+HRESULT DirectX::LoadDDSTextureFromMemory(
+    _In_reads_bytes_( ddsDataSize ) const uint8_t* ddsData,
+    size_t ddsDataSize,
+    EE::RHI::RHITextureBufferData& outBufferData
+) noexcept
+{
+    // Validate DDS file in memory
+    const DDS_HEADER* header = nullptr;
+    uint8_t const* pOutBinary;
+    size_t outBinarySize;
+
+    HRESULT hr = LoadTextureDataFromMemory( ddsData, ddsDataSize,
+        &header,
+        &pOutBinary,
+        &outBinarySize
+    );
+
+    if ( hr != S_OK )
+    {
+        return false;
+    }
+
+    if ( outBinarySize == 0 )
+    {
+        return false;
+    }
+
+    outBufferData.m_binary.resize( outBinarySize );
+    memcpy( outBufferData.m_binary.data(), pOutBinary, outBinarySize );
+
+    // Extract format
+    //-------------------------------------------------------------------------
+
+    outBufferData.m_textureWidth = header->width;
+    outBufferData.m_textureHeight = header->height;
+    outBufferData.m_textureDepth = header->depth;
+
+    DXGI_FORMAT format;
+    uint32_t arraySize;
+    bool isCubeMap = false;
+
+    if ( ( header->ddspf.flags & DDS_FOURCC ) &&
+            ( MAKEFOURCC( 'D', 'X', '1', '0' ) == header->ddspf.fourCC ) )
+    {
+        auto d3d10ext = reinterpret_cast<const DDS_HEADER_DXT10*>( reinterpret_cast<const uint8_t*>( header ) + sizeof( DDS_HEADER ) );
+
+        arraySize = d3d10ext->arraySize;
+        if ( arraySize == 0 )
+        {
+            return HRESULT_FROM_WIN32( ERROR_INVALID_DATA );
+        }
+
+        switch ( d3d10ext->dxgiFormat )
+        {
+            case DXGI_FORMAT_AI44:
+            case DXGI_FORMAT_IA44:
+            case DXGI_FORMAT_P8:
+            case DXGI_FORMAT_A8P8:
+            return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+
+            default:
+            if ( BitsPerPixel( d3d10ext->dxgiFormat ) == 0 )
+            {
+                return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+            }
+        }
+
+        format = d3d10ext->dxgiFormat;
+
+        switch ( d3d10ext->resourceDimension )
+        {
+            case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+            // D3DX writes 1D textures with a fixed Height of 1
+            if ( ( header->flags & DDS_HEIGHT ) && outBufferData.m_textureHeight != 1 )
+            {
+                return HRESULT_FROM_WIN32( ERROR_INVALID_DATA );
+            }
+            outBufferData.m_textureHeight = outBufferData.m_textureDepth = 1;
+            break;
+
+            case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+            if ( d3d10ext->miscFlag & D3D11_RESOURCE_MISC_TEXTURECUBE )
+            {
+                arraySize *= 6;
+                isCubeMap = true;
+            }
+            outBufferData.m_textureDepth = 1;
+            break;
+
+            case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+            if ( !( header->flags & DDS_HEADER_FLAGS_VOLUME ) )
+            {
+                return HRESULT_FROM_WIN32( ERROR_INVALID_DATA );
+            }
+
+            if ( arraySize > 1 )
+            {
+                return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+            }
+            break;
+
+            default:
+            return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+        }
+    }
+    else
+    {
+        format = GetDXGIFormat( header->ddspf );
+
+        if ( format == DXGI_FORMAT_UNKNOWN )
+        {
+            return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+        }
+
+        if ( header->flags & DDS_HEADER_FLAGS_VOLUME )
+        {
+            //resDim = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+        }
+        else
+        {
+            if ( header->caps2 & DDS_CUBEMAP )
+            {
+                // We require all six faces to be defined
+                if ( ( header->caps2 & DDS_CUBEMAP_ALLFACES ) != DDS_CUBEMAP_ALLFACES )
+                {
+                    return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
+                }
+
+                arraySize = 6;
+                isCubeMap = true;
+            }
+
+            outBufferData.m_textureDepth = 1;
+            //resDim = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+        }
+
+        assert( BitsPerPixel( format ) != 0 );
+    }
+
+    size_t const bitsPerPixel = BitsPerPixel( format );
+    if ( bitsPerPixel < 8 )
+    {
+        EE_ASSERT( false );
+        return hr;
+    }
+    
+    outBufferData.m_totalMipmaps = (uint16_t) header->mipMapCount;
+    outBufferData.m_pixelByteLength = (uint32_t) bitsPerPixel / 8;
+    return hr;
+}
 
 //--------------------------------------------------------------------------------------
 _Use_decl_annotations_

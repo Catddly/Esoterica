@@ -31,16 +31,45 @@ namespace EE::Render
 		{
             switch ( format )
             {
-                case RHI::EPixelFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
-                case RHI::EPixelFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
-
+                case RHI::EPixelFormat::R8UInt: return VK_FORMAT_R8_UINT;
+                case RHI::EPixelFormat::R8Unorm: return VK_FORMAT_R8_UNORM;
+                case RHI::EPixelFormat::R32UInt: return VK_FORMAT_R32_UINT;
+                case RHI::EPixelFormat::R32SInt: return VK_FORMAT_R32_SINT;
+                case RHI::EPixelFormat::R16Float: return VK_FORMAT_R16_SFLOAT;
+                case RHI::EPixelFormat::R32Float: return VK_FORMAT_R32_SFLOAT;
+                case RHI::EPixelFormat::RG8UInt: return VK_FORMAT_R8G8_UINT;
+                case RHI::EPixelFormat::RG8Unorm: return VK_FORMAT_R8G8_UNORM;
+                case RHI::EPixelFormat::RG32UInt: return VK_FORMAT_R32G32_UINT;
+                case RHI::EPixelFormat::RG32SInt: return VK_FORMAT_R32G32_SINT;
                 case RHI::EPixelFormat::RG16Float: return VK_FORMAT_R16G16_SFLOAT;
-
+                case RHI::EPixelFormat::RG32Float: return VK_FORMAT_R32G32_SFLOAT;
+                case RHI::EPixelFormat::RGB32UInt: return VK_FORMAT_R32G32B32_UINT;
+                case RHI::EPixelFormat::RGB32SInt: return VK_FORMAT_R32G32B32_SINT;
+                case RHI::EPixelFormat::RGB32Float: return VK_FORMAT_R32G32B32_SFLOAT;
+                case RHI::EPixelFormat::RGBA8UInt: return VK_FORMAT_R8G8B8A8_UINT;
+                case RHI::EPixelFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
                 case RHI::EPixelFormat::RGBA32UInt: return VK_FORMAT_R32G32B32A32_UINT;
-
+                case RHI::EPixelFormat::RGBA16Float: return VK_FORMAT_R16G16B16A16_SFLOAT;
+                case RHI::EPixelFormat::RGBA32Float: return VK_FORMAT_R32G32B32A32_SFLOAT;
+                 
+                case RHI::EPixelFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
+                case RHI::EPixelFormat::BGRA8Srgb: return VK_FORMAT_B8G8R8A8_SRGB;
                 case RHI::EPixelFormat::Depth32: return VK_FORMAT_D32_SFLOAT;
 
-                case RHI::EPixelFormat::Undefined: return VK_FORMAT_UNDEFINED;
+                case RHI::EPixelFormat::BC1Unorm: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC1Srgb: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+                case RHI::EPixelFormat::BC2Unorm: return VK_FORMAT_BC2_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC2Srgb: return VK_FORMAT_BC2_SRGB_BLOCK;
+                case RHI::EPixelFormat::BC3Unorm: return VK_FORMAT_BC3_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC3Srgb: return VK_FORMAT_BC3_SRGB_BLOCK;
+                case RHI::EPixelFormat::BC4Unorm: return VK_FORMAT_BC4_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC5Unorm: return VK_FORMAT_BC5_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC6HUFloat16: return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                case RHI::EPixelFormat::BC6HSFloat16: return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+                case RHI::EPixelFormat::BC7Unorm: return VK_FORMAT_BC7_UNORM_BLOCK;
+                case RHI::EPixelFormat::BC7Srgb: return VK_FORMAT_BC7_SRGB_BLOCK;
+
+                case RHI::EPixelFormat::Undefined:
                 default:
                 break;
             }
@@ -48,43 +77,38 @@ namespace EE::Render
             return VK_FORMAT_UNDEFINED;
 		}
 
-		VkFormat ToVulkanFormat( Render::DataFormat format )
-		{
+        VkFormat ToVulkanFormat( VertexLayoutDescriptor::VertexDataFormat format )
+        {
             switch ( format )
             {
-                case EE::Render::DataFormat::UInt_R8: return VK_FORMAT_R8_UINT;
-                case EE::Render::DataFormat::UInt_R8G8: return VK_FORMAT_R8G8_UINT;
-                case EE::Render::DataFormat::UInt_R8G8B8A8: return VK_FORMAT_R8G8B8A8_UINT;
-                case EE::Render::DataFormat::UNorm_R8: return VK_FORMAT_R8_UNORM;
-                case EE::Render::DataFormat::UNorm_R8G8: return VK_FORMAT_R8G8_UNORM;
-                case EE::Render::DataFormat::UNorm_R8G8B8A8: return VK_FORMAT_R8G8B8A8_UNORM;
-                case EE::Render::DataFormat::UInt_R32: return VK_FORMAT_R32_UINT;
-                case EE::Render::DataFormat::UInt_R32G32: return VK_FORMAT_R32G32_UINT;
-                case EE::Render::DataFormat::UInt_R32G32B32: return VK_FORMAT_R32G32B32_UINT;
-                case EE::Render::DataFormat::UInt_R32G32B32A32: return VK_FORMAT_R32G32B32A32_UINT;
-                case EE::Render::DataFormat::SInt_R32: return VK_FORMAT_R32_SINT;
-                case EE::Render::DataFormat::SInt_R32G32: return VK_FORMAT_R32G32_SINT;
-                case EE::Render::DataFormat::SInt_R32G32B32: return VK_FORMAT_R32G32B32_SINT;
-                case EE::Render::DataFormat::SInt_R32G32B32A32: return VK_FORMAT_R32G32B32A32_SINT;
-                case EE::Render::DataFormat::Float_R16: return VK_FORMAT_R16_SFLOAT;
-                case EE::Render::DataFormat::Float_R16G16: return VK_FORMAT_R16G16_SFLOAT;
-                case EE::Render::DataFormat::Float_R16G16B16A16: return VK_FORMAT_R16G16B16A16_SFLOAT;
-                case EE::Render::DataFormat::Float_R32: return VK_FORMAT_R32_SFLOAT;
-                case EE::Render::DataFormat::Float_R32G32: return VK_FORMAT_R32G32_SFLOAT;
-                case EE::Render::DataFormat::Float_R32G32B32: return VK_FORMAT_R32G32B32_SFLOAT;
-                case EE::Render::DataFormat::Float_R32G32B32A32: return VK_FORMAT_R32G32B32A32_SFLOAT;
-                case EE::Render::DataFormat::Float_X32:
-                EE_UNIMPLEMENTED_FUNCTION();
-                break;
-                case EE::Render::DataFormat::Unknown:
-                case EE::Render::DataFormat::Count:
+                case VertexLayoutDescriptor::VertexDataFormat::Unknown: return VK_FORMAT_UNDEFINED;
+                case VertexLayoutDescriptor::VertexDataFormat::R8UInt: return VK_FORMAT_R8_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG8UInt: return VK_FORMAT_R8G8_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA8UInt: return VK_FORMAT_R8G8B8A8_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::R8Unorm: return VK_FORMAT_R8_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG8Unorm: return VK_FORMAT_R8G8_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
+                case VertexLayoutDescriptor::VertexDataFormat::R32UInt: return VK_FORMAT_R32_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG32UInt: return VK_FORMAT_R32G32_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGB32UInt: return VK_FORMAT_R32G32B32_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA32UInt: return VK_FORMAT_R32G32B32A32_UINT;
+                case VertexLayoutDescriptor::VertexDataFormat::R32SInt: return VK_FORMAT_R32_SINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG32SInt: return VK_FORMAT_R32G32_SINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGB32SInt: return VK_FORMAT_R32G32B32_SINT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA32SInt: return VK_FORMAT_R32G32B32A32_SINT;
+                case VertexLayoutDescriptor::VertexDataFormat::R16Float: return VK_FORMAT_R16_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG16Float: return VK_FORMAT_R16G16_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA16Float: return VK_FORMAT_R16G16B16A16_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::R32Float: return VK_FORMAT_R32_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::RG32Float: return VK_FORMAT_R32G32_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGB32Float: return VK_FORMAT_R32G32B32_SFLOAT;
+                case VertexLayoutDescriptor::VertexDataFormat::RGBA32Float: return VK_FORMAT_R32G32B32A32_SFLOAT;
                 default:
                 break;
             }
-
             EE_UNREACHABLE_CODE();
             return VK_FORMAT_UNDEFINED;
-		}
+        }
 
         VkImageType ToVulkanImageType( RHI::ETextureType type )
         {

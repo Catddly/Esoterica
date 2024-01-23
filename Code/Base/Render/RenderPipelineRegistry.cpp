@@ -88,12 +88,20 @@ namespace EE::Render
 					{
 						pEntry->m_vertexShader = ResourceID( piplineShader.m_shaderPath );
 						EE_ASSERT( pEntry->m_vertexShader.IsSet() );
+                        if ( pEntry->m_vertexShader.IsSet() )
+                        {
+                            m_pResourceSystem->LoadResource( pEntry->m_vertexShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
+                        }
 						break;
 					}
 					case PipelineStage::Pixel:
 					{
 						pEntry->m_pixelShader = ResourceID( piplineShader.m_shaderPath );
 						EE_ASSERT( pEntry->m_pixelShader.IsSet() );
+                        if ( pEntry->m_pixelShader.IsSet() )
+                        {
+                            m_pResourceSystem->LoadResource( pEntry->m_pixelShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
+                        }
 						break;
 					}
 					case PipelineStage::Compute:
@@ -115,7 +123,7 @@ namespace EE::Render
 
 			EE_ASSERT( m_rasterPipelineStatesCache.size() == m_rasterPipelineHandlesCache.size() );
 
-			m_waitToSubmitRasterPipelines.emplace_back( pEntry );
+			m_waitToLoadRasterPipelines.emplace_back( pEntry );
 
 			return newHandle;
 		}
@@ -154,13 +162,17 @@ namespace EE::Render
 
             pEntry->m_computeShader = ResourceID( computePipelineDesc.m_pipelineShader.m_shaderPath );
             EE_ASSERT( pEntry->m_computeShader.IsSet() );
+            if ( pEntry->m_computeShader.IsSet() )
+            {
+                m_pResourceSystem->LoadResource( pEntry->m_computeShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
+            }
 
             m_computePipelineStatesCache.Add( pEntry );
             m_computePipelineHandlesCache.insert( { computePipelineDesc, newHandle } );
 
             EE_ASSERT( m_computePipelineStatesCache.size() == m_computePipelineHandlesCache.size() );
 
-            m_waitToSubmitComputePipelines.emplace_back( pEntry );
+            m_waitToLoadComputePipelines.emplace_back( pEntry );
 
             return newHandle;
         }
@@ -168,36 +180,29 @@ namespace EE::Render
         return PipelineHandle();
 	}
 
-	void PipelineRegistry::Update()
-	{
-		EE_ASSERT( Threading::IsMainThread() );
-		EE_ASSERT( m_isInitialized );
-
-		UpdateLoadPipelineShaders();
-        UpdateLoadedPipelineShaders();
-	}
-
-    bool PipelineRegistry::UpdatePipelines( RHI::RHIDevice* pDevice )
+    bool PipelineRegistry::UpdateBlock( RHI::RHIDevice* pDevice )
     {
         EE_ASSERT( Threading::IsMainThread() );
         EE_ASSERT( m_isInitialized );
         EE_ASSERT( pDevice != nullptr );
 
-        // TODO: async mode. Now force all shaders loaded before this frame drawing started.
-        //       This can prevent some problems brought by the latency. (e.g. some render graph node
-        //       wants to execute only once at the frame start, but render graph can NOT execute the commands because
-        //       shader is NOT loaded yet. User thought the node is successfully executed and do NOT add it in the next frame.
-        //       The message is lost forever and none of them get the valid results. )
-
-        while ( !AreAllRequestShaderLoaded() )
+        if ( m_pResourceSystem )
         {
-            Network::NetworkSystem::Update();
-            m_pResourceSystem->Update();
-            UpdateLoadedPipelineShaders();
+            // TODO: async mode. Now force all shaders loaded before this frame drawing started.
+            //       This can prevent some problems brought by the latency. (e.g. some render graph node
+            //       wants to execute only once at the frame start, but render graph can NOT execute the commands because
+            //       shader is NOT loaded yet. User thought the node is successfully executed and do NOT add it in the next frame.
+            //       The message is lost forever and none of them get the valid results. )
+            while ( !AreAllRequestedPipelineLoaded() )
+            {
+                Network::NetworkSystem::Update();
+                m_pResourceSystem->Update();
+                UpdateLoadedPipelineShaders();
+            }
+
+            // TODO: when pipeline registry failed to update pipelines, use old pipelines
+            EE_ASSERT( TryCreatePipelineForLoadedPipelineShaders( pDevice ) );
         }
-         
-        // No failure is allowed for now
-        EE_ASSERT( TryCreatePipelineForLoadedPipelineShaders( pDevice ) );
 
         return true;
     }
@@ -231,67 +236,21 @@ namespace EE::Render
         }
     }
 
-    //-------------------------------------------------------------------------
-
-    void PipelineRegistry::UpdateLoadPipelineShaders()
-    {
-        if ( m_pResourceSystem )
-        {
-            if ( !m_waitToSubmitRasterPipelines.empty() )
-            {
-                for ( uint32_t i = 0; i < m_waitToSubmitRasterPipelines.size(); ++i )
-                {
-                    auto const& pEntry = m_waitToSubmitRasterPipelines[i];
-
-                    if ( pEntry->m_vertexShader.IsSet() )
-                    {
-                        m_pResourceSystem->LoadResource( pEntry->m_vertexShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
-                    }
-
-                    if ( pEntry->m_pixelShader.IsSet() )
-                    {
-                        m_pResourceSystem->LoadResource( pEntry->m_pixelShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
-                    }
-
-                    m_waitToLoadRasterPipelines.push_back( pEntry );
-                }
-
-                m_waitToSubmitRasterPipelines.clear();
-            }
-
-            if ( !m_waitToSubmitComputePipelines.empty() )
-            {
-                for ( uint32_t i = 0; i < m_waitToSubmitComputePipelines.size(); ++i )
-                {
-                    auto const& pEntry = m_waitToSubmitComputePipelines[i];
-
-                    if ( pEntry->m_computeShader.IsSet() )
-                    {
-                        m_pResourceSystem->LoadResource( pEntry->m_computeShader, Resource::ResourceRequesterID( pEntry->GetID().m_ID ) );
-                    }
-
-                    m_waitToLoadComputePipelines.push_back( pEntry );
-                }
-
-                m_waitToSubmitComputePipelines.clear();
-            }
-        }
-    }
-
-    //void PipelineRegistry::MarkRasterPipelineEntryLoading( TSharedPtr<RasterPipelineEntry> const& rasterPipelineEntry )
-    //{
-    //    m_waitToLoadRasterPipelines.push_back( rasterPipelineEntry );
-    //}
-
 	//-------------------------------------------------------------------------
 
-    bool PipelineRegistry::AreAllRequestShaderLoaded() const
+    bool PipelineRegistry::AreAllRequestedPipelineLoaded() const
     {
+        EE_ASSERT( Threading::IsMainThread() );
+        EE_ASSERT( m_isInitialized );
+
         return m_waitToLoadRasterPipelines.empty() && m_waitToLoadComputePipelines.empty();
     }
 
     void PipelineRegistry::UpdateLoadedPipelineShaders()
     {
+        EE_ASSERT( Threading::IsMainThread() );
+        EE_ASSERT( m_isInitialized );
+
         if ( !m_waitToLoadRasterPipelines.empty() )
         {
             for ( auto beg = m_waitToLoadRasterPipelines.begin(); beg != m_waitToLoadRasterPipelines.end(); ++beg )
@@ -339,11 +298,14 @@ namespace EE::Render
                 }
             }
         }
-
     }
 
     bool PipelineRegistry::TryCreatePipelineForLoadedPipelineShaders( RHI::RHIDevice* pDevice )
     {
+        EE_ASSERT( Threading::IsMainThread() );
+        EE_ASSERT( m_isInitialized );
+        EE_ASSERT( pDevice != nullptr );
+
         bool bHasFailure = false;
 
         for ( auto& rasterEntry : m_waitToRegisteredRasterPipelines )

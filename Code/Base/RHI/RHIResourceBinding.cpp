@@ -36,9 +36,6 @@ namespace EE::RHI
                 Hash::HashCombine( hash, texBind.m_layout );
             }
         }
-        else if ( m_binding.index() == GetVariantTypeIndex<decltype( m_binding ), RHIStaticSamplerBinding>() )
-        {
-        }
         else if ( m_binding.index() == GetVariantTypeIndex<decltype( m_binding ), RHIUnknownBinding>() )
         {
         }

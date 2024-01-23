@@ -20,6 +20,7 @@
     <ClInclude Include="RenderGraph\RenderGraphResolver.h" />
     <ClInclude Include="RenderGraph\RenderGraphResourceRegistry.h" />
     <ClInclude Include="RenderGraph\RenderGraphTransientResourceCache.h" />
+    <ClInclude Include="Render\Platform\Windows\TextureLoader_Win32.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h" />
@@ -120,7 +121,6 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanPhysicalDevice.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSurface.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSwapchain.h" />
-    <ClInclude Include="Render\Platform\Windows\TextureLoader_Win32.h" />
     <ClInclude Include="Math\MathUtils.h" />
     <ClInclude Include="Render\RenderAPI.h" />
     <ClInclude Include="Render\RenderPipeline.h" />
@@ -573,6 +573,7 @@
     <ClCompile Include="RenderGraph\RenderGraphResource.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphResourceRegistry.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphTransientResourceCache.cpp" />
+    <ClCompile Include="Render\Platform\Windows\TextureLoader_Win32.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\RHIToVulkanSpecification.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanBuffer.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanCommandBuffer.cpp" />
@@ -643,7 +644,6 @@
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanPhysicalDevice.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanSurface.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanSwapchain.cpp" />
-    <ClCompile Include="Render\Platform\Windows\TextureLoader_Win32.cpp" />
     <ClCompile Include="Render\RenderPipelineRegistry.cpp" />
     <ClCompile Include="Render\RenderPipelineState.cpp" />
     <ClCompile Include="Render\RenderCoreResources.cpp" />

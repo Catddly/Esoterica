@@ -97,10 +97,6 @@ namespace EE::RG
 
             rhiBinding = RHI::RHIPipelineBinding{ eastl::move( rhiTextureArrayBinding ) };
         }
-        else if ( IsRGBinding<RGPipelineStaticSamplerBinding>( pipelineBinding ) )
-        {
-            rhiBinding = RHI::RHIPipelineBinding{ RHI::RHIStaticSamplerBinding{} };
-        }
         else if ( IsRGBinding<RGPipelineUnknownBinding>( pipelineBinding ) )
         {
             rhiBinding = RHI::RHIPipelineBinding{ RHI::RHIUnknownBinding{} };
@@ -298,11 +294,11 @@ namespace EE::RG
         auto* pPipelineState = m_pExecutingNode->m_pPipelineState;
         auto* pComputePipelineState = static_cast<RHI::RHIComputePipelineState*>( pPipelineState );
 
-        m_pCommandBuffer->Dispatch(
-            pComputePipelineState->GetThreadGroupSizeX(),
-            pComputePipelineState->GetThreadGroupSizeY(),
-            pComputePipelineState->GetThreadGroupSizeZ()
-        );
+        uint32_t const dispatchX = ( pComputePipelineState->GetDesc().m_dispathGroupWidth + pComputePipelineState->GetThreadGroupSizeX() - 1 ) / pComputePipelineState->GetThreadGroupSizeX();
+        uint32_t const dispatchY = ( pComputePipelineState->GetDesc().m_dispathGroupHeight + pComputePipelineState->GetThreadGroupSizeY() - 1 ) / pComputePipelineState->GetThreadGroupSizeY();
+        uint32_t const dispatchZ = ( pComputePipelineState->GetDesc().m_dispathGroupDepth + pComputePipelineState->GetThreadGroupSizeZ() - 1 ) / pComputePipelineState->GetThreadGroupSizeZ();
+
+        m_pCommandBuffer->Dispatch( dispatchX, dispatchY, dispatchZ );
     }
 
     //-------------------------------------------------------------------------

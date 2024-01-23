@@ -26,14 +26,14 @@ namespace EE::RHI
     public:
 
         RHITaggedType( ERHIType dynamicRhiType )
-            : m_DynamicRHIType( dynamicRhiType )
+            : m_dynamicRHIType( dynamicRhiType )
         {}
         virtual ~RHITaggedType() = default;
 
-        inline ERHIType GetDynamicRHIType() const { return m_DynamicRHIType; }
+        inline ERHIType GetDynamicRHIType() const { return m_dynamicRHIType; }
 
     protected:
 
-        ERHIType                m_DynamicRHIType = ERHIType::Invalid;
+        ERHIType                m_dynamicRHIType = ERHIType::Invalid;
     };
 }

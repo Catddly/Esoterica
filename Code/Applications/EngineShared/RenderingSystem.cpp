@@ -248,36 +248,36 @@ namespace EE::Render
 
         RenderTarget const* pPrimaryRT = m_pRenderDevice->GetPrimaryWindowRenderTarget();
 
-        //for ( auto pWorld : m_pWorldManager->GetWorlds() )
-        //{
-        //    if ( pWorld->IsSuspended() )
-        //    {
-        //        continue;
-        //    }
+        for ( auto pWorld : m_pWorldManager->GetWorlds() )
+        {
+            if ( pWorld->IsSuspended() )
+            {
+                continue;
+            }
 
-        //    RenderTarget const* pViewportRT = pPrimaryRT;
+            RenderTarget const* pViewportRT = pPrimaryRT;
 
-        //    Render::Viewport* pViewport = pWorld->GetViewport();
-        //    ViewportRenderTarget const* pVRT = FindRenderTargetForViewport( pViewport );
-        //    // Note: Viewport of a world must have a valid render target pair with it.
-        //    //       Otherwise try render to primary render target.
-        //    if ( pVRT != nullptr )
-        //    {
-        //        pViewportRT = pVRT->m_pRenderTarget;
-        //        m_pWorldRenderer->RenderWorld_Test( m_renderGraph, ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-        //    }
+            Render::Viewport* pViewport = pWorld->GetViewport();
+            ViewportRenderTarget const* pVRT = FindRenderTargetForViewport( pViewport );
+            // Note: Viewport of a world must have a valid render target pair with it.
+            //       Otherwise try render to primary render target.
+            if ( pVRT != nullptr )
+            {
+                pViewportRT = pVRT->m_pRenderTarget;
+                m_pWorldRenderer->RenderWorld_Test( m_renderGraph, ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+            }
 
-        //    //for ( auto const& pCustomRenderer : m_customRenderers )
-        //    //{
-        //    //    pCustomRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-        //    //    pCustomRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
-        //    //}
+            //for ( auto const& pCustomRenderer : m_customRenderers )
+            //{
+            //    pCustomRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+            //    pCustomRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
+            //}
 
-        //    #if EE_DEVELOPMENT_TOOLS
-        //    //m_pDebugRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
-        //    //m_pDebugRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
-        //    #endif
-        //}
+            #if EE_DEVELOPMENT_TOOLS
+            //m_pDebugRenderer->RenderWorld( ctx.GetDeltaTime(), *pViewport, *pViewportRT, pWorld );
+            //m_pDebugRenderer->RenderViewport( ctx.GetDeltaTime(), *pViewport, *pViewportRT );
+            #endif
+        }
 
         // Draw development UI
         //-------------------------------------------------------------------------
@@ -297,9 +297,9 @@ namespace EE::Render
         auto* pRhiDevice = m_pRenderDevice->GetRHIDevice();
         pRhiDevice->BeginFrame();
 
-        bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
         // TODO: when pipeline registry failed to update pipelines, use old pipelines
-        m_pRenderPipelineRegistry->UpdatePipelines( pRhiDevice );
+        m_pRenderPipelineRegistry->UpdateBlock( pRhiDevice );
+        bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
 
         if ( bCompileResult )
         {

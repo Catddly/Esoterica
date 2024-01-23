@@ -332,10 +332,6 @@ namespace EE
                 #endif
 
                 //-------------------------------------------------------------------------
-                
-                m_renderPipelineRegistry.Update();
-
-                //-------------------------------------------------------------------------
 
                 {
                     EE_PROFILE_SCOPE_RESOURCE( "Resource System" );

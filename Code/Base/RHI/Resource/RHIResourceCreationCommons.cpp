@@ -6,20 +6,112 @@ namespace EE::RHI
 {
     //-------------------------------------------------------------------------
 
-    uint32_t GetPixelFormatByteSize( EPixelFormat format )
+    void GetPixelFormatByteSize( uint32_t width, uint32_t height, EPixelFormat format, uint32_t& outNumBytes, uint32_t& outNumBytesPerRow )
     {
+        bool bIsBCtexture = false;
+        uint32_t bytesPerElement = 0;
+
         switch ( format )
         {
-            case EE::RHI::EPixelFormat::RGBA8Unorm: return 4;
-            case EE::RHI::EPixelFormat::BGRA8Unorm: return 4;
+            case EE::RHI::EPixelFormat::BC1Unorm:
+            case EE::RHI::EPixelFormat::BC1Srgb:
+            case EE::RHI::EPixelFormat::BC4Unorm:
+            {
+                bytesPerElement = 8;
+                bIsBCtexture = true;
+                break;
+            }
+            case EE::RHI::EPixelFormat::R8UInt:
+            case EE::RHI::EPixelFormat::R8Unorm:
+            {
+                bytesPerElement = 1;
+                break;
+            }
+
+            case EE::RHI::EPixelFormat::BC2Unorm:
+            case EE::RHI::EPixelFormat::BC2Srgb:
+            case EE::RHI::EPixelFormat::BC3Unorm:
+            case EE::RHI::EPixelFormat::BC3Srgb:
+            case EE::RHI::EPixelFormat::BC5Unorm:
+            case EE::RHI::EPixelFormat::BC6HUFloat16:
+            case EE::RHI::EPixelFormat::BC6HSFloat16:
+            case EE::RHI::EPixelFormat::BC7Unorm:
+            case EE::RHI::EPixelFormat::BC7Srgb:
+            {
+                bytesPerElement = 16;
+                bIsBCtexture = true;
+                break;
+            }
+
+            case EE::RHI::EPixelFormat::R16Float:
+            case EE::RHI::EPixelFormat::RG8UInt:
+            case EE::RHI::EPixelFormat::RG8Unorm:
+            {
+                bytesPerElement = 2;
+                break;
+            }
+            case EE::RHI::EPixelFormat::R32UInt:
+            case EE::RHI::EPixelFormat::R32SInt: 
+            case EE::RHI::EPixelFormat::RG16Float:
+            case EE::RHI::EPixelFormat::RGBA8UInt:
+            case EE::RHI::EPixelFormat::RGBA8Unorm:
+            case EE::RHI::EPixelFormat::BGRA8Srgb:
+            case EE::RHI::EPixelFormat::BGRA8Unorm:
+            case EE::RHI::EPixelFormat::Depth32:
+            case EE::RHI::EPixelFormat::R32Float:
+            {
+                bytesPerElement = 4;
+                break;
+            }
+            case EE::RHI::EPixelFormat::RG32UInt:
+            case EE::RHI::EPixelFormat::RG32SInt:
+            case EE::RHI::EPixelFormat::RGBA16Float:
+            case EE::RHI::EPixelFormat::RG32Float:
+            {
+                bytesPerElement = 8;
+                break;
+            }
+            case EE::RHI::EPixelFormat::RGB32UInt:
+            case EE::RHI::EPixelFormat::RGB32SInt:
+            case EE::RHI::EPixelFormat::RGB32Float:
+            {
+                bytesPerElement = 12;
+                break;
+            }
+            case EE::RHI::EPixelFormat::RGBA32UInt:
+            case EE::RHI::EPixelFormat::RGBA32Float:
+            {
+                bytesPerElement = 16;
+                break;
+            }
+
             case EE::RHI::EPixelFormat::Undefined:
             default:
-            EE_UNIMPLEMENTED_FUNCTION();
             break;
         }
-        
-        EE_UNREACHABLE_CODE();
-        return 0;
+
+        if ( bIsBCtexture )
+        {
+            uint32_t numBlocksWide = 0;
+            if ( width > 0 )
+            {
+                // See https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide
+                numBlocksWide = Math::Max( 1u, ( width + 3 ) / 4 );
+            }
+            uint32_t numBlocksHigh = 0;
+            if ( height > 0 )
+            {
+                // See https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide
+                numBlocksHigh = Math::Max( 1u, ( height + 3 ) / 4 );
+            }
+            outNumBytesPerRow = numBlocksWide * bytesPerElement;
+            outNumBytes = outNumBytesPerRow * numBlocksHigh;
+        }
+        else
+        {
+            outNumBytesPerRow = width * bytesPerElement;
+            outNumBytes = outNumBytesPerRow * height;
+        }
     }
 
     //-------------------------------------------------------------------------
@@ -139,6 +231,7 @@ namespace EE::RHI
         desc.m_width = texBufferData.m_textureWidth;
         desc.m_height = texBufferData.m_textureHeight;
         desc.m_depth = texBufferData.m_textureDepth;
+        desc.m_mipmap = texBufferData.m_totalMipmaps;
 
         desc.m_format = format;
         desc.m_type = desc.m_depth == 1 ? ETextureType::T2D : ETextureType::T3D;
