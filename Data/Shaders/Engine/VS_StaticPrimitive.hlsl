@@ -1,4 +1,5 @@
-#include "Common_Lit.hlsli"
+// #include "Common_Lit.hlsli"
+#include "ObjectTransform.hlsli"
 
 struct VertexShaderInput
 {

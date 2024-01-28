@@ -11,6 +11,34 @@ namespace EE::Render
 {
 	namespace Backend
 	{
+        int32_t QueueFamily::AllocateQueueFor( RHI::CommandQueueType queueType )
+        {
+            if ( (uint32_t) m_allocatedQueueCount >= m_props.queueCount )
+            {
+                // exhausted
+                return -1;
+            }
+
+            if ( queueType == RHI::CommandQueueType::Graphic && IsGraphicQueue() )
+            {
+                return m_allocatedQueueCount++;
+            }
+
+            if ( queueType == RHI::CommandQueueType::Compute && IsComputeQueue() )
+            {
+                return m_allocatedQueueCount++;
+            }
+
+            if ( queueType == RHI::CommandQueueType::Transfer && IsTransferQueue() )
+            {
+                return m_allocatedQueueCount++;
+            }
+           
+            return -1;
+        }
+
+        //-------------------------------------------------------------------------
+
 		VulkanPhysicalDevice::VulkanPhysicalDevice( VkPhysicalDevice pHandle )
 			: m_pHandle( pHandle )
 		{}
@@ -100,7 +128,7 @@ namespace EE::Render
 
 			return pd;
 		}
-	}
+    }
 }
 
 #endif

@@ -50,6 +50,7 @@ namespace EE::RHI
 
     // Note: If you modified this enum, please keep data in these functions consistent:
     //     [RHIResourceCreationCommons.cpp] GetPixelFormatByteSize()
+    //     [RHIResourceCreationCommons.cpp] IsDepthStencilFormat()
     //     [RHIToVulkanSpecification.cpp] ToVulkanFormat()
     //     [RHICommandBuffer.cpp] PixelFormatToAspectFlags()
     //     [RenderUtils.cpp] ToEnginePixelFormat()
@@ -110,6 +111,16 @@ namespace EE::RHI
 
         Undefined
     };
+
+    // Return if a EPixelFormat is a depth format.
+    // If it is, return true.
+    // If you need to check if a format is both depth and stencil format, use IsDepthFormat() && IsStencilFormat().
+    bool IsDepthFormat( EPixelFormat format );
+
+    // Return if a EPixelFormat is a stencil format.
+    // If it is, return true.
+    // If you need to check if a format is both depth and stencil format, use IsDepthFormat() && IsStencilFormat().
+    bool IsStencilFormat( EPixelFormat format );
 
     void GetPixelFormatByteSize( uint32_t width, uint32_t height, EPixelFormat format, uint32_t& outNumBytes, uint32_t& outNumBytesPerRow );
 
@@ -213,6 +224,13 @@ namespace EE::RHI
         static RHITextureCreateDesc New3D( uint32_t width, uint32_t height, uint32_t depth, EPixelFormat format );
         static RHITextureCreateDesc NewCubemap( uint32_t width, EPixelFormat format );
         static RHITextureCreateDesc NewInitData( RHITextureBufferData texBufferData, EPixelFormat format );
+
+        //-------------------------------------------------------------------------
+
+        // Mark this texture as shadow map
+        void AsShadowMap();
+
+        //-------------------------------------------------------------------------
 
         // Pass by value, accept both lvalue and rvalue
         void WithInitialData( RHITextureBufferData initBufferData )
@@ -328,7 +346,7 @@ namespace EE::RHI
         // If this is not set, infer texture format from EPixelFormat in RHITextureCreateDesc.
         TOptional<EPixelFormat>                       m_format = {};
         // If this is not set, infer texture view aspect from TBitFlags<ETextureUsage> in RHITextureCreateDesc.
-        TBitFlags<ETextureViewAspect>                 m_viewAspect = TBitFlags<ETextureViewAspect>( ETextureViewAspect::Color );
+        TBitFlags<ETextureViewAspect>                 m_viewAspect = {};
         // If this is not set, the level count will always be the left mipmaps.
         // (i.e. m_levelCount = RHITextureCreateDesc::m_mipmap - m_baseMipmap)
         TOptional<uint16_t>                           m_levelCount = {};

@@ -6,6 +6,7 @@
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "RHIToVulkanSpecification.h"
+#include "Base/Threading/Threading.h"
 #include "Base/RHI/RHIDowncastHelper.h"
 
 namespace EE::Render

@@ -219,12 +219,12 @@ namespace EE
             
             for ( auto& node : m_renderGraph )
             {
-                if ( !node.m_pipelineHandle.IsValid() )
+                if ( !node.HadRegisteredPipeline() )
                 {
-                    EE_LOG_FATAL_ERROR( "RenderGraph", "RenderGraph::Compile()", "No pipeline had been registered in node [%s], did you forget to register a pipeline ?", node.m_passName.c_str() );
+                    continue;
                 }
 
-                if ( !node.IsReadyToExecute( &m_resourceRegistry ) )
+                if ( node.m_pipelineHandle.IsValid() && !node.IsReadyToExecute( &m_resourceRegistry ) )
                 {
                     allNodesAreReady = false;
                     break;

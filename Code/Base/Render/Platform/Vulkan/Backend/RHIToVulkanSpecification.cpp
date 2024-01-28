@@ -1,5 +1,6 @@
-#include "RHIToVulkanSpecification.h"
 #if defined(EE_VULKAN)
+#include "RHIToVulkanSpecification.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::Render
 {
@@ -363,7 +364,7 @@ namespace EE::Render
             return VkBufferUsageFlagBits( flag );
 		}
 
-        VkImageAspectFlags ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags )
+        VkImageAspectFlagBits ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags )
         {
             VkFlags vkFlag = 0;
             if ( flags.IsFlagSet( RHI::TextureAspectFlags::Color ) )
@@ -382,7 +383,31 @@ namespace EE::Render
             {
                 vkFlag |= VK_IMAGE_ASPECT_STENCIL_BIT;
             }
-            return VkImageAspectFlags( vkFlag );
+            return VkImageAspectFlagBits( vkFlag );
+        }
+
+        TBitFlags<RHI::TextureAspectFlags> ToEngineTextureAspectFlags( VkImageAspectFlagBits flags )
+        {
+            TBitFlags<RHI::TextureAspectFlags> bitFlag;
+
+            if ( ( flags & VK_IMAGE_ASPECT_COLOR_BIT ) != 0 )
+            {
+                bitFlag.SetFlag( RHI::TextureAspectFlags::Color );
+            }
+            if ( ( flags & VK_IMAGE_ASPECT_DEPTH_BIT ) != 0 )
+            {
+                bitFlag.SetFlag( RHI::TextureAspectFlags::Depth );
+            }
+            if ( ( flags & VK_IMAGE_ASPECT_STENCIL_BIT ) != 0 )
+            {
+                bitFlag.SetFlag( RHI::TextureAspectFlags::Stencil );
+            }
+            if ( ( flags & VK_IMAGE_ASPECT_METADATA_BIT ) != 0 )
+            {
+                bitFlag.SetFlag( RHI::TextureAspectFlags::Metadata );
+            }
+
+            return bitFlag;
         }
 
         //-------------------------------------------------------------------------
@@ -676,7 +701,44 @@ namespace EE::Render
             return RHI::RenderResourceBarrierState::Undefined;
 		}
 
-	}
+        VkImageAspectFlagBits SpeculateImageAspectFlagsFromUsageAndFormat( TBitFlags<RHI::ETextureUsage> const& usage, RHI::EPixelFormat format )
+        {
+            if ( usage.IsFlagSet( RHI::ETextureUsage::Color ) )
+            {
+                if ( usage.IsFlagSet( RHI::ETextureUsage::DepthStencil ) )
+                {
+                    EE_LOG_ERROR( "RHI", "Vulkan", "Conflict texture usage (color with depth stencil)!" );
+                    return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+                }
+
+                return VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            else if ( usage.IsFlagSet( RHI::ETextureUsage::DepthStencil ) )
+            {
+                if ( usage.IsFlagSet( RHI::ETextureUsage::Color ) )
+                {
+                    EE_LOG_ERROR( "RHI", "Vulkan", "Conflict texture usage (depth stencil with color)!" );
+                    return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+                }
+
+                VkFlags flag = 0;
+                if ( RHI::IsDepthFormat( format ) )
+                {
+                    flag |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
+
+                if ( RHI::IsStencilFormat( format ) )
+                {
+                    flag |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+
+                return VkImageAspectFlagBits( flag );
+            }
+
+            // Note: default aspect flag is color
+            return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }
 }
 
 #endif

@@ -24,7 +24,7 @@ namespace EE::Render
             VulkanCommandQueue()
                 : RHI::RHICommandQueue( RHI::ERHIType::Vulkan )
             {}
-            VulkanCommandQueue( VulkanDevice const& device, QueueFamily const& queueFamily );
+            VulkanCommandQueue( VulkanDevice const& device, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex );
             virtual ~VulkanCommandQueue() = default;
 
         public:
@@ -39,6 +39,7 @@ namespace EE::Render
             VkQueue								m_pHandle = nullptr;
             RHI::CommandQueueType               m_type = RHI::CommandQueueType::Unknown;
             QueueFamily							m_queueFamily;
+            uint32_t                            m_queueIndex = 0;
         };
     }
 }

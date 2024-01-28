@@ -108,7 +108,8 @@ namespace EE::Render
             virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
             inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
 
-            virtual RHI::RHICommandBuffer* GetImmediateCommandBuffer() override;
+            virtual RHI::RHICommandBuffer* GetImmediateGraphicCommandBuffer() override;
+            virtual RHI::RHICommandBuffer* GetImmediateTransferCommandBuffer() override;
 
             virtual bool BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
             virtual void EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
@@ -213,9 +214,11 @@ namespace EE::Render
             TEvent<RHI::RHITexture*>                        m_onSwapchainImageDestroyedEvent;
 
 			VulkanCommandQueue*							    m_pGlobalGraphicQueue = nullptr;
+			VulkanCommandQueue*							    m_pGlobalTransferQueue = nullptr;
             VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFramebufferCount];
 
-            VulkanCommandBufferPool*                        m_immediateCommandBufferPool;
+            VulkanCommandBufferPool*                        m_immediateGraphicCommandBufferPool;
+            VulkanCommandBufferPool*                        m_immediateTransferCommandBufferPool;
 
             VulkanMemoryAllocator                           m_globalMemoryAllcator;
 

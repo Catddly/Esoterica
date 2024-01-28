@@ -19,6 +19,7 @@
 #include "Base/Logging/Log.h"
 #include "Base/Types/List.h"
 #include "Base/Types/HashMap.h"
+#include "Base/Math/Math.h"
 #include "Base/Resource/ResourcePtr.h"
 
 #include <EASTL/algorithm.h>
@@ -82,9 +83,14 @@ namespace EE::Render
 
             WaitUntilIdle();
             
-            if ( m_immediateCommandBufferPool )
+            if ( m_immediateGraphicCommandBufferPool )
             {
-                EE::Delete( m_immediateCommandBufferPool );
+                EE::Delete( m_immediateGraphicCommandBufferPool );
+            }
+
+            if ( m_immediateTransferCommandBufferPool )
+            {
+                EE::Delete( m_immediateTransferCommandBufferPool );
             }
 
             for ( auto& commandPool : m_commandBufferPool )
@@ -95,6 +101,11 @@ namespace EE::Render
             if ( m_pGlobalGraphicQueue )
             {
                 EE::Delete( m_pGlobalGraphicQueue );
+            }
+
+            if ( m_pGlobalTransferQueue )
+            {
+                EE::Delete( m_pGlobalTransferQueue );
             }
 
             for ( auto& deferReleaseQueue : m_deferReleaseQueues )
@@ -183,14 +194,24 @@ namespace EE::Render
             return m_pGlobalGraphicQueue;
         }
 
-        RHI::RHICommandBuffer* VulkanDevice::GetImmediateCommandBuffer()
+        RHI::RHICommandBuffer* VulkanDevice::GetImmediateGraphicCommandBuffer()
         {
-            if ( !m_immediateCommandBufferPool )
+            if ( !m_immediateGraphicCommandBufferPool )
             {
-                m_immediateCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
+                m_immediateGraphicCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
             }
 
-            return m_immediateCommandBufferPool->Allocate();
+            return m_immediateGraphicCommandBufferPool->Allocate();
+        }
+
+        RHI::RHICommandBuffer* VulkanDevice::GetImmediateTransferCommandBuffer()
+        {
+            if ( !m_immediateTransferCommandBufferPool )
+            {
+                m_immediateTransferCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalTransferQueue );
+            }
+
+            return m_immediateTransferCommandBufferPool->Allocate();
         }
 
         bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
@@ -279,6 +300,14 @@ namespace EE::Render
             {
                 imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             }
+
+            //VkImageFormatProperties props;
+
+            //vkGetPhysicalDeviceImageFormatProperties(
+            //    m_physicalDevice.m_pHandle, imageCreateInfo.format, VK_IMAGE_TYPE_2D,
+            //    imageCreateInfo.tiling, imageCreateInfo.usage, imageCreateInfo.flags,
+            //    &props
+            //);
 
             bool bRequireDedicatedMemory = false;
             uint32_t allcatedMemorySize = 0;
@@ -863,9 +892,10 @@ namespace EE::Render
             VK_SUCCEEDED( vkCreateGraphicsPipelines( m_pHandle, nullptr, 1, &graphicsPipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
 
             EE_ASSERT( !pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts.empty() );
-            auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes;
             for ( auto const& setDescriptorLayout : pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts )
             {
+                auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes.emplace_back();
+
                 for ( auto const& [_binding, ty] : setDescriptorLayout )
                 {
                     VkDescriptorType descriptorType = ToVulkanBindingResourceType( ty );
@@ -889,6 +919,8 @@ namespace EE::Render
             }
 
             pVkPipelineStage->m_desc = createDesc;
+
+            EE_ASSERT( pVkPipelineStage->m_pipelineInfo.m_setPoolSizes.size() == pVkPipelineStage->m_pipelineInfo.m_setLayouts.size() );
 
             return pVkPipelineStage;
         }
@@ -944,9 +976,10 @@ namespace EE::Render
             VK_SUCCEEDED( vkCreateComputePipelines( m_pHandle, nullptr, 1, &computePipelineCI, nullptr, &(pVkPipelineStage->m_pipelineState.m_pPipeline) ) );
 
             EE_ASSERT( !pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts.empty() );
-            auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes;
             for ( auto const& setDescriptorLayout : pVkPipelineStage->m_pipelineInfo.m_setDescriptorLayouts )
             {
+                auto& poolSizes = pVkPipelineStage->m_pipelineInfo.m_setPoolSizes.emplace_back();
+
                 for ( auto const& [_binding, ty] : setDescriptorLayout )
                 {
                     VkDescriptorType descriptorType = ToVulkanBindingResourceType( ty );
@@ -973,6 +1006,8 @@ namespace EE::Render
             pVkPipelineStage->m_dispathGroupWidth = pCompiledShader->GetThreadGroupSizeX();
             pVkPipelineStage->m_dispathGroupHeight = pCompiledShader->GetThreadGroupSizeY();
             pVkPipelineStage->m_dispathGroupDepth = pCompiledShader->GetThreadGroupSizeZ();
+
+            EE_ASSERT( pVkPipelineStage->m_pipelineInfo.m_setPoolSizes.size() == pVkPipelineStage->m_pipelineInfo.m_setLayouts.size() );
 
             return pVkPipelineStage;
         }
@@ -1077,90 +1112,148 @@ namespace EE::Render
 			return true;
 		}
 
-		bool VulkanDevice::CreateDevice( InitConfig const& config )
-		{
-			// device queue creation info population
-			//-------------------------------------------------------------------------
+        bool VulkanDevice::CreateDevice( InitConfig const& config )
+        {
+            // device queue creation info population
+            //-------------------------------------------------------------------------
 
-			TVector<VkDeviceQueueCreateInfo> deviceQueueCIs = {};
-			TVector<QueueFamily> deviceQueueFamilies = {};
+            TVector<VkDeviceQueueCreateInfo> deviceQueueCIs = {};
+            TVector<QueueFamily> deviceQueueFamilies = {};
 
-			float priorities[] = { 1.0f };
+            float priorities[] = { 1.0f, 0.7f, 0.5f, 0.3f };
 
-			// only create one graphic queue for now
-			for ( auto const& qf : m_physicalDevice.m_queueFamilies )
-			{
-				if ( qf.IsGraphicQueue() )
-				{
-					VkDeviceQueueCreateInfo dqCI = {};
-					dqCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-					dqCI.flags = VkFlags( 0 );
-					dqCI.pNext = nullptr;
+            // only create one graphic queue for now
+            for ( auto const& qf : m_physicalDevice.m_queueFamilies )
+            {
+                VkDeviceQueueCreateInfo dqCI = {};
+                dqCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                dqCI.flags = VkFlags( 0 );
+                dqCI.pNext = nullptr;
 
-					dqCI.queueCount = 1;
-					dqCI.queueFamilyIndex = qf.m_index;
-					dqCI.pQueuePriorities = priorities;
+                if ( qf.IsGraphicQueue() )
+                {
+                    dqCI.queueCount = Math::Min( 4u, qf.m_props.queueCount );
+                    dqCI.queueFamilyIndex = qf.m_index;
+                    dqCI.pQueuePriorities = priorities;
 
-					deviceQueueCIs.push_back( dqCI );
-					deviceQueueFamilies.push_back( qf );
-					break;
-				}
-			}
+                    deviceQueueCIs.push_back( dqCI );
+                    deviceQueueFamilies.push_back( qf );
+                }
+                else if ( qf.IsTransferQueue() )
+                {
+                    dqCI.queueCount = Math::Min( 4u, qf.m_props.queueCount );
+                    dqCI.queueFamilyIndex = qf.m_index;
+                    dqCI.pQueuePriorities = priorities;
 
-			if ( deviceQueueCIs.empty() )
-			{
-				EE_LOG_ERROR( "Render", "Vulkan Backend", "Invalid physical device which not supports graphic queue!" );
-				return false;
-			}
+                    deviceQueueCIs.push_back( dqCI );
+                    deviceQueueFamilies.push_back( qf );
+                }
+            }
 
-			// physical device features2 validation
-			//-------------------------------------------------------------------------
+            if ( deviceQueueCIs.empty() )
+            {
+                EE_LOG_ERROR( "Render", "Vulkan Backend", "Invalid physical device which not supports graphic queue!" );
+                return false;
+            }
 
-			auto descriptor_indexing = VkPhysicalDeviceDescriptorIndexingFeaturesEXT{};
-			descriptor_indexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+            // physical device features2 validation
+            //-------------------------------------------------------------------------
 
-			auto imageless_framebuffer = VkPhysicalDeviceImagelessFramebufferFeaturesKHR{};
-			imageless_framebuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR;
+            auto descriptor_indexing = VkPhysicalDeviceDescriptorIndexingFeaturesEXT{};
+            descriptor_indexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
 
-			auto buffer_address = VkPhysicalDeviceBufferDeviceAddressFeaturesEXT{};
-			buffer_address.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT;
+            auto imageless_framebuffer = VkPhysicalDeviceImagelessFramebufferFeaturesKHR{};
+            imageless_framebuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR;
 
-			// TODO: pNext chain
-			VkPhysicalDeviceFeatures2 physicalDeviceFeatures2 = {};
-			physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            auto buffer_address = VkPhysicalDeviceBufferDeviceAddressFeaturesEXT{};
+            buffer_address.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT;
 
-			physicalDeviceFeatures2.pNext = &descriptor_indexing;
-			descriptor_indexing.pNext = &imageless_framebuffer;
-			imageless_framebuffer.pNext = &buffer_address;
+            // TODO: pNext chain
+            VkPhysicalDeviceFeatures2 physicalDeviceFeatures2 = {};
+            physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
-			vkGetPhysicalDeviceFeatures2( m_physicalDevice.m_pHandle, &physicalDeviceFeatures2 );
+            physicalDeviceFeatures2.pNext = &descriptor_indexing;
+            descriptor_indexing.pNext = &imageless_framebuffer;
+            imageless_framebuffer.pNext = &buffer_address;
 
-			EE_ASSERT( imageless_framebuffer.imagelessFramebuffer );
-			EE_ASSERT( descriptor_indexing.descriptorBindingPartiallyBound );
-			EE_ASSERT( buffer_address.bufferDeviceAddress );
+            vkGetPhysicalDeviceFeatures2( m_physicalDevice.m_pHandle, &physicalDeviceFeatures2 );
 
-			// device creation
-			//-------------------------------------------------------------------------
+            EE_ASSERT( imageless_framebuffer.imagelessFramebuffer );
+            EE_ASSERT( descriptor_indexing.descriptorBindingPartiallyBound );
+            EE_ASSERT( buffer_address.bufferDeviceAddress );
 
-			VkDeviceCreateInfo deviceCI = {};
-			deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			deviceCI.flags = VkFlags( 0 );
-			deviceCI.pNext = &physicalDeviceFeatures2;
+            // device creation
+            //-------------------------------------------------------------------------
 
-			deviceCI.pQueueCreateInfos = deviceQueueCIs.data();
-			deviceCI.queueCreateInfoCount = static_cast<uint32_t>( deviceQueueCIs.size() );
+            VkDeviceCreateInfo deviceCI = {};
+            deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            deviceCI.flags = VkFlags( 0 );
+            deviceCI.pNext = &physicalDeviceFeatures2;
 
-			deviceCI.ppEnabledLayerNames = config.m_requiredLayers.data();
-			deviceCI.enabledLayerCount = static_cast<uint32_t>( config.m_requiredLayers.size() );
-			deviceCI.ppEnabledExtensionNames = config.m_requiredExtensions.data();
-			deviceCI.enabledExtensionCount = static_cast<uint32_t>( config.m_requiredExtensions.size() );
+            deviceCI.pQueueCreateInfos = deviceQueueCIs.data();
+            deviceCI.queueCreateInfoCount = static_cast<uint32_t>( deviceQueueCIs.size() );
 
-			VK_SUCCEEDED( vkCreateDevice( m_physicalDevice.m_pHandle, &deviceCI, nullptr, &m_pHandle ) );
+            deviceCI.ppEnabledLayerNames = config.m_requiredLayers.data();
+            deviceCI.enabledLayerCount = static_cast<uint32_t>( config.m_requiredLayers.size() );
+            deviceCI.ppEnabledExtensionNames = config.m_requiredExtensions.data();
+            deviceCI.enabledExtensionCount = static_cast<uint32_t>( config.m_requiredExtensions.size() );
 
-			// fetch global device queue
-			//-------------------------------------------------------------------------
+            VK_SUCCEEDED( vkCreateDevice( m_physicalDevice.m_pHandle, &deviceCI, nullptr, &m_pHandle ) );
 
-            m_pGlobalGraphicQueue = EE::New<VulkanCommandQueue>( *this, deviceQueueFamilies[0] );
+            // fetch global device queue
+            //-------------------------------------------------------------------------
+
+            for ( QueueFamily& deviceQueueFamily : deviceQueueFamilies )
+            {
+                if ( deviceQueueFamily.IsGraphicQueue() )
+                {
+                    int32_t queueIndex = deviceQueueFamily.AllocateQueueFor( RHI::CommandQueueType::Graphic );
+                    if ( queueIndex == -1 )
+                    {
+                        return false;
+                    }
+
+                    m_pGlobalGraphicQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Graphic, deviceQueueFamily, (uint32_t) queueIndex );
+                    break;
+                }
+            }
+
+            bool bHasNoTransferQueue = true;
+            for ( QueueFamily& deviceQueueFamily : deviceQueueFamilies )
+            {
+                if ( deviceQueueFamily.IsTransferQueue() )
+                {
+                    int32_t queueIndex = deviceQueueFamily.AllocateQueueFor( RHI::CommandQueueType::Transfer );
+                    if ( queueIndex == -1 )
+                    {
+                        return false;
+                    }
+
+                    m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
+                    bHasNoTransferQueue = false;
+                    break;
+                }
+            }
+
+            if ( bHasNoTransferQueue )
+            {
+                // No transfer queue, try fetch another graph queue
+                
+                for ( QueueFamily& deviceQueueFamily : deviceQueueFamilies )
+                {
+                    if ( deviceQueueFamily.IsGraphicQueue() )
+                    {
+                        int32_t queueIndex = deviceQueueFamily.AllocateQueueFor( RHI::CommandQueueType::Graphic );
+                        if ( queueIndex == -1 )
+                        {
+                            return false;
+                        }
+
+                        m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
+                        break;
+                    }
+                }
+            }
 
             // create global render command pools
             //-------------------------------------------------------------------------
@@ -1201,7 +1294,7 @@ namespace EE::Render
             // Copy staging buffer to buffer
             //-------------------------------------------------------------------------
 
-            DispatchImmediateCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            DispatchImmediateTransferCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
             {
                 pCommandBuffer->CopyBufferToBuffer( pStagingBuffer, pBuffer );
                 return true;

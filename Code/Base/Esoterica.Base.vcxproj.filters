@@ -486,6 +486,7 @@
     </ClCompile>
     <ClCompile Include="RHI\RHIResourceBinding.cpp" />
     <ClCompile Include="Render\Platform\Windows\TextureLoader_Win32.cpp" />
+    <ClCompile Include="RenderGraph\RenderGraphHelperNodes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -2115,6 +2116,7 @@
       <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Render\Platform\Windows\TextureLoader_Win32.h" />
+    <ClInclude Include="RenderGraph\RenderGraphHelperNodes.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

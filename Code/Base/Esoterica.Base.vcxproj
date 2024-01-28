@@ -15,6 +15,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RenderGraph\RenderGraphHelperNodes.h" />
     <ClInclude Include="RenderGraph\RenderGraphNodeBuilder.h" />
     <ClInclude Include="RenderGraph\RenderGraphNodeRef.h" />
     <ClInclude Include="RenderGraph\RenderGraphResolver.h" />
@@ -568,6 +569,7 @@
     <ClCompile Include="Logging\LoggingSystem.cpp" />
     <ClCompile Include="Logging\Platform\Log_Win32.cpp" />
     <ClCompile Include="Math\Platform\Math_Win32.h" />
+    <ClCompile Include="RenderGraph\RenderGraphHelperNodes.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphNodeBuilder.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphResolver.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphResource.cpp" />

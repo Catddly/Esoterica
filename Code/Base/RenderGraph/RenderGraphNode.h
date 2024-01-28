@@ -2,7 +2,7 @@
 
 #include "Base/_Module/API.h"
 #include "RenderGraphResource.h"
-#include "RenderGraphContext.h"
+//#include "RenderGraphContext.h"
 #include "Base/Types/Function.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/String.h"
@@ -40,6 +40,8 @@ namespace EE::RG
 
     class RGExecutableNode;
     class RGResourceRegistry;
+    
+    class RGRenderCommandContext;
 
     class EE_BASE_API RGNode
     {
@@ -93,6 +95,8 @@ namespace EE::RG
 
     private:
 
+        inline bool HadRegisteredPipeline() const { return m_bHasPipeline; }
+
         inline bool IsReadyToExecute( RG::RGResourceRegistry* pRGResourceRegistry ) const;
         RGExecutableNode IntoExecutableNode( RG::RGResourceRegistry* pRGResourceRegistry ) &&;
 
@@ -106,7 +110,9 @@ namespace EE::RG
 
         Render::PipelineHandle                  m_pipelineHandle;
         ExecutionCallbackFunc                   m_executionCallback;
-	};
+
+        bool                                    m_bHasPipeline = false;
+    };
 
     class RGExecutableNode
     {

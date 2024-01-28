@@ -1,13 +1,18 @@
 #pragma once
 
 #include "Base/_Module/API.h"
-#include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
-#include "RenderGraphResourceRegistry.h"
+#include "RenderGraphResource.h"
+#include "RenderGraphNodeRef.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RG
 {
+    class RGRenderCommandContext;
+
+    template <typename Tag>
+    class RGResourceHandle;
+
     // Helper class to build a render graph node.
     // User can register pipeline and define the resource usage in a certain pass.
     // TODO: [Safety Consideration] It is thread safe?
@@ -18,9 +23,7 @@ namespace EE::RG
     {
     public:
 
-        RGNodeBuilder( RGResourceRegistry const& graphResourceRegistry, RGNode& node )
-            : m_graphResourceRegistry( graphResourceRegistry ), m_node( node )
-        {}
+        RGNodeBuilder( RGResourceRegistry const& graphResourceRegistry, RGNode& node );
 
     public:
 
@@ -146,8 +149,8 @@ namespace EE::RG
         //DescCVType desc = m_graphResourceRegistry.GetRegisteredResource( pResource.m_slotID ).GetDesc<Tag>();
 
         // after write operation, this resource is considered a new resource
-        _Impl::RGResourceID newSlotID = pResource.m_slotID;
-        newSlotID.Expire();
+        pResource.m_slotID.Expire();
+        _Impl::RGResourceID const newSlotID = pResource.m_slotID;
 
         // return a lifetime limited reference to it.
         // Note: here we take a const reference description of a resource.

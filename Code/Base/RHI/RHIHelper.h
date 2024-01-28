@@ -11,5 +11,7 @@ namespace EE::RHI
 
     // Dispatch a immediate command buffer to its command queue.
     // CPU will wait until GPU finished this command.
-    void DispatchImmediateCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback );
+    void DispatchImmediateGraphicCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback );
+
+    void DispatchImmediateTransferCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback );
 }

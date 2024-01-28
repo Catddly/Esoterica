@@ -302,6 +302,18 @@ namespace EE::RG
     }
 
     //-------------------------------------------------------------------------
+    
+    void RGRenderCommandContext::ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RGResourceViewType::UAV> const& depthStencilTexture, float depthValue, uint32_t stencilValue )
+    {
+        m_pCommandBuffer->ClearDepthStencil(
+            GetCompiledTextureResource( depthStencilTexture ),
+            // TODO: separate depth and stencil
+            RHI::TextureSubresourceRange::AllSubresources( TBitFlags<RHI::TextureAspectFlags>( RHI::TextureAspectFlags::Depth ) ),
+            RHI::ETextureLayout::TransferDstOptimal, depthValue, stencilValue
+        );
+    }
+
+    //-------------------------------------------------------------------------
 
     void RGRenderCommandContext::SubmitAndReset( RHI::RHIDevice* pDevice )
     {
@@ -344,4 +356,5 @@ namespace EE::RG
         m_waitStages.clear();
         m_signalSemaphores.clear();
     }
+
 }

@@ -368,6 +368,15 @@ namespace EE::Render
                     m_pResourceSystem->UnloadResource( pPipeline->m_pixelShader, Resource::ResourceRequesterID( pPipeline->GetID().m_ID ) );
                 }
             }
+
+            EE_ASSERT( m_computePipelineStatesCache.size() == m_computePipelineHandlesCache.size() );
+            for ( auto const& pPipeline : m_computePipelineStatesCache )
+            {
+                if ( pPipeline->m_computeShader.IsLoaded() )
+                {
+                    m_pResourceSystem->UnloadResource( pPipeline->m_computeShader, Resource::ResourceRequesterID( pPipeline->GetID().m_ID ) );
+                }
+            }
         }
 	}
 

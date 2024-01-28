@@ -92,7 +92,8 @@ namespace EE::RHI
         virtual RHICommandBuffer* AllocateCommandBuffer() = 0;
         virtual RHICommandQueue* GetMainGraphicCommandQueue() = 0;
 
-        virtual RHICommandBuffer* GetImmediateCommandBuffer() = 0;
+        virtual RHICommandBuffer* GetImmediateGraphicCommandBuffer() = 0;
+        virtual RHICommandBuffer* GetImmediateTransferCommandBuffer() = 0;
 
         virtual bool BeginCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
         virtual void EndCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;

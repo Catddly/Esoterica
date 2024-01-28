@@ -2,6 +2,7 @@
 
 #include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
+#include "RenderGraphNodeRef.h"
 #include "RenderGraphTransientResourceCache.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/String.h"
@@ -16,44 +17,17 @@ namespace EE::RHI
     class RHITexture;
 }
 
-namespace EE::Render { class RenderDevice; }
+namespace EE::Render
+{
+    class RenderDevice;
+}
 
 namespace EE::RG
 {
-    template <typename Tag>
-    class RGResourceHandle
-    {
-        friend class RenderGraph;
-        friend class RGResourceRegistry;
-        friend class RGNodeBuilder;
-
-        EE_STATIC_ASSERT( ( std::is_base_of<RGResourceTagTypeBase<Tag>, Tag>::value ), "Invalid render graph resource tag!" );
-
-    public:
-
-        typedef typename Tag::DescType DescType;
-
-    public:
-
-        inline DescType const& GetDesc() const
-        {
-            return m_desc;
-        }
-
-    private:
-
-        inline void Expire()
-        {
-            m_slotID.Expire();
-        }
-
-    private:
-
-        DescType						m_desc;
-        _Impl::RGResourceID			    m_slotID;
-    };
-
     struct RGResolveResult;
+
+    template <typename Tag, RGResourceViewType RVT>
+    class RGNodeResourceRef;
 
     class RGResourceRegistry
     {

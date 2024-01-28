@@ -65,14 +65,14 @@ namespace EE::Render
                 uploadRef.m_pStagingBuffer = stagingBuffer.second;
                 uploadRef.m_aspectFlags.ClearAllFlags();
                 // TODO: proper aspect flags
-                uploadRef.m_aspectFlags.SetFlag( RHI::TextureAspectFlags::Color );
+                //uploadRef.m_aspectFlags.SetFlag( RHI::TextureAspectFlags::Color );
                 uploadRef.m_layer = stagingBuffer.first;
                 uploadRef.m_baseMipLevel = 0;
                 uploadRef.m_bufferBaseOffset = 0;
                 uploadRef.m_uploadAllMips = true;
             }
 
-            DispatchImmediateCommandAndWait( pDevice, [this, &uploadRefs, dstBarrierState] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            DispatchImmediateTransferCommandAndWait( pDevice, [this, &uploadRefs, dstBarrierState] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
             {
                 pCommandBuffer->CopyBufferToTexture( this, dstBarrierState, uploadRefs );
 
@@ -120,7 +120,14 @@ namespace EE::Render
             viewCI.viewType = desc.m_viewType.has_value() ? ToVulkanImageViewType( *desc.m_viewType ) : ToVulkanImageViewType( m_desc.m_type );
             viewCI.subresourceRange.baseMipLevel = desc.m_baseMipmap;
             viewCI.subresourceRange.baseArrayLayer = 0;
-            viewCI.subresourceRange.aspectMask = ToVulkanImageAspectFlags( desc.m_viewAspect );
+            if ( desc.m_viewAspect.IsAnyFlagSet() )
+            {
+                viewCI.subresourceRange.aspectMask = ToVulkanImageAspectFlags( desc.m_viewAspect );
+            }
+            else
+            {
+                viewCI.subresourceRange.aspectMask = SpeculateImageAspectFlagsFromUsageAndFormat( m_desc.m_usage, m_desc.m_format );
+            }
             viewCI.subresourceRange.levelCount = desc.m_levelCount.has_value() ? *desc.m_levelCount : m_desc.m_mipmap - desc.m_baseMipmap;
             viewCI.subresourceRange.layerCount = layerCount;
 

@@ -1,10 +1,109 @@
 #include "RHIResourceCreationCommons.h"
 
+
 #include "Base/Math/Math.h"
 
 namespace EE::RHI
 {
     //-------------------------------------------------------------------------
+
+    bool IsDepthFormat( EPixelFormat format )
+    {
+        switch ( format )
+        {
+            case EPixelFormat::R8UInt:
+            case EPixelFormat::R8Unorm:
+            case EPixelFormat::R32UInt:
+            case EPixelFormat::R32SInt:
+            case EPixelFormat::R16Float:
+            case EPixelFormat::R32Float:
+            case EPixelFormat::RG8UInt:
+            case EPixelFormat::RG8Unorm:
+            case EPixelFormat::RG32UInt:
+            case EPixelFormat::RG32SInt:
+            case EPixelFormat::RG16Float:
+            case EPixelFormat::RG32Float:
+            case EPixelFormat::RGB32UInt:
+            case EPixelFormat::RGB32SInt:
+            case EPixelFormat::RGB32Float:
+            case EPixelFormat::RGBA8UInt:
+            case EPixelFormat::RGBA8Unorm:
+            case EPixelFormat::RGBA32UInt:
+            case EPixelFormat::RGBA16Float:
+            case EPixelFormat::RGBA32Float:
+            case EPixelFormat::BGRA8Unorm:
+            case EPixelFormat::BGRA8Srgb:
+            case EPixelFormat::BC1Unorm:
+            case EPixelFormat::BC1Srgb:
+            case EPixelFormat::BC2Unorm:
+            case EPixelFormat::BC2Srgb:
+            case EPixelFormat::BC3Unorm:
+            case EPixelFormat::BC3Srgb:
+            case EPixelFormat::BC4Unorm:
+            case EPixelFormat::BC5Unorm:
+            case EPixelFormat::BC6HUFloat16:
+            case EPixelFormat::BC6HSFloat16:
+            case EPixelFormat::BC7Unorm:
+            case EPixelFormat::BC7Srgb:
+            case EPixelFormat::Undefined: return false;
+
+            case EPixelFormat::Depth32: return true;
+            default:
+            break;
+        }
+
+        EE_UNREACHABLE_CODE();
+        return false;
+    }
+
+    bool IsStencilFormat( EPixelFormat format )
+    {
+        switch ( format )
+        {
+            case EPixelFormat::R8UInt:
+            case EPixelFormat::R8Unorm:
+            case EPixelFormat::R32UInt:
+            case EPixelFormat::R32SInt:
+            case EPixelFormat::R16Float:
+            case EPixelFormat::R32Float:
+            case EPixelFormat::RG8UInt:
+            case EPixelFormat::RG8Unorm:
+            case EPixelFormat::RG32UInt:
+            case EPixelFormat::RG32SInt:
+            case EPixelFormat::RG16Float:
+            case EPixelFormat::RG32Float:
+            case EPixelFormat::RGB32UInt:
+            case EPixelFormat::RGB32SInt:
+            case EPixelFormat::RGB32Float:
+            case EPixelFormat::RGBA8UInt:
+            case EPixelFormat::RGBA8Unorm:
+            case EPixelFormat::RGBA32UInt:
+            case EPixelFormat::RGBA16Float:
+            case EPixelFormat::RGBA32Float:
+            case EPixelFormat::BGRA8Unorm:
+            case EPixelFormat::BGRA8Srgb:
+            case EPixelFormat::BC1Unorm:
+            case EPixelFormat::BC1Srgb:
+            case EPixelFormat::BC2Unorm:
+            case EPixelFormat::BC2Srgb:
+            case EPixelFormat::BC3Unorm:
+            case EPixelFormat::BC3Srgb:
+            case EPixelFormat::BC4Unorm:
+            case EPixelFormat::BC5Unorm:
+            case EPixelFormat::BC6HUFloat16:
+            case EPixelFormat::BC6HSFloat16:
+            case EPixelFormat::BC7Unorm:
+            case EPixelFormat::BC7Srgb:
+            case EPixelFormat::Undefined: 
+
+            case EPixelFormat::Depth32: return false;
+            default:
+            break;
+        }
+
+        EE_UNREACHABLE_CODE();
+        return false;
+    }
 
     void GetPixelFormatByteSize( uint32_t width, uint32_t height, EPixelFormat format, uint32_t& outNumBytes, uint32_t& outNumBytesPerRow )
     {
@@ -237,6 +336,23 @@ namespace EE::RHI
         desc.m_type = desc.m_depth == 1 ? ETextureType::T2D : ETextureType::T3D;
         desc.m_bufferData = std::move( texBufferData );
         return desc;
+    }
+
+    void RHITextureCreateDesc::AsShadowMap()
+    {
+        if ( IsDepthFormat( m_format ) )
+        {
+            m_usage.ClearAllFlags();
+            m_usage.SetFlag( ETextureUsage::TransferDst );
+            m_usage.SetFlag( ETextureUsage::DepthStencil );
+            m_usage.SetFlag( ETextureUsage::Sampled );
+            m_type = ETextureType::T2D;
+            m_array = 1;
+        }
+        else
+        {
+            EE_LOG_WARNING( "RHI", "RHITextureCreateDesc::AsShadowMap()", "This texture is not using depth stencil texture format!" );
+        }
     }
 
 	bool RHITextureCreateDesc::IsValid() const

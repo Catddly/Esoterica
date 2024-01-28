@@ -6,20 +6,22 @@ namespace EE::Render
 {
     namespace Backend
     {
-        VulkanCommandQueue::VulkanCommandQueue( VulkanDevice const& device, QueueFamily const& queueFamily )
-            : RHI::RHICommandQueue( RHI::ERHIType::Vulkan ), m_queueFamily( queueFamily )
+        VulkanCommandQueue::VulkanCommandQueue( VulkanDevice const& device, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex )
+            : RHI::RHICommandQueue( RHI::ERHIType::Vulkan ), m_queueFamily( queueFamily ), m_queueIndex( queueIndex )
         {
-            vkGetDeviceQueue( device.m_pHandle, queueFamily.m_index, 0, &m_pHandle );
+            EE_ASSERT( queueIndex < queueFamily.m_props.queueCount );
 
-            if ( queueFamily.IsGraphicQueue() )
+            vkGetDeviceQueue( device.m_pHandle, queueFamily.m_index, queueIndex, &m_pHandle );
+
+            if ( type == RHI::CommandQueueType::Graphic && queueFamily.IsGraphicQueue() )
             {
                 m_type = RHI::CommandQueueType::Graphic;
             }
-            else if ( queueFamily.IsComputeQueue() )
+            else if ( type == RHI::CommandQueueType::Compute && queueFamily.IsComputeQueue() )
             {
                 m_type = RHI::CommandQueueType::Compute;
             }
-            else if ( queueFamily.IsTransferQueue() )
+            else if ( type == RHI::CommandQueueType::Transfer && queueFamily.IsTransferQueue() )
             {
                 m_type = RHI::CommandQueueType::Transfer;
             }

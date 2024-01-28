@@ -22,7 +22,7 @@ namespace EE::Render
         struct VulkanCommonPipelineInfo
         {
             TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet>  m_setDescriptorLayouts;
-            TVector<VkDescriptorPoolSize>                                           m_setPoolSizes;
+            TVector<TVector<VkDescriptorPoolSize>>                                  m_setPoolSizes;
             TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
         };
 

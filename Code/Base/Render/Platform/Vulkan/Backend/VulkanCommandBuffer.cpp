@@ -408,7 +408,15 @@ namespace EE::Render
                 vkRange.baseMipLevel = range.m_baseMipLevel;
                 vkRange.layerCount = range.m_layerCount;
                 vkRange.levelCount = range.m_levelCount;
-                vkRange.aspectMask = ToVulkanImageAspectFlags( range.m_aspectFlags );
+
+                if ( range.m_aspectFlags.IsAnyFlagSet() )
+                {
+                    vkRange.aspectMask = ToVulkanImageAspectFlags( range.m_aspectFlags );
+                }
+                else
+                {
+                    vkRange.aspectMask = SpeculateImageAspectFlagsFromUsageAndFormat( pTexture->GetDesc().m_usage, pTexture->GetDesc().m_format );
+                }
 
                 vkCmdClearDepthStencilImage( 
                     m_pHandle, pVkTexture->m_pHandle, ToVulkanImageLayout( currentLayout ),
@@ -561,7 +569,15 @@ namespace EE::Render
                         imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
                         imageCopy.imageSubresource.layerCount = 1;
                         imageCopy.imageSubresource.mipLevel = mip;
-                        imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
+
+                        if ( subresourceRef.m_aspectFlags.IsAnyFlagSet() )
+                        {
+                            imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
+                        }
+                        else
+                        {
+                            imageCopy.imageSubresource.aspectMask = SpeculateImageAspectFlagsFromUsageAndFormat( pDstTexture->GetDesc().m_usage, pDstTexture->GetDesc().m_format );
+                        }
 
                         imageCopy.bufferRowLength = 0;
                         imageCopy.bufferImageHeight = 0;
@@ -585,7 +601,15 @@ namespace EE::Render
                     imageCopy.imageSubresource.baseArrayLayer = subresourceRef.m_layer;
                     imageCopy.imageSubresource.layerCount = 1;
                     imageCopy.imageSubresource.mipLevel = subresourceRef.m_baseMipLevel;
-                    imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
+
+                    if ( subresourceRef.m_aspectFlags.IsAnyFlagSet() )
+                    {
+                        imageCopy.imageSubresource.aspectMask = ToVulkanImageAspectFlags( subresourceRef.m_aspectFlags );
+                    }
+                    else
+                    {
+                        imageCopy.imageSubresource.aspectMask = SpeculateImageAspectFlagsFromUsageAndFormat( pDstTexture->GetDesc().m_usage, pDstTexture->GetDesc().m_format );
+                    }
 
                     imageCopy.bufferRowLength = 0;
                     imageCopy.bufferImageHeight = 0;
@@ -617,7 +641,9 @@ namespace EE::Render
                 barrier.m_pPreviousAccesses = &prevBarrierState;
                 barrier.m_nextAccessesCount = 1;
                 barrier.m_pNextAccesses = &nextBarrierState;
-                barrier.m_subresourceRange = RHI::TextureSubresourceRange::AllSubresources( subresourceRef.m_aspectFlags );
+                barrier.m_subresourceRange = RHI::TextureSubresourceRange::AllSubresources(
+                    ToEngineTextureAspectFlags( SpeculateImageAspectFlagsFromUsageAndFormat( pDstTexture->GetDesc().m_usage, pDstTexture->GetDesc().m_format ) )
+                );
 
                 PipelineBarrier(
                     nullptr,
@@ -1166,10 +1192,6 @@ namespace EE::Render
                     write.descriptorCount = 1;
                 }
             }
-            //else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIStaticSamplerBinding>() )
-            //{
-            //    // do nothing
-            //}
             else if ( rhiBinding.m_binding.index() == GetVariantTypeIndex<decltype( rhiBinding.m_binding ), RHI::RHIUnknownBinding>() )
             {
                 EE_LOG_WARNING( "RHI", "Command Buffer", "Found unknown binding while binding pipline descriptor set!" );
@@ -1248,7 +1270,7 @@ namespace EE::Render
             poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolCI.maxSets = 1;
             poolCI.poolSizeCount = 1;
-            poolCI.pPoolSizes = &vkPipelineInfo.m_setPoolSizes[hash.m_set];
+            poolCI.pPoolSizes = vkPipelineInfo.m_setPoolSizes[hash.m_set].data();
             // TODO: pool update after bind
 
             VkDescriptorPool vkPool;

@@ -1,5 +1,6 @@
 #pragma once
 
+//#include "RenderGraph.h"
 #include "RenderGraphNodeRef.h"
 #include "RenderGraphResource.h"
 #include "Base/Math/Math.h"
@@ -154,8 +155,7 @@ namespace EE::RG
         //-------------------------------------------------------------------------
         
         // Note: default depth value is 0.0f, reverse z
-        template <RGResourceViewType RVT>
-        void ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RVT> const& depthStencilTexture, float depthValue = 0.0f, uint32_t stencilValue = 0 );
+        void ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RGResourceViewType::UAV> const& depthStencilTexture, float depthValue = 0.0f, uint32_t stencilValue = 0 );
 
     private:
 
@@ -192,30 +192,4 @@ namespace EE::RG
         TVector<Render::PipelineStage>      m_waitStages;
         TVector<RHI::RHISemaphore*>         m_signalSemaphores;
     };
-
-    //-------------------------------------------------------------------------
-
-    template <RGResourceViewType RVT>
-    void RGRenderCommandContext::ClearDepthStencil( RGNodeResourceRef<RGResourceTagTexture, RVT> const& depthStencilTexture, float depthValue, uint32_t stencilValue )
-    {
-        RHI::ETextureLayout layout = RHI::ETextureLayout::Undefined;
-        if constexpr ( RVT == RGResourceViewType::SRV )
-        {
-            layout = RHI::ETextureLayout::ShaderReadOnlyOptimal;
-        }
-        else if constexpr ( RVT == RGResourceViewType::UAV )
-        {
-            layout = RHI::ETextureLayout::General;
-        }
-        else if constexpr ( RVT == RGResourceViewType::RT )
-        {
-            layout = RHI::ETextureLayout::DepthStencilOptimal;
-        }
-
-        m_pCommandBuffer->ClearDepthStencil(
-            GetCompiledTextureResource( depthStencilTexture ),
-            RHI::TextureSubresourceRange::AllSubresources( TBitFlags<RHI::TextureAspectFlags>( RHI::TextureAspectFlags::Depth, RHI::TextureAspectFlags::Stencil ) ),
-            layout, depthValue, stencilValue
-        );
-    }
 }

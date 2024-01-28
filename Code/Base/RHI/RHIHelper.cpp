@@ -5,11 +5,11 @@
 
 namespace EE::RHI
 {
-    void DispatchImmediateCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
+    void DispatchImmediateGraphicCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
     {
         EE_ASSERT( pDevice );
 
-        auto* pCommandBuffer = pDevice->GetImmediateCommandBuffer();
+        auto* pCommandBuffer = pDevice->GetImmediateGraphicCommandBuffer();
 
         if ( pCommandBuffer )
         {
@@ -23,4 +23,24 @@ namespace EE::RHI
             pDevice->WaitUntilIdle();
         }
     }
+
+    void DispatchImmediateTransferCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
+    {
+        EE_ASSERT( pDevice );
+
+        auto* pCommandBuffer = pDevice->GetImmediateTransferCommandBuffer();
+
+        if ( pCommandBuffer )
+        {
+            EE_ASSERT( pDevice->BeginCommandBuffer( pCommandBuffer ) );
+
+            EE_ASSERT( commandCallback( pCommandBuffer ) );
+
+            pDevice->EndCommandBuffer( pCommandBuffer );
+
+            pDevice->SubmitCommandBuffer( pCommandBuffer, {}, {}, {} );
+            pDevice->WaitUntilIdle();
+        }
+    }
+
 }

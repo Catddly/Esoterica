@@ -11,6 +11,7 @@
 #include "Base/Render/RenderCoreResources.h"
 #include "Base/Render/RenderViewport.h"
 #include "Base/RenderGraph/RenderGraph.h"
+#include "Base/RenderGraph/RenderGraphHelperNodes.h"
 #include "Base/Profiling.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
 
@@ -1252,20 +1253,26 @@ namespace EE::Render
         constexpr uint32_t dirShadowMapHeight = 2048;
 
         auto dirShadowMapDesc = RG::TextureDesc::New2D( dirShadowMapWidth, dirShadowMapHeight, RHI::EPixelFormat::Depth32 );
-        dirShadowMapDesc.m_desc.m_usage.SetFlag( RHI::ETextureUsage::DepthStencil );
-        dirShadowMapDesc.m_desc.m_usage.SetFlag( RHI::ETextureUsage::Sampled );
+        dirShadowMapDesc.AsShadowMap();
+
+        auto dirShadowMapResource = renderGraph.GetOrCreateNamedResource( "Directional Light Shadow Map", dirShadowMapDesc );
+
+        // clear depth stencil
+        {
+            AddClearDepthStencilNode( renderGraph, dirShadowMapResource );
+        }
 
         auto transformUniformBufferDesc = RG::BufferDesc::NewUniformBuffer( sizeof( ObjectTransforms ) );
         // TODO: extract common pattern
         transformUniformBufferDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
         transformUniformBufferDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
 
-        EE_LOG_MESSAGE( "Render", "World Renderer", "Test: %p", m_pRenderData->m_pSkyboxTexture );
+        //EE_LOG_MESSAGE( "Render", "World Renderer", "Test: %p", m_pRenderData->m_pSkyboxTexture );
 
+        // render sun shadows into shadow map
         {
             auto node = renderGraph.AddNode( "Static Mesh Sun Shadows" );
 
-            auto dirShadowMapResource = renderGraph.GetOrCreateNamedResource( "Directional Light Shadow Map", dirShadowMapDesc );
             auto transformUniformBufferResource = renderGraph.CreateTemporaryResource( transformUniformBufferDesc );
 
             //-------------------------------------------------------------------------
@@ -1290,10 +1297,6 @@ namespace EE::Render
 
             node.Execute( [=] ( RG::RGRenderCommandContext& context )
             {
-                context.ClearDepthStencil( shadowMapBinding );
-            
-                //-------------------------------------------------------------------------
-
                 auto const& shadowMapDesc = context.GetDesc( shadowMapBinding );
 
                 RG::RGRenderTargetViewDesc rtViews[] = {
@@ -1328,7 +1331,7 @@ namespace EE::Render
                     RG::RGPipelineBinding const binding[] = {
                         RG::Bind( transformBufferBinding )
                     };
-                    boundPipeline.Bind( 0, binding );
+                    boundPipeline.Bind( 1, binding );
 
                     //-------------------------------------------------------------------------
 

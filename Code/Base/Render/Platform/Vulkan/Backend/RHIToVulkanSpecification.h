@@ -36,7 +36,8 @@ namespace EE::Render
         VkImageCreateFlagBits ToVulkanImageCreateFlags( TBitFlags<RHI::ETextureCreateFlag> createFlag );
         VkBufferUsageFlagBits ToVulkanBufferUsageFlags( TBitFlags<RHI::EBufferUsage> usage );
 
-        VkImageAspectFlags ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags );
+        VkImageAspectFlagBits ToVulkanImageAspectFlags( TBitFlags<RHI::TextureAspectFlags> flags );
+        TBitFlags<RHI::TextureAspectFlags> ToEngineTextureAspectFlags( VkImageAspectFlagBits flags );
 
         //-------------------------------------------------------------------------
 
@@ -65,6 +66,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
     
         RHI::RenderResourceBarrierState SpeculateBarrierStateFromUsage( TBitFlags<RHI::EBufferUsage> const& usage );
+        VkImageAspectFlagBits SpeculateImageAspectFlagsFromUsageAndFormat( TBitFlags<RHI::ETextureUsage> const& usage, RHI::EPixelFormat format );
     }
 }
 

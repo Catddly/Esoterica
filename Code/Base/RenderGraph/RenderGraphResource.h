@@ -148,6 +148,12 @@ namespace EE::RG
         inline static TextureDesc New3D( uint32_t width, uint32_t height, uint32_t depth, RHI::EPixelFormat format ) { return TextureDesc{ InnerDescType::New3D( width, height, depth, format ) }; }
         inline static TextureDesc NewCubemap( uint32_t width, RHI::EPixelFormat format ) { return TextureDesc{ InnerDescType::NewCubemap( width, format ) }; }
 
+        //-------------------------------------------------------------------------
+
+        inline void AsShadowMap() { m_desc.AsShadowMap(); }
+
+        //-------------------------------------------------------------------------
+
         inline bool IsValid() const { return m_desc.IsValid(); }
 
 	public:
@@ -517,6 +523,41 @@ namespace EE::RG
         constexpr size_t const index = static_cast<size_t>( Tag::GetRGResourceType() );
         return eastl::get<index>( m_resource );
     }
+
+    //-------------------------------------------------------------------------
+
+    template <typename Tag>
+    class RGResourceHandle
+    {
+        friend class RenderGraph;
+        friend class RGResourceRegistry;
+        friend class RGNodeBuilder;
+
+        EE_STATIC_ASSERT( ( std::is_base_of<RGResourceTagTypeBase<Tag>, Tag>::value ), "Invalid render graph resource tag!" );
+
+    public:
+
+        typedef typename Tag::DescType DescType;
+
+    public:
+
+        inline DescType const& GetDesc() const
+        {
+            return m_desc;
+        }
+
+    private:
+
+        inline void Expire()
+        {
+            m_slotID.Expire();
+        }
+
+    private:
+
+        DescType						m_desc;
+        _Impl::RGResourceID			    m_slotID;
+    };
 
     //-------------------------------------------------------------------------
 
