@@ -347,7 +347,7 @@ namespace EE::Render
         {
             RHI::RHIRenderPassCreateDesc renderPassDesc;
             // TODO: automatically align with RHISwapchain texture format
-            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::TrivialColor( RHI::EPixelFormat::BGRA8Unorm ) );
+            renderPassDesc.m_colorAttachments.push_back( RHI::RHIRenderPassAttachmentDesc::ClearInput( RHI::EPixelFormat::BGRA8Unorm ) );
             m_pRenderPass = pRhiDevice->CreateRenderPass( renderPassDesc );
 
             if ( !m_pRenderPass )
@@ -748,11 +748,11 @@ namespace EE::Render
 
                         // Copy vertex / index data
                         EE_ASSERT( VBWriteIdx + pCmdList->VtxBuffer.Size <= static_cast<int>( pVertexBuffer->GetDesc().m_desireSize / sizeof( ImDrawVert ) ) );
-                        memcpy( &pVB[VBWriteIdx], pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof( ImDrawVert ) );
+                        memcpy( &pVB[VBWriteIdx], pCmdList->VtxBuffer.Data, (size_t) pCmdList->VtxBuffer.Size * sizeof( ImDrawVert ) );
                         VBWriteIdx += pCmdList->VtxBuffer.Size;
 
                         EE_ASSERT( IBWriteIdx + pCmdList->IdxBuffer.Size <= static_cast<int>( pIndexBuffer->GetDesc().m_desireSize / sizeof( ImDrawIdx ) ) );
-                        memcpy( &pIB[IBWriteIdx], pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof( ImDrawIdx ) );
+                        memcpy( &pIB[IBWriteIdx], pCmdList->IdxBuffer.Data, (size_t) pCmdList->IdxBuffer.Size * sizeof( ImDrawIdx ) );
                         IBWriteIdx += pCmdList->IdxBuffer.Size;
                     }
 

@@ -5,6 +5,7 @@
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Set.h"
 #include "Base/Types/Optional.h"
+#include "Base/Types/Color.h"
 #include "Base/Encoding/Hash.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Render/RenderShader.h"
@@ -513,10 +514,24 @@ namespace EE::RHI
             return desc;
         }
 
+        static RHIRenderPassAttachmentDesc LoadInput( EPixelFormat pixelFormat )
+        {
+            RHIRenderPassAttachmentDesc desc = TrivialColor( pixelFormat );
+            desc.m_loadOp = ERenderPassAttachmentLoadOp::Load;
+            return desc;
+        }
+
         static RHIRenderPassAttachmentDesc DiscardOutput( EPixelFormat pixelFormat )
         {
             RHIRenderPassAttachmentDesc desc = TrivialColor( pixelFormat );
             desc.m_storeOp = ERenderPassAttachmentStoreOp::DontCare;
+            return desc;
+        }
+
+        static RHIRenderPassAttachmentDesc StoreOutput( EPixelFormat pixelFormat )
+        {
+            RHIRenderPassAttachmentDesc desc = TrivialColor( pixelFormat );
+            desc.m_storeOp = ERenderPassAttachmentStoreOp::Store;
             return desc;
         }
 
@@ -526,6 +541,13 @@ namespace EE::RHI
         ERenderPassAttachmentLoadOp                     m_stencilLoadOp;
         ERenderPassAttachmentStoreOp                    m_stencilStoreOp;
         ESampleCount                                    m_sample = ESampleCount::SC1;
+
+        // Depends on the pixel format
+        
+        Color                                           m_clearColorValue = Colors::Black;
+        // Note: reverse z
+        float                                           m_clearDepthValue = 0.0f;
+        uint32_t                                        m_clearStencilValue = 0u;
     };
 
     struct RHIRenderPassCreateDesc

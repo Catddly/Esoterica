@@ -63,6 +63,29 @@ namespace EE::Render
                         views.push_back( reinterpret_cast<VkImageView>( texView.m_pViewHandle ) );
                     }
 
+                    TFixedVector<VkClearValue, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> clearValues;
+                    for ( auto const& color : pVkRenderPass->m_desc.m_colorAttachments )
+                    {
+                        if ( color.m_loadOp == RHI::ERenderPassAttachmentLoadOp::Clear )
+                        {
+                            Float4 const colorClear = color.m_clearColorValue.ToFloat4();
+
+                            auto& clearValue = clearValues.emplace_back();
+                            clearValue.color.float32[0] = colorClear[0];
+                            clearValue.color.float32[1] = colorClear[1];
+                            clearValue.color.float32[2] = colorClear[2];
+                            clearValue.color.float32[3] = colorClear[3];
+                        }
+                    }
+
+                    if ( pVkRenderPass->m_desc.m_depthAttachment.has_value() && pVkRenderPass->m_desc.m_depthAttachment->m_loadOp == RHI::ERenderPassAttachmentLoadOp::Clear )
+                    {
+                        auto& clearValue = clearValues.emplace_back();
+
+                        clearValue.depthStencil.depth = pVkRenderPass->m_desc.m_depthAttachment->m_clearDepthValue;
+                        clearValue.depthStencil.stencil = pVkRenderPass->m_desc.m_depthAttachment->m_clearStencilValue;
+                    }
+
                     VkRenderPassAttachmentBeginInfo attachmentBeginInfo = {};
                     attachmentBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
                     attachmentBeginInfo.attachmentCount = static_cast<uint32_t>( views.size() );
@@ -74,8 +97,8 @@ namespace EE::Render
                     beginInfo.renderPass = pVkRenderPass->m_pHandle;
                     // Safety: here we make a copy of a VkFramebuffer pointer, so it is safe to write this without having the risk of dangling reference.
                     beginInfo.framebuffer = RHI::RHIDowncast<VulkanFramebuffer>( pFramebuffer )->m_pHandle;
-                    beginInfo.clearValueCount = 0;
-                    beginInfo.pClearValues = nullptr;
+                    beginInfo.clearValueCount = attachmentBeginInfo.attachmentCount;
+                    beginInfo.pClearValues = clearValues.data();
                     beginInfo.renderArea.extent.width = renderArea.m_width;
                     beginInfo.renderArea.extent.height = renderArea.m_height;
                     beginInfo.renderArea.offset.x = renderArea.m_OffsetX;

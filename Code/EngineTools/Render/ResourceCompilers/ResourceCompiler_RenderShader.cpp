@@ -462,13 +462,13 @@ namespace EE::Render
                 {
                     // Note: It is robust? what can we do if we want unorm float?
                     //       We just assume that all these value should be in range [0, 1].
-                    if ( semantic == DataSemantic::Color ||
-                         semantic == DataSemantic::Normal ||
-                         semantic == DataSemantic::Tangent ||
-                         semantic == DataSemantic::BiTangent )
-                    {
-                        return VertexLayoutDescriptor::VertexDataFormat::RGBA8Unorm;
-                    }
+                    //if ( semantic == DataSemantic::Color ||
+                    //     semantic == DataSemantic::Normal ||
+                    //     semantic == DataSemantic::Tangent ||
+                    //     semantic == DataSemantic::BiTangent )
+                    //{
+                    //    return VertexLayoutDescriptor::VertexDataFormat::RGBA8Unorm;
+                    //}
 
                     return VertexLayoutDescriptor::VertexDataFormat::RGBA32Float;
                 }

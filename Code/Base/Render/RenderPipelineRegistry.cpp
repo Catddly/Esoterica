@@ -1,4 +1,5 @@
 #include "RenderPipelineRegistry.h"
+#include "Base/Time/Timers.h"
 #include "Base/Resource/ResourceSystem.h"
 #include "Base/Resource/ResourceRequesterID.h"
 #include "Base/Threading/Threading.h"
@@ -188,16 +189,27 @@ namespace EE::Render
 
         if ( m_pResourceSystem )
         {
+            Timer<PlatformClock> updateLoopTimer;
+
             // TODO: async mode. Now force all shaders loaded before this frame drawing started.
             //       This can prevent some problems brought by the latency. (e.g. some render graph node
             //       wants to execute only once at the frame start, but render graph can NOT execute the commands because
             //       shader is NOT loaded yet. User thought the node is successfully executed and do NOT add it in the next frame.
             //       The message is lost forever and none of them get the valid results. )
+            updateLoopTimer.Start();
             while ( !AreAllRequestedPipelineLoaded() )
             {
                 Network::NetworkSystem::Update();
                 m_pResourceSystem->Update();
                 UpdateLoadedPipelineShaders();
+
+                Seconds elapsedTime = updateLoopTimer.GetElapsedTimeSeconds();
+
+                if ( elapsedTime > 5.0f )
+                {
+                    EE_LOG_WARNING( "Render", "Pipeline Registry", "Very long shader compile time (more than %.3f seconds), force to continue...", 5.0f );
+                    break;
+                }
             }
 
             // TODO: when pipeline registry failed to update pipelines, use old pipelines

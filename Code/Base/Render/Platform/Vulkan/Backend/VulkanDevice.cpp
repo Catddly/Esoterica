@@ -669,6 +669,7 @@ namespace EE::Render
             }
             
             pVkRenderPass->m_desc = createDesc;
+
             return pVkRenderPass;
         }
 
@@ -817,7 +818,7 @@ namespace EE::Render
             depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
             depthStencilState.depthTestEnable = createDesc.m_enableDepthTest;
             depthStencilState.depthWriteEnable = createDesc.m_enableDepthWrite;
-            // Note: Use reverse depth to gain better z-depth precision
+            // Note: Use reverse depth to gain better depth precision
             depthStencilState.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
             depthStencilState.front = stencilOpState;
             depthStencilState.back = stencilOpState;

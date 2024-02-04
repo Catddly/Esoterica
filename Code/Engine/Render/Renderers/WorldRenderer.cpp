@@ -63,7 +63,7 @@ namespace EE::Render
         Matrix viewProjMatrix = lightViewVolume.GetViewProjectionMatrix();
         Matrix viewMatrix = lightViewVolume.GetViewMatrix();
         Matrix projMatrix = lightViewVolume.GetProjectionMatrix();
-        Matrix viewProj = lightViewVolume.GetViewProjectionMatrix(); // TODO: inverse z???
+        Matrix viewProj = lightViewVolume.GetViewProjectionMatrix();
         return viewProj;
     }
 
@@ -342,7 +342,7 @@ namespace EE::Render
         if ( !m_pShadowRenderPass )
         {
             RHI::RHIRenderPassCreateDesc renderPassDesc;
-            renderPassDesc.m_depthAttachment = RHI::RHIRenderPassAttachmentDesc::UselessInput( RHI::EPixelFormat::Depth32 );
+            renderPassDesc.m_depthAttachment = RHI::RHIRenderPassAttachmentDesc::ClearInput( RHI::EPixelFormat::Depth32 );
             m_pShadowRenderPass = m_pRenderDevice->GetRHIDevice()->CreateRenderPass( renderPassDesc );
 
             if ( !m_pShadowRenderPass )
@@ -1258,9 +1258,9 @@ namespace EE::Render
         auto dirShadowMapResource = renderGraph.GetOrCreateNamedResource( "Directional Light Shadow Map", dirShadowMapDesc );
 
         // clear depth stencil
-        {
-            AddClearDepthStencilNode( renderGraph, dirShadowMapResource );
-        }
+        //{
+        //    AddClearDepthStencilNode( renderGraph, dirShadowMapResource );
+        //}
 
         auto transformUniformBufferDesc = RG::BufferDesc::NewUniformBuffer( sizeof( ObjectTransforms ) );
         // TODO: extract common pattern
@@ -1280,7 +1280,7 @@ namespace EE::Render
             RHI::RHIRasterPipelineStateCreateDesc rasterPipelineDesc = {};
             rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/engine/StaticPrimitive.vsdr" ) ) );
             rasterPipelineDesc.AddShader( RHI::RHIPipelineShader( ResourcePath( "data://shaders/engine/Empty.psdr" ) ) );
-            rasterPipelineDesc.SetRasterizerState( RHI::RHIPipelineRasterizerState{} );
+            rasterPipelineDesc.SetRasterizerState( RHI::RHIPipelineRasterizerState::EngineDefault() );
             rasterPipelineDesc.SetBlendState( RHI::RHIPipelineBlendState::NoBlend() );
             rasterPipelineDesc.SetRenderPass( m_pShadowRenderPass );
             rasterPipelineDesc.DepthTest( true );
