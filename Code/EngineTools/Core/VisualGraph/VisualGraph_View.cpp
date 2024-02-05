@@ -1409,8 +1409,14 @@ namespace EE::VisualGraph
 
         //-------------------------------------------------------------------------
 
+        char const* pClipboardText = ImGui::GetClipboardText();
+        if ( pClipboardText == nullptr )
+        {
+            return;
+        }
+
         Serialization::JsonArchiveReader archive;
-        if ( !archive.ReadFromString( ImGui::GetClipboardText() ) )
+        if ( !archive.ReadFromString( pClipboardText ) )
         {
             return;
         }
@@ -2024,7 +2030,10 @@ namespace EE::VisualGraph
                 }
                 else
                 {
-                    m_pGraph->OnDoubleClick( m_pUserContext );
+                    if ( m_pGraph != nullptr )
+                    {
+                        m_pGraph->OnDoubleClick( m_pUserContext );
+                    }
                 }
 
                 m_requestFocus = true;
@@ -2441,7 +2450,7 @@ namespace EE::VisualGraph
 
             if ( !m_isReadOnly )
             {
-                ImGuiX::TextSeparator( "Connections" );
+                ImGui::SeparatorText( "Connections" );
 
                 // Dynamic Pins
                 if ( pFlowNode->SupportsUserEditableDynamicInputPins() )
@@ -2471,7 +2480,7 @@ namespace EE::VisualGraph
 
             if ( !m_isReadOnly )
             {
-                ImGuiX::TextSeparator( "Node" );
+                ImGui::SeparatorText( "Node" );
 
                 if ( ImGui::BeginMenu( EE_ICON_IDENTIFIER" Node ID" ) )
                 {

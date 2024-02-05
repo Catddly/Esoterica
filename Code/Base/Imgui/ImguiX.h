@@ -15,7 +15,7 @@
 
 //-------------------------------------------------------------------------
 
-namespace EE::Render { class Texture; class Viewport; }
+namespace EE::Render { class Viewport; }
 namespace EE::RHI { class RHIDevice; class RHITexture; }
 
 //-------------------------------------------------------------------------
@@ -58,13 +58,7 @@ namespace EE::ImGuiX
     }
 
     // Display a modal popup that is restricted to the current window's viewport
-    inline bool BeginViewportPopupModal( char const* pPopupName, bool* pIsPopupOpen, ImVec2 const& size = ImVec2( -1, -1 ), ImGuiCond windowSizeCond = ImGuiCond_Always, ImGuiWindowFlags windowFlags = ( ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize ) )
-    {
-        ImGui::OpenPopup( pPopupName );
-        ImGui::SetNextWindowSize( size, windowSizeCond );
-        ImGui::SetNextWindowViewport( ImGui::GetWindowViewport()->ID );
-        return ImGui::BeginPopupModal( pPopupName, pIsPopupOpen, windowFlags );
-    }
+    EE_BASE_API bool BeginViewportPopupModal( char const* pPopupName, bool* pIsPopupOpen, ImVec2 const& size = ImVec2( 0, 0 ), ImGuiCond windowSizeCond = ImGuiCond_Always, ImGuiWindowFlags windowFlags = ( ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize ) );
 
     // Cancels an option dialog via ESC
     inline bool CancelDialogViaEsc( bool isDialogOpen )
@@ -79,14 +73,17 @@ namespace EE::ImGuiX
     }
 
     //-------------------------------------------------------------------------
-    // Separators
+    // Layout and Separators
     //-------------------------------------------------------------------------
 
-    // Create a labeled separator: --- TEXT ---------------
-    EE_BASE_API void TextSeparator( char const* text, float preWidth = 10.0f, float desiredWidth = 0 );
-
     // Same as the Imgui::SameLine except it also draws a vertical separator.
-    EE_BASE_API void SameLineSeparator( float width = 0, Color const& color = 0 );
+    EE_BASE_API void SameLineSeparator( float width = 0, Color const& color = Colors::Transparent );
+
+    // Create a collapsible framed child window - Must always call EndCollapsibleChildWindow if you call begin child window
+    EE_BASE_API bool BeginCollapsibleChildWindow( char const* pLabelAndID, bool initiallyOpen = true, Color const& backgroundColor = ImGuiX::Style::s_colorGray7 );
+
+    // End a collapsible framed child window - must always be called if you call begin child window to match ImGui child window behavior
+    EE_BASE_API void EndCollapsibleChildWindow();
 
     //-------------------------------------------------------------------------
     // Basic Widgets
@@ -120,7 +117,7 @@ namespace EE::ImGuiX
     EE_FORCE_INLINE bool FlatButtonColored( Color const& foregroundColor, char const* label, ImVec2 const& size = ImVec2( 0, 0 ) )
     {
         ImGui::PushStyleColor( ImGuiCol_Button, 0 );
-        ImGui::PushStyleColor( ImGuiCol_Text, foregroundColor );
+        ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( foregroundColor ) );
         bool const result = ImGui::Button( label, size );
         ImGui::PopStyleColor( 2 );
 
@@ -139,6 +136,9 @@ namespace EE::ImGuiX
     // Toggle button
     EE_BASE_API bool FlatToggleButton( char const* pOnLabel, char const* pOffLabel, bool& value, ImVec2 const& size = ImVec2( 0, 0 ), Color const& onColor = ImGuiX::Style::s_colorAccent0, Color const& offColor = ImGui::ColorConvertFloat4ToU32( ImGui::GetStyle().Colors[ImGuiCol_Text] ) );
 
+    // Button that creates a drop down menu once clicked
+    EE_BASE_API void DropDownButton( char const* pLabel, TFunction<void()> const& contextMenuCallback, ImVec2 const& size = ImVec2( 0, 0 ) );
+
     // Draw an arrow between two points
     EE_BASE_API void DrawArrow( ImDrawList* pDrawList, ImVec2 const& arrowStart, ImVec2 const& arrowEnd, Color const& color, float arrowWidth, float arrowHeadWidth = 5.0f );
 
@@ -146,15 +146,21 @@ namespace EE::ImGuiX
     EE_BASE_API bool DrawOverlayIcon( ImVec2 const& iconPos, char icon[4], void* iconID, bool isSelected = false, Color const& selectedColor = ImGui::ColorConvertFloat4ToU32( ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] ) );
 
     // Draw a basic spinner
-    EE_BASE_API bool DrawSpinner( char const* pLabel, Color const& color = ImGui::ColorConvertFloat4ToU32( ImGui::GetStyle().Colors[ImGuiCol_Text] ), float radius = 6.0f, float thickness = 3.0f );
+    EE_BASE_API bool DrawSpinner( char const* pLabel, Color const& color = ImGui::ColorConvertFloat4ToU32( ImGui::GetStyle().Colors[ImGuiCol_Text] ), ImVec2 size = ImVec2( 0, 0 ), float thickness = 3.0f, float padding = ImGui::GetStyle().FramePadding.y );
 
     //-------------------------------------------------------------------------
 
-    EE_BASE_API bool InputFloat2( char const* pID, Float2& value, float width = -1, bool readOnly = false );
-    EE_BASE_API bool InputFloat3( char const* pID, Float3& value, float width = -1, bool readOnly = false );
-    EE_BASE_API bool InputFloat4( char const* pID, Float4& value, float width = -1, bool readOnly = false );
+    EE_BASE_API bool InputFloat2( char const* pID, Float2& value, float width = -1 );
+    EE_BASE_API bool InputFloat3( char const* pID, Float3& value, float width = -1 );
+    EE_BASE_API bool InputFloat4( char const* pID, Float4& value, float width = -1 );
 
-    EE_BASE_API bool InputTransform( char const* pID, Transform& value, float width = -1, bool readOnly = false );
+    EE_BASE_API bool InputTransform( char const* pID, Transform& value, float width = -1 );
+
+    EE_BASE_API void DrawFloat2( Float2 const& value, float width = -1 );
+    EE_BASE_API void DrawFloat3( Float3 const& value, float width = -1 );
+    EE_BASE_API void DrawFloat4( Float4 const& value, float width = -1 );
+
+    EE_BASE_API void DrawTransform( Transform const& value, float width = -1 );
 
     //-------------------------------------------------------------------------
 
@@ -183,31 +189,14 @@ namespace EE::ImGuiX
     // Images
     //-------------------------------------------------------------------------
 
-    struct ImageInfo
+    EE_FORCE_INLINE void Image( ImTextureID imageID, ImVec2 const& size, ImVec2 const& uv0 = ImVec2( 0, 0 ), ImVec2 const& uv1 = ImVec2( 1, 1 ), Color const& tintColor = Colors::White, Color const& borderColor = Colors::Transparent )
     {
-        inline bool IsValid() const { return m_ID != 0; }
-
-    public:
-
-        ImTextureID             m_ID = 0;
-        RHI::RHITexture*        m_pTexture = nullptr;
-        ImVec2                  m_size = ImVec2( 0, 0 );
-    };
-
-    EE_BASE_API ImTextureID ToIm( RHI::RHITexture const* pTexture, RHI::RHITextureViewCreateDesc const& viewDesc = {} );
-
-    EE_BASE_API ImTextureID ToIm( Render::Texture const& texture );
-
-    //EE_BASE_API ImTextureID ToIm( Render::Texture const* pTexture );
-
-    EE_FORCE_INLINE void Image( ImageInfo const& img, ImVec2 const& uv0 = ImVec2( 0, 0 ), ImVec2 const& uv1 = ImVec2( 1, 1 ), Color const& tintColor = Colors::White, Color const& borderColor = Colors::Transparent )
-    {
-        ImGui::Image( img.m_ID, img.m_size, uv0, uv1, ImGui::ColorConvertU32ToFloat4( tintColor ), ImGui::ColorConvertU32ToFloat4( borderColor ) );
+        ImGui::Image( imageID, size, uv0, uv1, ImVec4( tintColor ), ImVec4( borderColor ) );
     }
 
-    EE_FORCE_INLINE void ImageButton( char const* pButtonID, ImageInfo const& img, ImVec2 const& uv0 = ImVec2( 0, 0 ), ImVec2 const& uv1 = ImVec2( 1, 1 ), Color const& backgroundColor = Colors::Transparent, Color const& tintColor = Colors::White )
+    EE_FORCE_INLINE void ImageButton( char const* pButtonID, ImTextureID imageID, ImVec2 const& size, ImVec2 const& uv0 = ImVec2( 0, 0 ), ImVec2 const& uv1 = ImVec2( 1, 1 ), Color const& backgroundColor = Colors::Transparent, Color const& tintColor = Colors::White )
     {
-        ImGui::ImageButton( pButtonID, img.m_ID, img.m_size, uv0, uv1, ImGui::ColorConvertU32ToFloat4( backgroundColor ), ImGui::ColorConvertU32ToFloat4( tintColor ) );
+        ImGui::ImageButton( pButtonID, imageID, size, uv0, uv1, ImVec4( backgroundColor ), ImVec4( tintColor ) );
     }
 
     //-------------------------------------------------------------------------

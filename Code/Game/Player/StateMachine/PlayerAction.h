@@ -2,6 +2,7 @@
 #include "Base/Encoding/Hash.h"
 #include "Game/Player/Animation/PlayerAnimationController.h"
 #include "Engine/Entity/EntityWorldUpdateContext.h"
+#include "Engine/Input/VirtualInputRegistry.h"
 
 #if EE_DEVELOPMENT_TOOLS
 #include "imgui.h"
@@ -13,7 +14,7 @@ namespace EE
 {
     class EntityComponent;
     namespace Physics { class CharacterComponent; class PhysicsWorld; }
-    namespace Input { class InputState; }
+    namespace Input { class InputSystem; }
     namespace Animation { class GraphController; }
 }
 
@@ -57,7 +58,6 @@ namespace EE::Player
         EE_FORCE_INLINE Seconds GetDeltaTime() const { return m_pEntityWorldUpdateContext->GetDeltaTime(); }
         template<typename T> inline T* GetWorldSystem() const { return m_pEntityWorldUpdateContext->GetWorldSystem<T>(); }
         template<typename T> inline T* GetSystem() const { return m_pEntityWorldUpdateContext->GetSystem<T>(); }
-        template<typename T> inline T* GetAnimSubGraphController() const { return m_pAnimationController->GetSubGraphController<T>(); }
 
         #if EE_DEVELOPMENT_TOOLS
         Drawing::DrawContext GetDrawingContext() const;
@@ -66,7 +66,8 @@ namespace EE::Player
     public:
 
         EntityWorldUpdateContext const*             m_pEntityWorldUpdateContext = nullptr;
-        Input::InputState const*                    m_pInputState = nullptr;
+        Input::InputSystem const*                   m_pInputSystem = nullptr; // REMOVE ONCE ALL CODE HAS BEEN REFACTORED
+        Input::VirtualInputRegistry*                m_pInputRegistry = nullptr;
         Physics::PhysicsWorld*                      m_pPhysicsWorld = nullptr;
 
         MainPlayerComponent*                        m_pPlayerComponent = nullptr;

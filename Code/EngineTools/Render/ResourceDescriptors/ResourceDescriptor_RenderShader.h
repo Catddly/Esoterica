@@ -42,12 +42,18 @@ namespace EE::Render
 
         virtual bool IsValid() const override { return m_shaderPath.IsValid(); }
 
-        virtual void GetCompileDependencies( TVector<ResourceID>& outDependencies ) override
+        virtual void GetCompileDependencies( TVector<ResourcePath>& outDependencies ) override
         {
             if ( m_shaderPath.IsValid() )
             {
                 outDependencies.emplace_back( m_shaderPath );
             }
+        }
+
+        virtual void Clear() override
+        {
+            m_shaderType = ShaderType::Vertex;
+            m_shaderPath.Clear();
         }
 
     public:

@@ -7,7 +7,7 @@
 
 namespace EE::Animation::GraphNodes
 {
-    void StateNode::Settings::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
+    void StateNode::Definition::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
     {
         auto pNode = CreateNode<StateNode>( context, options );
         context.SetOptionalNodePtrFromIndex( m_childNodeIdx, pNode->m_pChildNode );
@@ -70,7 +70,7 @@ namespace EE::Animation::GraphNodes
     void StateNode::ShutdownInternal( GraphContext& context )
     {
         EE_ASSERT( context.IsValid() );
-        auto pStateSettings = GetSettings<StateNode>();
+        auto pStateDefinition = GetDefinition<StateNode>();
 
         //-------------------------------------------------------------------------
 
@@ -106,10 +106,10 @@ namespace EE::Animation::GraphNodes
         m_transitionState = TransitionState::TransitioningOut;
 
         // Since we update states before we register transitions, we need to ignore all previously sampled state events for this frame
-        context.m_sampledEventsBuffer.MarkOnlyStateEventsAsIgnored( m_sampledEventRange );
+        context.m_pSampledEventsBuffer->MarkOnlyStateEventsAsIgnored( m_sampledEventRange );
 
         // Since we update states before we register transitions, we need to mark all previous events as from the inactive branch
-        context.m_sampledEventsBuffer.MarkEventsAsFromInactiveBranch( m_sampledEventRange );
+        context.m_pSampledEventsBuffer->MarkEventsAsFromInactiveBranch( m_sampledEventRange );
 
         // Resample state events
         SampleStateEvents( context );
@@ -120,7 +120,7 @@ namespace EE::Animation::GraphNodes
     void StateNode::SampleStateEvents( GraphContext& context )
     {
         EE_ASSERT( context.IsValid() );
-        auto pStateSettings = GetSettings<StateNode>();
+        auto pStateDefinition = GetDefinition<StateNode>();
 
         // Sample Fixed Stage Events
         //-------------------------------------------------------------------------
@@ -129,23 +129,35 @@ namespace EE::Animation::GraphNodes
 
         if ( m_isFirstStateUpdate || ( m_transitionState == TransitionState::TransitioningIn && isInActiveBranch ) )
         {
-            for ( auto const& entryEventID : pStateSettings->m_entryEvents )
+            for ( auto const& entryEventID : pStateDefinition->m_entryEvents )
             {
-                context.m_sampledEventsBuffer.EmplaceStateEvent( GetNodeIndex(), StateEventType::Entry, entryEventID, isInActiveBranch );
+                SampledEvent& evt = context.m_pSampledEventsBuffer->EmplaceStateEvent( StateEventType::Entry, entryEventID, isInActiveBranch );
+
+                #if EE_DEVELOPMENT_TOOLS
+                evt.SetSourceNodeIndex( GetNodeIndex() );
+                #endif
             }
         }
         else if ( m_transitionState == TransitionState::None && isInActiveBranch )
         {
-            for ( auto const& executeEventID : pStateSettings->m_executeEvents )
+            for ( auto const& executeEventID : pStateDefinition->m_executeEvents )
             {
-                context.m_sampledEventsBuffer.EmplaceStateEvent( GetNodeIndex(), StateEventType::FullyInState, executeEventID, isInActiveBranch );
+                SampledEvent& evt = context.m_pSampledEventsBuffer->EmplaceStateEvent( StateEventType::FullyInState, executeEventID, isInActiveBranch );
+
+                #if EE_DEVELOPMENT_TOOLS
+                evt.SetSourceNodeIndex( GetNodeIndex() );
+                #endif
             }
         }
         else if ( m_transitionState == TransitionState::TransitioningOut || !isInActiveBranch )
         {
-            for ( auto const& exitEventID : pStateSettings->m_exitEvents )
+            for ( auto const& exitEventID : pStateDefinition->m_exitEvents )
             {
-                context.m_sampledEventsBuffer.EmplaceStateEvent( GetNodeIndex(), StateEventType::Exit, exitEventID, isInActiveBranch );
+                SampledEvent& evt = context.m_pSampledEventsBuffer->EmplaceStateEvent( StateEventType::Exit, exitEventID, isInActiveBranch );
+
+                #if EE_DEVELOPMENT_TOOLS
+                evt.SetSourceNodeIndex( GetNodeIndex() );
+                #endif
             }
         }
 
@@ -153,26 +165,34 @@ namespace EE::Animation::GraphNodes
         //-------------------------------------------------------------------------
 
         Seconds const currentTimeElapsed( m_duration * m_currentTime.ToFloat() );
-        for ( auto const& timedEvent : pStateSettings->m_timedElapsedEvents )
+        for ( auto const& timedEvent : pStateDefinition->m_timedElapsedEvents )
         {
             if ( currentTimeElapsed >= timedEvent.m_timeValue )
             {
-                context.m_sampledEventsBuffer.EmplaceStateEvent( GetNodeIndex(), StateEventType::Timed, timedEvent.m_ID, isInActiveBranch );
+                SampledEvent& evt = context.m_pSampledEventsBuffer->EmplaceStateEvent( StateEventType::Timed, timedEvent.m_ID, isInActiveBranch );
+
+                #if EE_DEVELOPMENT_TOOLS
+                evt.SetSourceNodeIndex( GetNodeIndex() );
+                #endif
             }
         }
 
         Seconds const currentTimeRemaining = ( 1.0f - m_currentTime ) * m_duration;
-        for ( auto const& timedEvent : pStateSettings->m_timedRemainingEvents )
+        for ( auto const& timedEvent : pStateDefinition->m_timedRemainingEvents )
         {
             if ( currentTimeRemaining <= timedEvent.m_timeValue )
             {
-                context.m_sampledEventsBuffer.EmplaceStateEvent( GetNodeIndex(), StateEventType::Timed, timedEvent.m_ID, isInActiveBranch );
+                SampledEvent& evt = context.m_pSampledEventsBuffer->EmplaceStateEvent( StateEventType::Timed, timedEvent.m_ID, isInActiveBranch );
+
+                #if EE_DEVELOPMENT_TOOLS
+                evt.SetSourceNodeIndex( GetNodeIndex() );
+                #endif
             }
         }
 
         //-------------------------------------------------------------------------
 
-        m_sampledEventRange.m_endIdx = context.m_sampledEventsBuffer.GetNumSampledEvents();
+        m_sampledEventRange.m_endIdx = context.m_pSampledEventsBuffer->GetNumSampledEvents();
     }
 
     void StateNode::UpdateLayerContext( GraphContext& context )
@@ -188,8 +208,8 @@ namespace EE::Animation::GraphNodes
         // Update layer weights
         //-------------------------------------------------------------------------
 
-        auto pStateSettings = GetSettings<StateNode>();
-        if ( pStateSettings->m_isOffState )
+        auto pStateDefinition = GetDefinition<StateNode>();
+        if ( pStateDefinition->m_isOffState )
         {
             context.m_pLayerContext->m_layerWeight = 0.0f;
             context.m_pLayerContext->m_rootMotionLayerWeight = 0.0f;

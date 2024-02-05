@@ -5,25 +5,65 @@
 
 namespace EE
 {
-    static size_t FindExtensionStartIdx( String const& path )
+    struct SubResourcePathUtils
     {
-        size_t const pathDelimiterIdx = path.find_last_of( ResourcePath::s_pathDelimiter );
+        inline bool IsValid() const { return !m_parentExtension.empty() && m_parentExtension.length() <= 4; }
 
-        size_t idx = path.rfind( '.' );
-        size_t prevIdx = idx;
-        while ( idx != String::npos && idx > pathDelimiterIdx )
+        bool DecomposePathString( String const& pathStr )
         {
-            prevIdx = idx;
-            idx = path.rfind( '.', idx - 1 );
+            // Check for path delimiter
+            m_lastPathDelimiterIndex = pathStr.rfind( ResourcePath::s_pathDelimiter );
+            if ( m_lastPathDelimiterIndex == String::npos )
+            {
+                return false;
+            }
+
+            // Check for directory path
+            if ( m_lastPathDelimiterIndex == pathStr.length() - 1 )
+            {
+                return false;
+            }
+
+            // If we found a parent, create the substring for it and get the extension
+            m_parentPath = InlineString( pathStr.c_str(), m_lastPathDelimiterIndex );
+            m_childResourceFilename = &pathStr[m_lastPathDelimiterIndex + 1];
+            size_t const extIdx = FileSystem::FindExtensionStartIdx( m_parentPath.c_str(), ResourcePath::s_pathDelimiter );
+
+            // If no extension found, parent is likely a directory
+            if ( extIdx == String::npos )
+            {
+                return false;
+            }
+
+            // Ensure extension is less than 4 characters since resource types use a 4CC type ID
+            m_parentExtension = InlineString( &m_parentPath[extIdx] );
+            return IsValid();
         }
 
-        if ( prevIdx != String::npos )
+        void GenerateFilePath( String& outPath )
         {
-            prevIdx++;
+            EE_ASSERT( IsValid() );
+
+            size_t const parentPathPortionLength = m_parentPath.length() - m_parentExtension.length() - 1; // parent length without extension and delimiter
+            outPath.resize( parentPathPortionLength + m_childResourceFilename.length() + 1 ); // Add back delimiter and child resource name
+
+            // Copy parent path without extension and null terminator
+            memcpy( outPath.data(), m_parentPath.data(), ( parentPathPortionLength ) * sizeof( m_parentPath[0] ) );
+
+            // Set delimiter
+            outPath[parentPathPortionLength] = ResourcePath::s_subResourceFilePathDelimiter;
+
+            // Copy child resource name with null terminator
+            memcpy( outPath.data() + parentPathPortionLength + 1, m_childResourceFilename.data(), m_childResourceFilename.length() * sizeof( m_parentPath[0] ) );
         }
 
-        return prevIdx;
-    }
+    public:
+
+        InlineString    m_parentPath;
+        InlineString    m_parentExtension;
+        InlineString    m_childResourceFilename;
+        size_t          m_lastPathDelimiterIndex = String::npos;
+    };
 
     //-------------------------------------------------------------------------
 
@@ -71,11 +111,24 @@ namespace EE
     {
         EE_ASSERT( rawResourceDirectoryPath.IsValid() && rawResourceDirectoryPath.IsDirectoryPath() && resourcePath.IsValid() );
 
+        //-------------------------------------------------------------------------
+
         // Replace slashes and remove prefix
         String tempPath( rawResourceDirectoryPath );
         tempPath += resourcePath.m_path.substr( 7 );
-        eastl::replace( tempPath.begin(), tempPath.end(), ResourcePath::s_pathDelimiter, FileSystem::Settings::s_pathDelimiter );
 
+        // Check if it's a sub-resource path
+        if ( resourcePath.IsFile() )
+        {
+            SubResourcePathUtils spu;
+            if ( spu.DecomposePathString( tempPath ) )
+            {
+                spu.GenerateFilePath( tempPath );
+            }
+        }
+
+        // Finalize path
+        eastl::replace( tempPath.begin(), tempPath.end(), ResourcePath::s_pathDelimiter, FileSystem::Settings::s_pathDelimiter );
         FileSystem::GetCorrectCaseForPath( tempPath.c_str(), tempPath );
 
         return FileSystem::Path( tempPath );
@@ -166,7 +219,7 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        size_t extStartIdx = FindExtensionStartIdx( m_path );
+        size_t extStartIdx = FileSystem::FindExtensionStartIdx( m_path, ResourcePath::s_pathDelimiter );
         if ( extStartIdx != String::npos )
         {
             return m_path.substr( filenameStartIdx, extStartIdx - filenameStartIdx - 1 );
@@ -231,11 +284,32 @@ namespace EE
         return pathDepth;
     }
 
+    bool ResourcePath::IsSubResourcePath() const
+    {
+        EE_ASSERT( IsValid() );
+        SubResourcePathUtils spu;
+        return spu.DecomposePathString( m_path );
+    }
+
+    ResourcePath ResourcePath::GetParentResourcePath() const
+    {
+        EE_ASSERT( IsValid() );
+
+        ResourcePath parentResourcePath;
+        SubResourcePathUtils spu;
+        if ( spu.DecomposePathString( m_path ) )
+        {
+            parentResourcePath = ResourcePath( spu.m_parentPath.c_str() );
+        }
+
+        return parentResourcePath;
+    }
+
     char const* ResourcePath::GetExtension() const
     {
         EE_ASSERT( IsValid() && IsFile() );
 
-        size_t const extIdx = FindExtensionStartIdx( m_path.c_str() );
+        size_t const extIdx = FileSystem::FindExtensionStartIdx( m_path.c_str(), ResourcePath::s_pathDelimiter );
         if ( extIdx != String::npos )
         {
             return &m_path.c_str()[extIdx];
@@ -251,7 +325,7 @@ namespace EE
         EE_ASSERT( IsValid() && IsFile() && pExtension != nullptr );
         EE_ASSERT( pExtension[0] != 0 && pExtension[0] != '.' );
 
-        size_t const extIdx = FindExtensionStartIdx( m_path.c_str() );
+        size_t const extIdx = FileSystem::FindExtensionStartIdx( m_path.c_str(), ResourcePath::s_pathDelimiter );
         if ( extIdx != String::npos )
         {
             m_path = m_path.substr( 0, extIdx ) + pExtension;

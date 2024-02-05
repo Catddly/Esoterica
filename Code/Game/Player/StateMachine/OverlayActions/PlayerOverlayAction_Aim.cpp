@@ -1,7 +1,6 @@
 #include "PlayerOverlayAction_Aim.h"
 #include "Engine/Physics/Components/Component_PhysicsCharacter.h"
 #include "Game/Player/Animation/PlayerAnimationController.h"
-#include "Game/Player/Animation/PlayerGraphController_Weapon.h"
 #include "Game/Player/Camera/PlayerCameraController.h"
 #include "Base/Input/InputSystem.h"
 
@@ -11,7 +10,7 @@ namespace EE::Player
 {
     bool AimOverlayAction::TryStartInternal( ActionContext const& ctx )
     {
-        if ( ctx.m_pInputState->GetControllerState()->GetLeftTriggerValue() >= 0.2f )
+        if ( ctx.m_pInputSystem->GetController()->GetValue( Input::InputID::Controller_LeftTrigger ) >= 0.2f )
         {
             return true;
         }
@@ -21,21 +20,19 @@ namespace EE::Player
 
     Action::Status AimOverlayAction::UpdateInternal( ActionContext const& ctx )
     {
-        auto pWeaponController = ctx.GetAnimSubGraphController<WeaponGraphController>();
-
-        if ( !pWeaponController->IsWeaponDrawn() )
+        if ( !ctx.m_pAnimationController->IsWeaponDrawn() )
         {
-            pWeaponController->DrawWeapon();
+            ctx.m_pAnimationController->DrawWeapon();
         }
         else
         {
             Vector const aimTargetWS = ctx.m_pCameraController->GetCameraPosition() + ctx.m_pCameraController->GetCameraRelativeForwardVector() * 10.0f;
-            pWeaponController->Aim( aimTargetWS );
+            ctx.m_pAnimationController->AimWeapon( aimTargetWS );
         }
 
         //-------------------------------------------------------------------------
 
-        if ( ctx.m_pInputState->GetControllerState()->GetLeftTriggerValue() < 0.2f )
+        if ( ctx.m_pInputSystem->GetController()->GetValue( Input::InputID::Controller_LeftTrigger ) < 0.2f )
         {
             return Status::Completed;
         }
@@ -45,7 +42,6 @@ namespace EE::Player
 
     void AimOverlayAction::StopInternal( ActionContext const& ctx, StopReason reason )
     {
-        auto pWeaponController = ctx.GetAnimSubGraphController<WeaponGraphController>();
-        pWeaponController->HolsterWeapon();
+        ctx.m_pAnimationController->HolsterWeapon();
     }
 }

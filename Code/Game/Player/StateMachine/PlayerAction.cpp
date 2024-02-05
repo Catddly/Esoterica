@@ -10,7 +10,7 @@ namespace EE::Player
 {
     ActionContext::~ActionContext()
     {
-        EE_ASSERT( m_pEntityWorldUpdateContext == nullptr && m_pInputState == nullptr && m_pPhysicsWorld == nullptr );
+        EE_ASSERT( m_pEntityWorldUpdateContext == nullptr && m_pInputSystem == nullptr && m_pPhysicsWorld == nullptr );
         EE_ASSERT( m_pCharacterComponent == nullptr );
         EE_ASSERT( m_pPlayerComponent == nullptr && m_pAnimationController == nullptr && m_pCameraController == nullptr );
     }
@@ -28,12 +28,12 @@ namespace EE::Player
         }
 
 
-        if ( m_pAnimationController == nullptr || !m_pAnimationController->HasSubGraphControllers() )
+        if ( m_pAnimationController == nullptr )
         {
             return false;
         }
 
-        return m_pEntityWorldUpdateContext != nullptr && m_pCameraController != nullptr && m_pInputState != nullptr && m_pPhysicsWorld != nullptr;
+        return m_pEntityWorldUpdateContext != nullptr && m_pCameraController != nullptr && m_pInputSystem != nullptr && m_pPhysicsWorld != nullptr;
     }
 
     #if EE_DEVELOPMENT_TOOLS

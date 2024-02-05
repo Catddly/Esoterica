@@ -14,6 +14,7 @@ namespace EE::Animation
     class GraphInstance;
     class TaskSystem;
     class RootMotionDebugger;
+    struct SampledEventDebugPath;
 
     //-------------------------------------------------------------------------
 
@@ -39,9 +40,9 @@ namespace EE::Animation
         static void DrawGraphActiveTasksDebugView( GraphInstance* pGraphInstance );
         static void DrawGraphActiveTasksDebugView( TaskSystem* pTaskSystem );
         static void DrawRootMotionDebugView( GraphInstance* pGraphInstance );
-        static void DrawSampledAnimationEventsView( GraphInstance* pGraphInstance );
-        static void DrawSampledStateEventsView( GraphInstance* pGraphInstance );
-        static void DrawCombinedSampledEventsView( GraphInstance* pGraphInstance );
+        static void DrawSampledAnimationEventsView( GraphInstance* pGraphInstance, TFunction<void( SampledEventDebugPath const& )> const& navigateToNodeFunc = TFunction<void( SampledEventDebugPath const& )>() );
+        static void DrawSampledStateEventsView( GraphInstance* pGraphInstance, TFunction<void( SampledEventDebugPath const&)> const& navigateToNodeFunc = TFunction<void( SampledEventDebugPath const& )>() );
+        static void DrawCombinedSampledEventsView( GraphInstance* pGraphInstance, TFunction<void( SampledEventDebugPath const& )> const& navigateToNodeFunc = TFunction<void( SampledEventDebugPath const& )>() );
 
     private:
 

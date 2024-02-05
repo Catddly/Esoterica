@@ -20,7 +20,7 @@ namespace EE
     {
     public:
 
-        static EE::TypeSystem::TypeInfo const* s_pTypeInfo;
+        inline static EE::TypeSystem::TypeInfo const* s_pTypeInfo = nullptr;
 
     public:
 
@@ -33,7 +33,13 @@ namespace EE
         virtual EE::TypeSystem::TypeInfo const* GetTypeInfo() const = 0;
         virtual EE::TypeSystem::TypeID GetTypeID() const = 0;
 
+        //-------------------------------------------------------------------------
+
         #if EE_DEVELOPMENT_TOOLS
+        // Called before a property is changed via a property grid or other similar system
+        virtual void PrePropertyEdit( TypeSystem::PropertyInfo const* pPropertyEdited ) {}
+
+        // Called after a property is changed via a property grid or other similar system
         virtual void PostPropertyEdit( TypeSystem::PropertyInfo const* pPropertyEdited ) {}
         #endif
     };
@@ -106,7 +112,7 @@ namespace EE
         friend EE::TypeSystem::TypeInfo;\
         template<typename T> friend class EE::TypeSystem::TTypeInfo;\
         public: \
-        static EE::TypeSystem::TypeInfo const* s_pTypeInfo; \
+        inline static EE::TypeSystem::TypeInfo const* s_pTypeInfo = nullptr; \
         static EE::TypeSystem::TypeID GetStaticTypeID() { EE_ASSERT( s_pTypeInfo != nullptr ); return TypeName::s_pTypeInfo->m_ID; }\
         virtual EE::TypeSystem::TypeInfo const* GetTypeInfo() const override { EE_ASSERT( TypeName::s_pTypeInfo != nullptr ); return TypeName::s_pTypeInfo; }\
         virtual EE::TypeSystem::TypeID GetTypeID() const override { EE_ASSERT( TypeName::s_pTypeInfo != nullptr ); return TypeName::s_pTypeInfo->m_ID; }\
@@ -117,7 +123,8 @@ namespace EE
 // Currently Supported Meta Data:
 // * "Category" : "Lorem Ipsum" - Create a category for this property
 // * "Description" : "Lorem Ipsum" - Provides tooltip help text for this property
-// * "IsToolsReadOnly" : "true/false" - Allows the tools to edit this property, by default all properties are writable
+// * "IsToolsReadOnly" : true/false - Allows the tools to edit this property, by default all properties are writable
+// * "ShowAsStaticArray" : true/false - Removes the resizing controls from a dynamic array
 // * "CustomEditor" : "MyEditorID" - Allows for a custom editor to be used in the property grid without creating a new type
 #define EE_REFLECT( ... )
 

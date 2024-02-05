@@ -1,13 +1,13 @@
 #pragma once
 
 #include "RenderingSystem.h"
-#include "Engine/ToolsUI/IDevelopmentToolsUI.h"
-#include "Base/Types/Function.h"
-#include "Base/Render/RenderPipelineRegistry.h"
-#include "Engine/UpdateContext.h"
-
-#include "Engine/_Module/EngineModule.h"
+#include "Base/_Module/BaseModule.h"
 #include "Game/_Module/GameModule.h"
+#include "Engine/_Module/EngineModule.h"
+#include "Engine/ToolsUI/IDevelopmentToolsUI.h"
+#include "Engine/UpdateContext.h"
+#include "Base/Render/RenderPipelineRegistry.h"
+#include "Base/Types/Function.h"
 
 //-------------------------------------------------------------------------
 
@@ -20,6 +20,18 @@ namespace EE
         class EngineUpdateContext : public UpdateContext
         {
             friend Engine;
+        };
+
+        enum class Stage
+        {
+            Uninitialized,
+            RegisterTypeInfo,
+            InitializeSettings,
+            InitializeBase,
+            InitializeModules,
+            LoadModuleResources,
+            InitializeEngine,
+            FullyInitialized
         };
 
     public:
@@ -37,11 +49,11 @@ namespace EE
 
     protected:
 
-        virtual void RegisterTypes();
-        virtual void UnregisterTypes();
+        virtual void RegisterTypes() = 0;
+        virtual void UnregisterTypes() = 0;
 
         #if EE_DEVELOPMENT_TOOLS
-        virtual bool InitializeToolsModulesAndSystems( ModuleContext& moduleContext, IniFile const& iniFile ) { return true; }
+        virtual bool InitializeToolsModulesAndSystems( ModuleContext& moduleContext ) { return true; }
         virtual void ShutdownToolsModulesAndSystems( ModuleContext& moduleContext ) {}
         virtual void CreateToolsUI() = 0;
         void DestroyToolsUI() { EE::Delete( m_pToolsUI ); }
@@ -54,6 +66,7 @@ namespace EE
         // Modules
         //-------------------------------------------------------------------------
 
+        BaseModule                                      m_baseModule;
         EngineModule                                    m_engineModule;
         GameModule                                      m_gameModule;
 
@@ -86,11 +99,7 @@ namespace EE
         //-------------------------------------------------------------------------
 
         ResourcePath                                    m_startupMap;
-        bool                                            m_moduleInitStageReached = false;
-        bool                                            m_moduleResourcesInitStageReached = false;
-        bool                                            m_finalInitStageReached = false;
-        bool                                            m_initialized = false;
-
+        Stage                                           m_initializationStageReached = Stage::Uninitialized;
         bool                                            m_exitRequested = false;
     };
 }

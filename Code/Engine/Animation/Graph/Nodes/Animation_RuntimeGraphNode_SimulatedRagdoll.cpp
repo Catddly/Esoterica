@@ -13,7 +13,7 @@
 
 namespace EE::Animation::GraphNodes
 {
-    void SimulatedRagdollNode::Settings::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
+    void SimulatedRagdollNode::Definition::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
     {
         auto pNode = CreateNode<SimulatedRagdollNode>( context, options );
 
@@ -93,20 +93,20 @@ namespace EE::Animation::GraphNodes
     {
         if ( m_pEntryNode->IsValid() && m_pRagdollDefinition != nullptr && context.m_pPhysicsWorld != nullptr )
         {
-            auto pNodeSettings = GetSettings<SimulatedRagdollNode>();
+            auto pNodeDefinition = GetDefinition<SimulatedRagdollNode>();
 
             // Validate profile IDs
-            bool isValidSetup = m_pRagdollDefinition->HasProfile( pNodeSettings->m_entryProfileID );
-            isValidSetup &= m_pRagdollDefinition->HasProfile( pNodeSettings->m_simulatedProfileID );
-            if ( pNodeSettings->m_exitOptionNodeIndices.size() > 0 )
+            bool isValidSetup = m_pRagdollDefinition->HasProfile( pNodeDefinition->m_entryProfileID );
+            isValidSetup &= m_pRagdollDefinition->HasProfile( pNodeDefinition->m_simulatedProfileID );
+            if ( pNodeDefinition->m_exitOptionNodeIndices.size() > 0 )
             {
-                isValidSetup &= m_pRagdollDefinition->HasProfile( pNodeSettings->m_exitProfileID );
+                isValidSetup &= m_pRagdollDefinition->HasProfile( pNodeDefinition->m_exitProfileID );
             }
 
             // Create ragdoll and set initial stage
             if ( isValidSetup )
             {
-                m_pRagdoll = context.m_pPhysicsWorld->CreateRagdoll( m_pRagdollDefinition, pNodeSettings->m_entryProfileID, context.m_graphUserID );
+                m_pRagdoll = context.m_pPhysicsWorld->CreateRagdoll( m_pRagdollDefinition, pNodeDefinition->m_entryProfileID, context.m_graphUserID );
                 m_pRagdoll->SetPoseFollowingEnabled( true );
                 m_pRagdoll->SetGravityEnabled( true );
 
@@ -176,7 +176,7 @@ namespace EE::Animation::GraphNodes
         else
         {
             result.m_sampledEventRange = context.GetEmptySampledEventRange();
-            result.m_taskIdx = context.m_pTaskSystem->RegisterTask<Tasks::DefaultPoseTask>( GetNodeIndex(), Pose::Type::ReferencePose );
+            result.m_taskIdx = context.m_pTaskSystem->RegisterTask<Tasks::ReferencePoseTask>( GetNodeIndex() );
         }
 
         //-------------------------------------------------------------------------
@@ -200,7 +200,8 @@ namespace EE::Animation::GraphNodes
         {
             for ( auto i = result.m_sampledEventRange.m_startIdx; i < result.m_sampledEventRange.m_endIdx; i++ )
             {
-                if ( context.m_sampledEventsBuffer[i].IsAnimationEvent() && context.m_sampledEventsBuffer[i].IsEventOfType<RagdollEvent>() )
+                SampledEvent const& sampledEvent = context.m_pSampledEventsBuffer->GetEvent(i);
+                if ( sampledEvent.IsAnimationEvent() && sampledEvent.IsEventOfType<RagdollEvent>() )
                 {
                     m_stage = Stage::BlendToRagdoll;
                     break;
@@ -218,7 +219,7 @@ namespace EE::Animation::GraphNodes
             // Try get ragdoll event and the blend weight from it
             for ( auto i = result.m_sampledEventRange.m_startIdx; i < result.m_sampledEventRange.m_endIdx; i++ )
             {
-                auto const& sampledEvent = context.m_sampledEventsBuffer[i];
+                SampledEvent const& sampledEvent = context.m_pSampledEventsBuffer->GetEvent( i );
                 if ( sampledEvent.IsAnimationEvent() && sampledEvent.IsEventOfType<RagdollEvent>() )
                 {
                     auto pRagDollEvent = sampledEvent.GetEvent<RagdollEvent>();
@@ -238,8 +239,8 @@ namespace EE::Animation::GraphNodes
             // Once we hit fully in physics, switch stage
             if ( physicsBlendWeight >= 1.0f )
             {
-                auto pNodeSettings = GetSettings<SimulatedRagdollNode>();
-                m_pRagdoll->SwitchProfile( pNodeSettings->m_simulatedProfileID );
+                auto pNodeDefinition = GetDefinition<SimulatedRagdollNode>();
+                m_pRagdoll->SwitchProfile( pNodeDefinition->m_simulatedProfileID );
                 m_stage = Stage::FullyInRagdoll;
             }
         }

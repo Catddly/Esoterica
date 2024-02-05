@@ -410,7 +410,7 @@ namespace EE::Physics
 
     void CharacterComponent::DrawDebugUI()
     {
-        ImGuiX::TextSeparator( "Capsule" );
+        ImGui::SeparatorText( "Capsule" );
         ImGui::Checkbox( "Debug Capsule", &m_debugCapsule );
 
         if ( m_debugCapsule )
@@ -422,7 +422,7 @@ namespace EE::Physics
 
         //-------------------------------------------------------------------------
 
-        ImGuiX::TextSeparator( "Gravity" );
+        ImGui::SeparatorText( "Gravity" );
 
         switch ( m_gravityMode )
         {
@@ -450,7 +450,7 @@ namespace EE::Physics
 
         //-------------------------------------------------------------------------
 
-        ImGuiX::TextSeparator( "Floor" );
+        ImGui::SeparatorText( "Floor" );
 
         ImGui::Checkbox( "Draw floor info", &m_debugFloor );
         ImGui::Text( "Time without floor: %.2fs", m_timeWithoutFloor.GetElapsedTimeSeconds().ToFloat() );
@@ -459,7 +459,7 @@ namespace EE::Physics
         {
             case ControllerFloorType::Floor:
             {
-                ImGuiX::ScopedFont sf( Colors::Lime );
+                ImGuiX::ScopedFont sf( Colors::Green );
                 ImGui::Text( "Floor Type: Navigable" );
             }
             break;
@@ -484,7 +484,7 @@ namespace EE::Physics
         if ( m_debugCapsule )
         {
             ctx.DrawCapsule( m_debugPreMoveTransform, m_radius, m_halfHeight, Colors::White, 2.0f );
-            ctx.DrawCapsule( m_debugPostMoveTransform, m_radius, m_halfHeight, Colors::Lime, 2.0f );
+            ctx.DrawCapsule( m_debugPostMoveTransform, m_radius, m_halfHeight, Colors::Green, 2.0f );
         }
 
         //-------------------------------------------------------------------------

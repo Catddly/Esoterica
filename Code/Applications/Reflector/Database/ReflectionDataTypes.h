@@ -50,7 +50,7 @@ namespace EE::TypeSystem::Reflection
         //-------------------------------------------------------------------------
 
         bool HasMetaData() const { return !m_metaData.empty(); }
-        void ParseMetaData();
+        bool ParseMetaData();
 
     public:
 
@@ -69,6 +69,7 @@ namespace EE::TypeSystem::Reflection
         // From MetaData
         String                                          m_category;
         bool                                            m_isToolsReadOnly = false;
+        bool                                            m_showInRestrictedMode = false;
         StringID                                        m_customEditorID;
     };
 

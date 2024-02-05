@@ -1,7 +1,6 @@
 #include "PlayerAction_Ghost.h"
 #include "Game/Player/Camera/PlayerCameraController.h"
 #include "Game/Player/Animation/PlayerAnimationController.h"
-#include "Game/Player/Animation/PlayerGraphController_Ability.h"
 #include "Engine/Physics/Components/Component_PhysicsCharacter.h"
 #include "Base/Input/InputSystem.h"
 
@@ -18,8 +17,8 @@ namespace EE::Player
             isOnCooldown = !m_CooldownTimer.Update( ctx.GetDeltaTime() );
         }
 
-        bool isThumbstickLeftDown = ctx.m_pInputState->GetControllerState()->WasPressed( Input::ControllerButton::ThumbstickLeft ) || ctx.m_pInputState->GetControllerState()->IsHeldDown( Input::ControllerButton::ThumbstickLeft );
-        bool isThumbstickRightDown = ctx.m_pInputState->GetControllerState()->WasPressed( Input::ControllerButton::ThumbstickRight ) || ctx.m_pInputState->GetControllerState()->IsHeldDown( Input::ControllerButton::ThumbstickRight );
+        bool isThumbstickLeftDown = ctx.m_pInputSystem->GetController()->WasPressed( Input::InputID::Controller_ThumbstickLeft ) || ctx.m_pInputSystem->GetController()->IsHeldDown( Input::InputID::Controller_ThumbstickLeft );
+        bool isThumbstickRightDown = ctx.m_pInputSystem->GetController()->WasPressed( Input::InputID::Controller_ThumbstickRight ) || ctx.m_pInputSystem->GetController()->IsHeldDown( Input::InputID::Controller_ThumbstickRight );
         if ( !isOnCooldown && isThumbstickLeftDown && isThumbstickRightDown )
         {
             ctx.m_pCharacterComponent->EnableGhostMode( true );
@@ -32,28 +31,28 @@ namespace EE::Player
 
     Action::Status GhostModeAction::UpdateInternal( ActionContext const& ctx )
     {
-        auto const pControllerState = ctx.m_pInputState->GetControllerState();
+        auto const pControllerState = ctx.m_pInputSystem->GetController();
         EE_ASSERT( pControllerState != nullptr );
 
         // Calculate desired player displacement
         //-------------------------------------------------------------------------
         auto const& camFwd = ctx.m_pCameraController->GetCameraRelativeForwardVector();
         auto const& camRight = ctx.m_pCameraController->GetCameraRelativeRightVector();
-        Vector const movementInputs = pControllerState->GetLeftAnalogStickValue();
+        Vector const movementInputs = pControllerState->GetLeftStickValue();
         Vector const forward = camFwd * movementInputs.GetSplatY();
         Vector const right = camRight * movementInputs.GetSplatX();
         Vector desiredVelocity = ( forward + right ) * speed;
         Quaternion const deltaOrientation = Quaternion::Identity;
 
-        float const zDelta = ( pControllerState->GetRightTriggerValue() - pControllerState->GetLeftTriggerValue() ) * speed;
+        float const zDelta = ( pControllerState->GetValue( Input::InputID::Controller_RightTrigger ) - pControllerState->GetValue( Input::InputID::Controller_LeftTrigger ) ) * speed;
         desiredVelocity.SetZ( desiredVelocity.GetZ() + zDelta );
 
-        if( ctx.m_pInputState->GetControllerState()->WasReleased( Input::ControllerButton::ShoulderRight ) )
+        if( ctx.m_pInputSystem->GetController()->WasReleased( Input::InputID::Controller_ShoulderRight ) )
         {
             speed += 2.5f;
             speed = Math::Min( 40.0f, speed );
         }
-        else if( ctx.m_pInputState->GetControllerState()->WasReleased( Input::ControllerButton::ShoulderLeft ) )
+        else if( ctx.m_pInputSystem->GetController()->WasReleased( Input::InputID::Controller_ShoulderLeft ) )
         {
             speed -= 2.5f;
             speed = Math::Max( 2.5f, speed );
@@ -62,15 +61,15 @@ namespace EE::Player
         // Run physic Prediction if required
         //-------------------------------------------------------------------------
         // nothing for now
-        
+
         // Update animation controller
         //-------------------------------------------------------------------------
-        ctx.m_pAnimationController->SetCharacterState( CharacterAnimationState::GhostMode );
-        auto pGraphController = ctx.GetAnimSubGraphController<AbilityGraphController>();
-        pGraphController->SetDesiredMovement( ctx.GetDeltaTime(), desiredVelocity, camFwd.GetNormalized2() );
+
+        ctx.m_pAnimationController->SetCharacterState( AnimationController::CharacterState::GhostMode );
+        ctx.m_pAnimationController->SetAbilityDesiredMovement( ctx.GetDeltaTime(), desiredVelocity, camFwd.GetNormalized2() );
         
-        bool isThumbstickLeftDown = ctx.m_pInputState->GetControllerState()->WasPressed( Input::ControllerButton::ThumbstickLeft ) || ctx.m_pInputState->GetControllerState()->IsHeldDown( Input::ControllerButton::ThumbstickLeft );
-        bool isThumbstickRightDown = ctx.m_pInputState->GetControllerState()->WasPressed( Input::ControllerButton::ThumbstickRight ) || ctx.m_pInputState->GetControllerState()->IsHeldDown( Input::ControllerButton::ThumbstickRight );
+        bool isThumbstickLeftDown = ctx.m_pInputSystem->GetController()->WasPressed( Input::InputID::Controller_ThumbstickLeft ) || ctx.m_pInputSystem->GetController()->IsHeldDown( Input::InputID::Controller_ThumbstickLeft );
+        bool isThumbstickRightDown = ctx.m_pInputSystem->GetController()->WasPressed( Input::InputID::Controller_ThumbstickRight ) || ctx.m_pInputSystem->GetController()->IsHeldDown( Input::InputID::Controller_ThumbstickRight );
         if( m_hackTimer.GetElapsedTimeSeconds() > 0.5f && isThumbstickLeftDown && isThumbstickRightDown )
         {
             return Status::Completed;

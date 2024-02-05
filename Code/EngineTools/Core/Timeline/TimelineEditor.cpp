@@ -134,6 +134,7 @@ namespace EE::Timeline
         if ( m_viewRange.GetLength() != maxVisibleUnits )
         {
             m_viewRange.m_end = m_viewRange.m_begin + maxVisibleUnits;
+            EE_ASSERT( m_viewRange.IsSetAndValid() );
         }
 
         // Process any update requests
@@ -147,6 +148,7 @@ namespace EE::Timeline
                 m_pixelsPerFrame = Math::Max( 1.0f, Math::Floor( m_timelineRect.GetWidth() / viewRangeLength ) );
                 m_viewRange = FloatRange( 0.0f, viewRangeLength );
                 m_viewUpdateMode = ViewUpdateMode::None;
+                EE_ASSERT( m_viewRange.IsSetAndValid() );
             }
             break;
 
@@ -156,6 +158,7 @@ namespace EE::Timeline
                 m_viewRange.m_end = maxVisibleUnits;
                 m_playheadTime = 0;
                 m_viewUpdateMode = ViewUpdateMode::None;
+                EE_ASSERT( m_viewRange.IsSetAndValid() );
             }
             break;
 
@@ -165,6 +168,7 @@ namespace EE::Timeline
                 m_viewRange.m_end = m_viewRange.m_begin + maxVisibleUnits;
                 m_playheadTime = m_context.m_timelineLength;
                 m_viewUpdateMode = ViewUpdateMode::None;
+                EE_ASSERT( m_viewRange.IsSetAndValid() );
             }
             break;
 
@@ -183,6 +187,8 @@ namespace EE::Timeline
                         m_viewRange.m_begin = Math::Round( m_playheadTime );
                         m_viewRange.m_end = m_viewRange.m_begin + maxVisibleUnits;
                     }
+
+                    EE_ASSERT( m_viewRange.IsSetAndValid() );
                 }
             }
             break;
@@ -654,7 +660,7 @@ namespace EE::Timeline
         //-------------------------------------------------------------------------
 
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0, 0 ) );
-        bool const drawControls = ImGui::BeginChild( "ControlsRow", m_controlsRowRect.GetSize(), false, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding );
+        bool const drawControls = ImGui::BeginChild( "ControlsRow", m_controlsRowRect.GetSize(), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar );
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, originalItemSpacing );
 
         ImGui::BeginDisabled( m_context.m_timelineLength <= 0 );
@@ -760,7 +766,7 @@ namespace EE::Timeline
             //-------------------------------------------------------------------------
 
             {
-                ImGuiX::ScopedFont sf( ImGuiX::Font::Large, Colors::Lime );
+                ImGuiX::ScopedFont sf( ImGuiX::Font::Large, Colors::Green );
                 ImGui::SameLine( 0, 8 );
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text( "%.2f/%.2f", m_playheadTime, m_context.m_timelineLength );
@@ -779,7 +785,7 @@ namespace EE::Timeline
         // Size needs to take into the playhead width
         ImVec2 const timelineHeaderSize( g_trackHeaderWidth - g_playheadHalfWidth, m_timelineRowRect.GetHeight() );
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0, 0 ) );
-        bool const drawHeader = ImGui::BeginChild( "TimelineHeader", timelineHeaderSize, false, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding );
+        bool const drawHeader = ImGui::BeginChild( "TimelineHeader", timelineHeaderSize, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar );
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, originalItemSpacing );
 
         if ( drawHeader )
@@ -817,15 +823,15 @@ namespace EE::Timeline
 
         {
             ImRect const itemAreaRect( m_trackAreaRect.GetTL() + ImVec2( g_trackHeaderWidth, 0 ), m_trackAreaRect.GetBR() );
-            int32_t const itemAreaFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysUseWindowPadding;
+            int32_t const itemAreaFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoTitleBar;
             ImGui::SetCursorPos( trackAreaCursorStartPos + ImVec2( g_trackHeaderWidth, 0 ) );
             ImGui::PushStyleColor( ImGuiCol_ChildBg, Colors::Transparent );
             ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0, 0 ) );
             ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
             ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0, 0 ) );
-            if ( ImGui::BeginChild( "TrackItemArea", itemAreaRect.GetSize(), false, itemAreaFlags ) )
+            if ( ImGui::BeginChild( "TrackItemArea", itemAreaRect.GetSize(), ImGuiChildFlags_AlwaysUseWindowPadding, itemAreaFlags ) )
             {
-                float const contentRegionWidth = ImGui::GetContentRegionAvail().x;
+                float const contentRegionWidth = Math::Max( ImGui::GetContentRegionAvail().x, 0.0f );
 
                 // Create dummy to let imgui know the actual size that we want.
                 ImGui::Dummy( m_desiredTrackAreaSize );
@@ -848,6 +854,8 @@ namespace EE::Timeline
                     m_viewRange.m_begin = 0.0f;
                     m_viewRange.m_end = viewRangeLength;
                 }
+
+                EE_ASSERT( m_viewRange.IsSetAndValid() );
 
                 //-------------------------------------------------------------------------
 
@@ -884,11 +892,11 @@ namespace EE::Timeline
                     auto pTrack = m_pTimeline->GetTrack( i );
                     ImGui::PushID( pTrack );
                     {
-                        int32_t const headerFlags = ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar;
+                        int32_t const headerFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar;
                         uint32_t const headerID = ImGui::GetID( pTrack );
                         ImGui::PushStyleColor( ImGuiCol_ChildBg, Colors::Transparent );
                         ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( g_trackHeaderHorizontalPadding, 0 ) );
-                        if ( ImGui::BeginChild( headerID, visualTrack.m_headerRect.GetSize(), false, headerFlags ) )
+                        if ( ImGui::BeginChild( headerID, visualTrack.m_headerRect.GetSize(), ImGuiChildFlags_AlwaysUseWindowPadding, headerFlags ) )
                         {
                             ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, originalItemSpacing );
                             pTrack->DrawHeader( m_context, visualTrack.m_headerRect );
@@ -956,7 +964,7 @@ namespace EE::Timeline
         float const startPosY = m_timelineRect.GetTL().y;
         float const endPosX = m_timelineRect.GetBR().x;
         float const endPosY = m_trackAreaRect.GetBR().y;
-        float const textPosY = m_timelineRect.GetBR().y - ImGui::GetTextLineHeight() - g_timelineBottomPadding;
+        float const textPosY = m_timelineRect.GetTR().y;
 
         // Draw Start Line
         //-------------------------------------------------------------------------
@@ -1020,8 +1028,11 @@ namespace EE::Timeline
                 }
 
                 // Draw text label
-                label.sprintf( "%.0f", lineValue );
-                m_pDrawlist->AddText( ImVec2( lineOffsetX + timelineLabelLeftPadding, textPosY ), g_timelineLabelColor, label.c_str() );
+                if ( isLargeLine )
+                {
+                    label.sprintf( "%.0f", lineValue );
+                    m_pDrawlist->AddText( ImVec2( lineOffsetX + timelineLabelLeftPadding, textPosY ), g_timelineLabelColor, label.c_str() );
+                }
             }
         }
 
@@ -1383,6 +1394,13 @@ namespace EE::Timeline
 
     void TimelineEditor::HandleKeyboardInput()
     {
+        if ( !m_isFocused )
+        {
+            return;
+        }
+
+        //-------------------------------------------------------------------------
+
         if ( ImGui::IsKeyReleased( ImGuiKey_Space ) )
         {
             SetPlayState( m_playState == PlayState::Playing ? PlayState::Paused : PlayState::Playing );
@@ -1420,14 +1438,6 @@ namespace EE::Timeline
                 m_pTimeline->DeleteItem( m_context, pItem );
             }
             m_context.EndModification();
-        }
-    }
-
-    void TimelineEditor::HandleGlobalKeyboardInputs()
-    {
-        if ( !m_isFocused )
-        {
-            HandleKeyboardInput();
         }
     }
 }

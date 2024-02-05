@@ -358,6 +358,76 @@ namespace EE::Resource
         return  nullptr;
     }
 
+    TVector<ResourceDatabase::FileEntry const*> ResourceDatabase::GetAllFileEntriesOfType( ResourceTypeID resourceTypeID, bool includeDerivedTypes ) const
+    {
+        EE_ASSERT( m_pTypeRegistry->IsRegisteredResourceType( resourceTypeID ) );
+
+        TVector<FileEntry const*> results;
+
+        //-------------------------------------------------------------------------
+
+        auto const& foundEntries = m_resourcesPerType.at( resourceTypeID );
+        for ( auto const& entry : foundEntries )
+        {
+            results.emplace_back( entry );
+        }
+
+        //-------------------------------------------------------------------------
+
+        if ( includeDerivedTypes )
+        {
+            auto const derivedResourceTypeIDs = m_pTypeRegistry->GetAllDerivedResourceTypes( resourceTypeID );
+            for ( ResourceTypeID derivedResourceTypeID : derivedResourceTypeIDs )
+            {
+                auto const& derivedResources = m_resourcesPerType.at( derivedResourceTypeID );
+                for ( auto const& entry : derivedResources )
+                {
+                    results.emplace_back( entry );
+                }
+            }
+        }
+
+        return results;
+    }
+
+    TVector<ResourceDatabase::FileEntry const*> ResourceDatabase::GetAllFileEntriesOfTypeFiltered( ResourceTypeID resourceTypeID, TFunction<bool( ResourceDescriptor const* )> const& filter, bool includeDerivedTypes /*= false */ ) const
+    {
+        EE_ASSERT( m_pTypeRegistry->IsRegisteredResourceType( resourceTypeID ) );
+
+        TVector<FileEntry const*> results;
+
+        //-------------------------------------------------------------------------
+
+        auto const& foundEntries = m_resourcesPerType.at( resourceTypeID );
+        for ( auto const& entry : foundEntries )
+        {
+            if ( filter( entry->m_pDescriptor ) )
+            {
+                results.emplace_back( entry );
+            }
+        }
+
+        //-------------------------------------------------------------------------
+
+        if ( includeDerivedTypes )
+        {
+            auto const derivedResourceTypeIDs = m_pTypeRegistry->GetAllDerivedResourceTypes( resourceTypeID );
+            for ( ResourceTypeID derivedResourceTypeID : derivedResourceTypeIDs )
+            {
+                auto const& derivedResources = m_resourcesPerType.at( derivedResourceTypeID );
+                for ( auto const& entry : derivedResources )
+                {
+                    if ( filter( entry->m_pDescriptor ) )
+                    {
+                        results.emplace_back( entry );
+                    }
+                }
+            }
+        }
+
+        return results;
+    }
+
     bool ResourceDatabase::DoesResourceExist( ResourceID const& resourceID ) const
     {
         EE_ASSERT( resourceID.IsValid() );
@@ -438,6 +508,28 @@ namespace EE::Resource
         }
 
         return results;
+    }
+
+    TVector<ResourcePath> ResourceDatabase::GetAllDependentResources( ResourcePath sourceFile ) const
+    {
+        TVector<ResourcePath> dependentResources;
+        TVector<ResourcePath> compileDependencies;
+        for ( auto const& fileEntryPair : m_resourcesPerPath )
+        {
+            compileDependencies.clear();
+
+            auto pDescriptor = fileEntryPair.second->m_pDescriptor;
+            if ( pDescriptor != nullptr )
+            {
+                pDescriptor->GetCompileDependencies( compileDependencies );
+                if ( VectorContains( compileDependencies, sourceFile ) )
+                {
+                    dependentResources.emplace_back( fileEntryPair.first );
+                }
+            }
+        }
+
+        return dependentResources;
     }
 
     //-------------------------------------------------------------------------
@@ -596,13 +688,6 @@ namespace EE::Resource
 
     void ResourceDatabase::ProcessFileSystemChanges()
     {
-        if ( m_filesystemCacheUpdatedEvent.HasBoundUsers() )
-        {
-            m_filesystemCacheUpdatedEvent.Execute();
-        }
-
-        //-------------------------------------------------------------------------
-
         auto const& fsEvents = m_fileSystemWatcher.GetFileSystemChangeEvents();
         for ( auto const& fsEvent : fsEvents )
         {
@@ -772,6 +857,13 @@ namespace EE::Resource
                 }
                 break;
             }
+        }
+
+        //-------------------------------------------------------------------------
+
+        if ( m_filesystemCacheUpdatedEvent.HasBoundUsers() )
+        {
+            m_filesystemCacheUpdatedEvent.Execute();
         }
     }
 }

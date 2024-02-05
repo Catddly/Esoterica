@@ -2,7 +2,6 @@
 #include "Engine/Physics/Components/Component_PhysicsCharacter.h"
 #include "Game/Player/Camera/PlayerCameraController.h"
 #include "Game/Player/Animation/PlayerAnimationController.h"
-#include "Game/Player/Animation/PlayerGraphController_Weapon.h"
 #include "Game/Weapon/Ammo.h"
 #include "Game/Weapon/BaseWeapon.h"
 #include "Base/Input/InputSystem.h"
@@ -13,9 +12,7 @@ namespace EE::Player
 {
     bool ShootOverlayAction::TryStartInternal( ActionContext const& ctx )
     {
-        auto pWeaponController = ctx.GetAnimSubGraphController<WeaponGraphController>();
-
-        if ( pWeaponController->IsWeaponDrawn() && ctx.m_pInputState->GetControllerState()->GetRightTriggerValue() >= 0.2f )
+        if ( ctx.m_pAnimationController->IsWeaponDrawn() && ctx.m_pInputSystem->GetController()->GetValue( Input::InputID::Controller_RightTrigger ) >= 0.2f )
         {
             auto const& camFwd  = ctx.m_pCameraController->GetCameraRelativeForwardVector();
             Vector const origin = ctx.m_pCharacterComponent->GetPosition();
@@ -33,7 +30,7 @@ namespace EE::Player
             EE::Delete(weaponTest->m_pCurrentAmmo);
             EE::Delete(weaponTest);
 
-            pWeaponController->Shoot();
+            ctx.m_pAnimationController->FireWeapon();
             return true;
         }
 
@@ -42,14 +39,13 @@ namespace EE::Player
 
     Action::Status ShootOverlayAction::UpdateInternal( ActionContext const& ctx )
     {
-        if ( ctx.m_pInputState->GetControllerState()->GetRightTriggerValue() < 0.2f )
+        if ( ctx.m_pInputSystem->GetController()->GetValue( Input::InputID::Controller_RightTrigger ) < 0.2f )
         {
             return Status::Completed;
         }
         else
         {
-            auto pWeaponController = ctx.GetAnimSubGraphController<WeaponGraphController>();
-            pWeaponController->Shoot();
+            ctx.m_pAnimationController->FireWeapon();
         }
 
         return Status::Interruptible;

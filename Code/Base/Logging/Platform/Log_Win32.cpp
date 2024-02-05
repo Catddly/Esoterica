@@ -15,12 +15,12 @@ namespace EE::Log
 
         va_list args;
         va_start( args, format );
-        int numCharsWritten = _vsnprintf_s( messageBuffer, bufferSize, bufferSize - 1, format, args );
+        int32_t numCharsWritten = _vsnprintf_s( messageBuffer, bufferSize, bufferSize - 1, format, args );
         va_end( args );
 
         // Add newlines
-        if ( numCharsWritten < 509 )
-        {   
+        if ( numCharsWritten > 0 && numCharsWritten < 509 )
+        {
             messageBuffer[numCharsWritten] = '\r';
             messageBuffer[numCharsWritten + 1] = '\n';
             messageBuffer[numCharsWritten + 2] = 0;

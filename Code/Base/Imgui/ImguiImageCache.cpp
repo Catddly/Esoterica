@@ -66,7 +66,7 @@ namespace EE::ImGuiX
         //-------------------------------------------------------------------------
 
         ImageInfo info;
-        info.m_ID = ToIm( pTexture );
+        info.m_ID = (void*) &pTexture->GetShaderResourceView();
         info.m_pTexture = pTexture;
         info.m_size = Float2( static_cast<float>( pTexture->GetDesc().m_width ), static_cast<float>( pTexture->GetDesc().m_height ) );
 
@@ -104,7 +104,7 @@ namespace EE::ImGuiX
         //-------------------------------------------------------------------------
 
         ImageInfo info;
-        info.m_ID = ToIm( pTexture );
+        info.m_ID = (void*) &pTexture->GetShaderResourceView();
         info.m_pTexture = pTexture;
         info.m_size = Float2( static_cast<float>( pTexture->GetDesc().m_width ), static_cast<float>( pTexture->GetDesc().m_height ) );
 
@@ -142,6 +142,11 @@ namespace EE::ImGuiX
         }
 
         EE_UNREACHABLE_CODE();
+    }
+
+    ImTextureID GetImTextureID( Render::Texture const* pTexture )
+    {
+        return (void*) &pTexture->GetShaderResourceView();
     }
 }
 #endif

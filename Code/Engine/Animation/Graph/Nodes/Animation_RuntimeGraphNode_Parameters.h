@@ -4,6 +4,13 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::Animation
+{
+    class GraphInstance;
+}
+
+//-------------------------------------------------------------------------
+
 namespace EE::Animation::GraphNodes
 {
     //-------------------------------------------------------------------------
@@ -12,18 +19,21 @@ namespace EE::Animation::GraphNodes
 
     class EE_ENGINE_API ControlParameterBoolNode final : public BoolValueNode
     {
+        friend GraphInstance;
+
     public:
 
-        struct EE_ENGINE_API Settings final : public BoolValueNode::Settings
+        struct EE_ENGINE_API Definition final : public BoolValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
         };
 
     private:
 
+        EE_FORCE_INLINE void DirectlySetValue( bool value ) { m_value = value; }
         virtual void GetValueInternal( GraphContext& context, void* pOutValue ) override;
-        virtual void SetValueInternal( void const* pInValue ) override;
+        virtual void SetValueInternal( void const* pInValue ) override { m_value = *(bool*) pInValue; }
 
         #if EE_DEVELOPMENT_TOOLS
         virtual void RecordGraphState( RecordedGraphState& outState ) override;
@@ -39,18 +49,21 @@ namespace EE::Animation::GraphNodes
 
     class EE_ENGINE_API ControlParameterIDNode final : public IDValueNode
     {
+        friend GraphInstance;
+
     public:
 
-        struct EE_ENGINE_API Settings final : public IDValueNode::Settings
+        struct EE_ENGINE_API Definition final : public IDValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
         };
 
     private:
 
+        EE_FORCE_INLINE void DirectlySetValue( StringID value ) { m_value = value; }
         virtual void GetValueInternal( GraphContext& context, void* pOutValue ) override;
-        virtual void SetValueInternal( void const* pInValue ) override;
+        virtual void SetValueInternal( void const* pInValue ) override { m_value = *(StringID*) pInValue; }
 
         #if EE_DEVELOPMENT_TOOLS
         virtual void RecordGraphState( RecordedGraphState& outState ) override;
@@ -66,18 +79,21 @@ namespace EE::Animation::GraphNodes
 
     class EE_ENGINE_API ControlParameterFloatNode final : public FloatValueNode
     {
+        friend GraphInstance;
+
     public:
 
-        struct EE_ENGINE_API Settings final : public FloatValueNode::Settings
+        struct EE_ENGINE_API Definition final : public FloatValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
         };
 
     private:
 
+        EE_FORCE_INLINE void DirectlySetValue( float value ) { m_value = value; }
         virtual void GetValueInternal( GraphContext& context, void* pOutValue ) override;
-        virtual void SetValueInternal( void const* pInValue ) override;
+        virtual void SetValueInternal( void const* pInValue ) override { m_value = *(float*) pInValue; }
 
         #if EE_DEVELOPMENT_TOOLS
         virtual void RecordGraphState( RecordedGraphState& outState ) override;
@@ -93,18 +109,21 @@ namespace EE::Animation::GraphNodes
 
     class EE_ENGINE_API ControlParameterVectorNode final : public VectorValueNode
     {
+        friend GraphInstance;
+
     public:
 
-        struct EE_ENGINE_API Settings final : public VectorValueNode::Settings
+        struct EE_ENGINE_API Definition final : public VectorValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
         };
 
     private:
 
+        EE_FORCE_INLINE void DirectlySetValue( Vector const& value ) { m_value = value; }
         virtual void GetValueInternal( GraphContext& context, void* pOutValue ) override;
-        virtual void SetValueInternal( void const* pInValue ) override;
+        virtual void SetValueInternal( void const* pInValue ) override { m_value = *(Vector*) pInValue; }
 
         #if EE_DEVELOPMENT_TOOLS
         virtual void RecordGraphState( RecordedGraphState& outState ) override;
@@ -120,18 +139,21 @@ namespace EE::Animation::GraphNodes
 
     class EE_ENGINE_API ControlParameterTargetNode final : public TargetValueNode
     {
+        friend GraphInstance;
+
     public:
 
-        struct EE_ENGINE_API Settings final : public TargetValueNode::Settings
+        struct EE_ENGINE_API Definition final : public TargetValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
         };
 
     private:
 
+        EE_FORCE_INLINE void DirectlySetValue( Target const& value ) { m_value = value; }
         virtual void GetValueInternal( GraphContext& context, void* pOutValue ) override;
-        virtual void SetValueInternal( void const* pInValue ) override;
+        virtual void SetValueInternal( void const* pInValue ) override { m_value = *(Target*) pInValue; }
 
         #if EE_DEVELOPMENT_TOOLS
         virtual void RecordGraphState( RecordedGraphState& outState ) override;
@@ -152,10 +174,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public BoolValueNode::Settings
+        struct EE_ENGINE_API Definition final : public BoolValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( BoolValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( BoolValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -180,10 +202,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public IDValueNode::Settings
+        struct EE_ENGINE_API Definition final : public IDValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( IDValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( IDValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -208,10 +230,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public FloatValueNode::Settings
+        struct EE_ENGINE_API Definition final : public FloatValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( FloatValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( FloatValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -236,10 +258,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public VectorValueNode::Settings
+        struct EE_ENGINE_API Definition final : public VectorValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( VectorValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( VectorValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -264,10 +286,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public TargetValueNode::Settings
+        struct EE_ENGINE_API Definition final : public TargetValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( TargetValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( TargetValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -292,10 +314,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public BoneMaskValueNode::Settings
+        struct EE_ENGINE_API Definition final : public BoneMaskValueNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( BoneMaskValueNode::Settings, m_childNodeIdx );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( BoneMaskValueNode::Definition, m_childNodeIdx );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 

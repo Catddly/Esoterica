@@ -8,7 +8,7 @@
 
 namespace EE::Animation::GraphNodes
 {
-    void ChildGraphNode::Settings::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
+    void ChildGraphNode::Definition::InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const
     {
         auto pNode = CreateNode<ChildGraphNode>( context, options );
         pNode->m_pGraphInstance = context.m_childGraphInstances[m_childGraphIdx];
@@ -41,7 +41,8 @@ namespace EE::Animation::GraphNodes
                     else
                     {
                         #if EE_DEVELOPMENT_TOOLS
-                        context.LogWarning( "Mismatch parameter type for child graph '%s', parent type: '%s', child type: '%s'", pNode->m_pGraphInstance->GetDefinitionResourceID().c_str(), GetNameForValueType( parentParamType ), GetNameForValueType( childParamType ) );
+                        GraphVariation const* pGraphVariation = pNode->m_pGraphInstance->GetGraphVariation();
+                        context.LogWarning( "Mismatch parameter type for child graph '%s', parent type: '%s', child type: '%s'", pGraphVariation->GetDefinition()->GetResourceID().c_str(), GetNameForValueType( parentParamType ), GetNameForValueType( childParamType ) );
                         #endif 
                     }
                 }
@@ -169,15 +170,22 @@ namespace EE::Animation::GraphNodes
         EE_ASSERT( context.IsValid() );
         MarkNodeActive( context );
 
+        //-------------------------------------------------------------------------
+
         GraphPoseNodeResult result;
-        if ( m_pGraphInstance == nullptr )
-        {
-            result.m_sampledEventRange = context.GetEmptySampledEventRange();
-            result.m_taskIdx = InvalidIndex;
-        }
-        else
+        result.m_sampledEventRange = context.GetEmptySampledEventRange();
+        result.m_taskIdx = InvalidIndex;
+
+        //-------------------------------------------------------------------------
+
+        if ( m_pGraphInstance != nullptr )
         {
             ReflectControlParameters( context );
+
+            // Push the current node idx into the event debug path
+            #if EE_DEVELOPMENT_TOOLS
+            context.m_pSampledEventsBuffer->PushDebugGraphPathElement( GetNodeIndex() );
+            #endif
 
             // Evaluate child graph
             result = m_pGraphInstance->EvaluateChildGraph( context.m_deltaTime, context.m_worldTransform, context.m_pPhysicsWorld, pUpdateRange, context.m_pLayerContext );
@@ -188,15 +196,20 @@ namespace EE::Animation::GraphNodes
             m_currentTime = pRootNode->GetCurrentTime();
             m_duration = pRootNode->GetDuration();
 
-            // Transfer sampled events
-            auto const& childGraphEventBuffer = m_pGraphInstance->GetSampledEvents();
-            result.m_sampledEventRange = context.m_sampledEventsBuffer.AppendBuffer( childGraphEventBuffer );
+            // Update sampled event range
+            result.m_sampledEventRange.m_endIdx = context.m_pSampledEventsBuffer->GetNumSampledEvents();
 
             // Transfer root motion debug
             #if EE_DEVELOPMENT_TOOLS
             context.GetRootMotionDebugger()->RecordGraphSource( GetNodeIndex(), result.m_rootMotionDelta );
             #endif
+
+            // Pop debug path element
+            #if EE_DEVELOPMENT_TOOLS
+            context.m_pSampledEventsBuffer->PopDebugGraphPathElement();
+            #endif
         }
+
         return result;
     }
 

@@ -69,11 +69,19 @@ namespace EE::TypeSystem::Reflection
         return name;
     }
 
-    void ReflectedProperty::ParseMetaData()
+    bool ReflectedProperty::ParseMetaData()
     {
+        m_category.clear();
+        m_description.clear();
+        m_isToolsReadOnly = false;
+        m_showInRestrictedMode = false;
+        m_customEditorID.Clear();
+
+        //-------------------------------------------------------------------------
+
         if ( !HasMetaData() )
         {
-            return;
+            return true;
         }
 
         //-------------------------------------------------------------------------
@@ -103,6 +111,12 @@ namespace EE::TypeSystem::Reflection
                 m_isToolsReadOnly = toolsReadOnlyValueIter->value.GetBool();
             }
 
+            auto const showAsStaticArrayValueIter = metaDataObject.FindMember( "ShowAsStaticArray" );
+            if ( showAsStaticArrayValueIter != metaDataObject.MemberEnd() )
+            {
+                m_showInRestrictedMode = showAsStaticArrayValueIter->value.GetBool();
+            }
+
             auto const customEditorValueIter = metaDataObject.FindMember( "CustomEditor" );
             if ( customEditorValueIter != metaDataObject.MemberEnd() )
             {
@@ -110,6 +124,8 @@ namespace EE::TypeSystem::Reflection
                 m_customEditorID = StringID( pEditorID );
             }
         }
+
+        return isValidJson;
     }
 
     //-------------------------------------------------------------------------

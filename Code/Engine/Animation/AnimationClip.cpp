@@ -13,7 +13,7 @@ namespace EE::Animation
         EE_ASSERT( pOutPose != nullptr && pOutPose->GetSkeleton() == m_skeleton.GetPtr() );
         EE_ASSERT( frameTime.GetFrameIndex() < m_numFrames );
 
-        pOutPose->ClearGlobalTransforms();
+        pOutPose->ClearModelSpaceTransforms();
 
         //-------------------------------------------------------------------------
 
@@ -21,27 +21,28 @@ namespace EE::Animation
 
         auto ReadCompressedPose = [&] ( int32_t poseIdx, Transform outTransforms[] )
         {
-            uint16_t const* pReadPtr = m_compressedPoseData2.data() + m_compressedPoseOffsets[poseIdx];
+            uint16_t const* pReadPtr = m_compressedPoseData.data() + m_compressedPoseOffsets[poseIdx];
 
             // Read rotations
             for ( auto i = 0; i < numBones; i++ )
             {
                 TrackCompressionSettings const& trackSettings = m_trackCompressionSettings[i];
+
+                //-------------------------------------------------------------------------
+
+                Quaternion rotation;
+
                 if ( trackSettings.IsRotationTrackStatic() )
                 {
-                    Transform::DirectlySetRotation( outTransforms[i], trackSettings.GetStaticRotationValue() );
+                    rotation = trackSettings.GetStaticRotationValue();
                 }
                 else
                 {
-                    Transform::DirectlySetRotation( outTransforms[i], DecodeRotation( pReadPtr ) );
+                    rotation = DecodeRotation( pReadPtr );
                     pReadPtr += 3; // Rotations are 48bits (3 x uint16_t)
                 }
-            }
 
-            // Read translation/scale
-            for ( auto i = 0; i < numBones; i++ )
-            {
-                TrackCompressionSettings const& trackSettings = m_trackCompressionSettings[i];
+                //-------------------------------------------------------------------------
 
                 Float4 translationScale;
 
@@ -55,6 +56,8 @@ namespace EE::Animation
                     pReadPtr += 3; // Translations are 48bits (3 x uint16_t)
                 }
 
+                //-------------------------------------------------------------------------
+
                 if ( trackSettings.IsScaleTrackStatic() )
                 {
                     translationScale.m_w = trackSettings.GetStaticScaleValue();
@@ -65,6 +68,9 @@ namespace EE::Animation
                     pReadPtr += 1; // Scales are 16bits (1 x uint16_t)
                 }
 
+                //-------------------------------------------------------------------------
+
+                Transform::DirectlySetRotation( outTransforms[i], rotation );
                 Transform::DirectlySetTranslationScale( outTransforms[i], translationScale );
             }
         };
@@ -72,7 +78,7 @@ namespace EE::Animation
         //-------------------------------------------------------------------------
 
         // Read the lower frame pose into the output pose
-        ReadCompressedPose( frameTime.GetLowerBoundFrameIndex(), pOutPose->m_localTransforms.data() );
+        ReadCompressedPose( frameTime.GetLowerBoundFrameIndex(), pOutPose->m_parentSpaceTransforms.data() );
 
         // If we're not exactly at a key frame we need to read the upper frame pose and blend
         if ( !frameTime.IsExactlyAtKeyFrame() )
@@ -84,11 +90,23 @@ namespace EE::Animation
             float const percentageThrough = frameTime.GetPercentageThrough().ToFloat();
             for ( auto i = 0; i < numBones; i++ )
             {
-                pOutPose->m_localTransforms[i] = Transform::FastSlerp( pOutPose->m_localTransforms[i], tmpPose[i], percentageThrough );
+                pOutPose->m_parentSpaceTransforms[i] = Transform::FastSlerp( pOutPose->m_parentSpaceTransforms[i], tmpPose[i], percentageThrough );
             }
         }
 
         // Flag the pose as being set
         pOutPose->m_state = m_isAdditive ? Pose::State::AdditivePose : Pose::State::Pose;
+    }
+
+    TInlineVector<Skeleton const*, 1> AnimationClip::GetSecondarySkeletons() const
+    {
+        TInlineVector<Skeleton const*, 1> skeletons;
+
+        for ( auto pSecondaryAnim : m_secondaryAnimations )
+        {
+            skeletons.emplace_back( pSecondaryAnim->GetSkeleton() );
+        }
+
+        return skeletons;
     }
 }

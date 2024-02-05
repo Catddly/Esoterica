@@ -189,7 +189,7 @@ namespace EE
 
     //-------------------------------------------------------------------------
 
-    void PropertyGrid::DrawGrid()
+    void PropertyGrid::DrawGrid( bool shouldFillRemainingSpace )
     {
         if ( m_pTypeInstance == nullptr )
         {
@@ -241,9 +241,10 @@ namespace EE
         // Grid Rows
         //-------------------------------------------------------------------------
 
+        ImVec2 const tableSize = ImVec2( ImGui::GetContentRegionAvail().x - 1, ( shouldFillRemainingSpace ? ImGui::GetContentRegionAvail().y : 0 ) - 1 );
         ImGuiTableFlags const flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY;
         ImGui::PushStyleVar( ImGuiStyleVar_CellPadding, ImVec2( 4, 8 ) );
-        if ( ImGui::BeginTable( "GridTable", 2, flags, ImGui::GetContentRegionAvail() ) )
+        if ( ImGui::BeginTable( "GridTable", 2, flags, tableSize ) )
         {
             ImGui::TableSetupColumn( "##Header", ImGuiTableColumnFlags_WidthFixed, 200 );
             ImGui::TableSetupColumn( "##Editor", ImGuiTableColumnFlags_WidthStretch );
@@ -276,9 +277,10 @@ namespace EE::PG
 
     //-------------------------------------------------------------------------
 
+    // This struct wraps a property modification operation
     struct [[nodiscard]] ScopedChangeNotifier
     {
-        ScopedChangeNotifier( PropertyGrid* pGrid, IReflectedType* pTypeInstance, TypeSystem::PropertyInfo const* pPropertyInfo, PropertyEditInfo::Action action = PropertyEditInfo::Action::Edit )
+        ScopedChangeNotifier( PropertyGrid* pGrid, GridRow const* pRow, IReflectedType* pTypeInstance, TypeSystem::PropertyInfo const* pPropertyInfo, PropertyEditInfo::Action action = PropertyEditInfo::Action::Edit )
             : m_pGrid( pGrid )
         {
             EE_ASSERT( pGrid != nullptr );
@@ -288,17 +290,44 @@ namespace EE::PG
             m_eventInfo.m_pPropertyInfo = pPropertyInfo;
             m_eventInfo.m_action = action;
             m_pGrid->m_preEditEvent.Execute( m_eventInfo );
+
+            // Get the parent property chain
+            GridRow const* pParentRow = pRow->GetParent();
+            if ( pParentRow != nullptr )
+            {
+                pParentRow->GeneratePropertyChangedNotificationChain( m_propertyChain );
+            }
+
+            // Notify the type that we've modified a property
+            // This is explicitly done to handle array modifications that will not end up in the property chain
+            m_eventInfo.m_pTypeInstanceEdited->PrePropertyEdit( m_eventInfo.m_pPropertyInfo );
+
+            // Notify all parent types in the property chain that there's been a modification
+            for ( auto iter = m_propertyChain.rbegin(); iter != m_propertyChain.rend(); ++iter )
+            {
+                iter->m_pTypeInstance->PrePropertyEdit( iter->m_pPropertyInfo );
+            }
         }
 
         ~ScopedChangeNotifier()
         {
+            // Notify the type that we've modified a property
+            // This is explicitly done to handle array modifications that will not end up in the property chain
             m_eventInfo.m_pTypeInstanceEdited->PostPropertyEdit( m_eventInfo.m_pPropertyInfo );
+
+            // Notify all parent types in the property chain that there's been a modification
+            for ( auto iter = m_propertyChain.rbegin(); iter != m_propertyChain.rend(); ++iter )
+            {
+                iter->m_pTypeInstance->PostPropertyEdit( iter->m_pPropertyInfo );
+            }
+
             m_pGrid->m_postEditEvent.Execute( m_eventInfo );
             m_pGrid->m_isDirty = true;
             m_pGrid->ApplyFilter();
         }
 
         PropertyGrid*                       m_pGrid = nullptr;
+        TVector<PropertyChainElement>       m_propertyChain;
         PropertyEditInfo                    m_eventInfo;
     };
 
@@ -431,6 +460,14 @@ namespace EE::PG
         }
 
         m_children.clear();
+    }
+
+    void GridRow::GeneratePropertyChangedNotificationChain( TVector<PropertyChainElement>& outChain ) const
+    {
+        if ( m_pParent != nullptr )
+        {
+            m_pParent->GeneratePropertyChangedNotificationChain( outChain );
+        }
     }
 
     //-------------------------------------------------------------------------
@@ -601,7 +638,7 @@ namespace EE::PG
             case OperationType::Insert:
             {
                 EE_ASSERT( m_operationElementIdx >= 0 && m_operationElementIdx < m_children.size() );
-                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::AddArrayElement );
+                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::AddArrayElement );
                 m_pParentTypeInstance->GetTypeInfo()->InsertArrayElement( m_pParentTypeInstance, m_propertyInfo.m_ID, m_operationElementIdx );
                 RebuildChildren();
             }
@@ -610,7 +647,7 @@ namespace EE::PG
             case OperationType::MoveUp:
             {
                 EE_ASSERT( m_operationElementIdx > 0 && m_operationElementIdx < m_children.size() );
-                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::MoveArrayElement );
+                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::MoveArrayElement );
                 m_pParentTypeInstance->GetTypeInfo()->MoveArrayElement( m_pParentTypeInstance, m_propertyInfo.m_ID, m_operationElementIdx, m_operationElementIdx - 1 );
                 RebuildChildren();
             }
@@ -619,7 +656,7 @@ namespace EE::PG
             case OperationType::MoveDown:
             {
                 EE_ASSERT( m_operationElementIdx >= 0 && m_operationElementIdx < ( m_children.size() - 1 ) );
-                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::MoveArrayElement );
+                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::MoveArrayElement );
                 m_pParentTypeInstance->GetTypeInfo()->MoveArrayElement( m_pParentTypeInstance, m_propertyInfo.m_ID, m_operationElementIdx, m_operationElementIdx + 1 );
                 RebuildChildren();
             }
@@ -628,7 +665,7 @@ namespace EE::PG
             case OperationType::Remove:
             {
                 EE_ASSERT( m_operationElementIdx >= 0 && m_operationElementIdx < m_children.size() );
-                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::RemoveArrayElement );
+                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::RemoveArrayElement );
                 m_pParentTypeInstance->GetTypeInfo()->RemoveArrayElement( m_pParentTypeInstance, m_propertyInfo.m_ID, m_operationElementIdx );
                 RebuildChildren();
             }
@@ -697,7 +734,7 @@ namespace EE::PG
 
     bool ArrayRow::HasExtraControls() const
     {
-        return m_propertyInfo.IsDynamicArrayProperty();
+        return m_propertyInfo.IsDynamicArrayProperty() && !m_propertyInfo.m_showInRestrictedMode;
     }
 
     float ArrayRow::GetExtraControlsSectionWidth() const
@@ -712,7 +749,7 @@ namespace EE::PG
         ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, g_controlButtonPadding );
         if ( ImGuiX::FlatButtonColored( Colors::LightGreen, EE_ICON_PLUS, g_controlButtonSize ) )
         {
-            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::AddArrayElement );
+            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::AddArrayElement );
             m_pParentTypeInstance->GetTypeInfo()->AddArrayElement( m_pParentTypeInstance, m_propertyInfo.m_ID );
             RebuildChildren();
             m_isExpanded = true;
@@ -725,7 +762,7 @@ namespace EE::PG
         ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, g_controlButtonPadding );
         if ( ImGuiX::FlatButtonColored( Colors::PaleVioletRed, EE_ICON_TRASH_CAN, g_controlButtonSize ) )
         {
-            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::RemoveArrayElement );
+            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo, PropertyEditInfo::Action::RemoveArrayElement );
             m_pParentTypeInstance->GetTypeInfo()->ClearArray( m_pParentTypeInstance, m_propertyInfo.m_ID );
             RebuildChildren();
         }
@@ -738,7 +775,7 @@ namespace EE::PG
     bool ArrayRow::HasResetSection() const
     {
         auto pTypeInfo = m_pParentTypeInstance->GetTypeInfo();
-        return !pTypeInfo->IsPropertyValueSetToDefault( m_pParentTypeInstance, m_propertyInfo.m_ID );
+        return !pTypeInfo->IsPropertyValueSetToDefault( m_pParentTypeInstance, m_propertyInfo.m_ID ) && !m_propertyInfo.m_showInRestrictedMode;
     }
 
     void ArrayRow::DrawResetSection()
@@ -748,7 +785,7 @@ namespace EE::PG
         ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, g_controlButtonPadding );
         if ( ImGuiX::FlatButtonColored( Colors::LightGray, EE_ICON_UNDO_VARIANT, g_controlButtonSize ) )
         {
-            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo );
+            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo );
             m_pParentTypeInstance->GetTypeInfo()->ResetToDefault( m_pParentTypeInstance, m_propertyInfo.m_ID );
             RebuildChildren();
         }
@@ -857,6 +894,10 @@ namespace EE::PG
             {
                 ImGuiX::TextTooltip( m_propertyInfo.m_description.c_str() );
             }
+            else
+            {
+                ImGuiX::TextTooltip( m_name.c_str() );
+            }
         }
         else if ( m_propertyInfo.IsStructureProperty() )
         {
@@ -885,7 +926,7 @@ namespace EE::PG
             ImGui::BeginDisabled( IsReadOnly() );
             if ( m_pPropertyEditor->UpdateAndDraw() )
             {
-                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo );
+                ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo );
                 m_pPropertyEditor->UpdatePropertyValue();
             }
             ImGui::EndDisabled();
@@ -909,7 +950,13 @@ namespace EE::PG
             return false;
         }
 
-        return m_arrayElementIdx != InvalidIndex;
+        bool const isDynamicArrayElement = ( m_arrayElementIdx != InvalidIndex );
+        if ( isDynamicArrayElement )
+        {
+            return !m_propertyInfo.m_showInRestrictedMode;
+        }
+
+        return false;
     }
 
     float PropertyRow::GetExtraControlsSectionWidth() const
@@ -981,7 +1028,7 @@ namespace EE::PG
         ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, g_controlButtonPadding );
         if ( ImGuiX::FlatButtonColored( Colors::LightGray, EE_ICON_UNDO_VARIANT, g_controlButtonSize ) )
         {
-            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, m_pParentTypeInstance, &m_propertyInfo );
+            ScopedChangeNotifier cn( m_context.m_pPropertyGrid, this, m_pParentTypeInstance, &m_propertyInfo );
             m_pParentTypeInstance->GetTypeInfo()->ResetToDefault( m_pParentTypeInstance, m_propertyInfo.m_ID );
 
             if ( HasPropertyEditor() )
@@ -1039,5 +1086,15 @@ namespace EE::PG
                 m_children.emplace_back( pCategory );
             }
         }
+    }
+
+    void PropertyRow::GeneratePropertyChangedNotificationChain( TVector<PropertyChainElement>& outChain ) const
+    {
+        if ( m_pParent != nullptr )
+        {
+            m_pParent->GeneratePropertyChangedNotificationChain( outChain );
+        }
+
+        outChain.emplace_back( m_pParentTypeInstance, &m_propertyInfo );
     }
 }

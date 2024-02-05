@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Animation_RuntimeGraph_Common.h"
 #include "Animation_RuntimeGraph_Events.h"
 #include "Animation_RuntimeGraph_Contexts.h"
 #include "Animation_RuntimeGraph_Recording.h"
@@ -18,33 +19,8 @@ namespace EE::Drawing { class DrawContext; }
 
 namespace EE::Animation
 {
-    class AnimationClip;
-    class GraphDataSet;
     class GraphContext;
     struct BoneMaskTaskList;
-
-    //-------------------------------------------------------------------------
-
-    enum class GraphValueType : uint8_t
-    {
-        EE_REFLECT_ENUM
-
-        Unknown = 0,
-        Bool,
-        ID,
-        Float,
-        Vector,
-        Target,
-        BoneMask,
-        Pose,
-        Special, // Only used for custom graph pin types
-    };
-
-    #if EE_DEVELOPMENT_TOOLS
-    EE_ENGINE_API Color GetColorForValueType( GraphValueType type );
-    EE_ENGINE_API char const* GetNameForValueType( GraphValueType type );
-    #endif
-
 
     //-------------------------------------------------------------------------
 
@@ -55,19 +31,19 @@ namespace EE::Animation
 
     public:
 
-        // This is the base for each node's individual settings
-        // The settings are all shared for all graph instances since they are immutable, the nodes themselves contain the actual graph state
-        struct EE_ENGINE_API Settings : public IReflectedType
+        // This is the base for each node's individual definition
+        // The definition are all shared for all graph instances since they are immutable, the nodes themselves contain the actual graph state
+        struct EE_ENGINE_API Definition : public IReflectedType
         {
-            EE_REFLECT_TYPE( Settings );
+            EE_REFLECT_TYPE( Definition );
 
         public:
 
-            Settings() = default;
-            Settings( Settings const& ) = default;
-            virtual ~Settings() = default;
+            Definition() = default;
+            Definition( Definition const& ) = default;
+            virtual ~Definition() = default;
 
-            Settings& operator=( Settings const& rhs ) = default;
+            Definition& operator=( Definition const& rhs ) = default;
 
             // Factory method, will create the node instance and set all necessary node ptrs
             // NOTE!!! Node ptrs are not guaranteed to contain a constructed node so DO NOT ACCESS them in this function!!!
@@ -87,7 +63,7 @@ namespace EE::Animation
                 if ( options == InstantiationOptions::CreateNode )
                 {
                     new ( pNode ) T();
-                    pNode->m_pSettings = this;
+                    pNode->m_pDefinition = this;
                 }
 
                 return pNode;
@@ -111,7 +87,7 @@ namespace EE::Animation
 
         virtual bool IsValid() const { return true; }
         virtual GraphValueType GetValueType() const = 0;
-        inline int16_t GetNodeIndex() const { return m_pSettings->m_nodeIdx; }
+        inline int16_t GetNodeIndex() const { return m_pDefinition->m_nodeIdx; }
 
         inline bool IsInitialized() const { return m_initializationCount > 0; }
         virtual void Initialize( GraphContext& context );
@@ -121,10 +97,10 @@ namespace EE::Animation
         //-------------------------------------------------------------------------
 
         // Is this node active i.e. was it updated this frame
-        bool IsNodeActive( GraphContext& context ) const;
+        EE_FORCE_INLINE bool IsNodeActive( uint32_t updateID ) const { return m_lastUpdateID == updateID; }
 
         // Was this node updated this frame, this is syntactic sugar for value nodes
-        EE_FORCE_INLINE bool WasUpdated( GraphContext& context ) const { return IsNodeActive( context ); }
+        EE_FORCE_INLINE bool WasUpdated( GraphContext& context ) const { return IsNodeActive( context.m_updateID ); }
 
         // Mark a node as being updated - value nodes will use this to cache values
         void MarkNodeActive( GraphContext& context );
@@ -143,14 +119,14 @@ namespace EE::Animation
         virtual void ShutdownInternal( GraphContext& context );
 
         template<typename T>
-        EE_FORCE_INLINE typename T::Settings const* GetSettings() const
+        EE_FORCE_INLINE typename T::Definition const* GetDefinition() const
         {
-            return reinterpret_cast<typename T::Settings const*>( m_pSettings );
+            return reinterpret_cast<typename T::Definition const*>( m_pDefinition );
         }
 
     private:
 
-        Settings const*                 m_pSettings = nullptr;
+        Definition const*                 m_pDefinition = nullptr;
         uint32_t                        m_lastUpdateID = 0xFFFFFFFF;
         int32_t                         m_initializationCount = 0;
     };
@@ -319,6 +295,6 @@ namespace EE::Animation
 
 //-------------------------------------------------------------------------
 
-#define EE_SERIALIZE_GRAPHNODESETTINGS( BaseClassTypename, ... ) \
+#define EE_SERIALIZE_GRAPHNODEDEFINITION( BaseClassTypename, ... ) \
 virtual void Load( Serialization::BinaryInputArchive& archive ) override { BaseClassTypename::Load( archive ); archive.Serialize( __VA_ARGS__ ); }\
 virtual void Save( Serialization::BinaryOutputArchive& archive ) const override { BaseClassTypename::Save( archive ); archive.Serialize( __VA_ARGS__ ); }

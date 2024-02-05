@@ -9,7 +9,6 @@
 #include "Base/Application/Platform/Application_Win32.h"
 #include "Base/Render/RenderDevice.h"
 #include "Base/RenderGraph/RenderGraph.h"
-#include "Base/Resource/ResourceSettings.h"
 #include "Base/Imgui/ImguiSystem.h"
 #include "Base/Render/RenderViewport.h"
 #include "Base/Types/String.h"

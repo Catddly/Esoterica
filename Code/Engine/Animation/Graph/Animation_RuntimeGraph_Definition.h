@@ -67,8 +67,8 @@ namespace EE::Animation
         TVector<String>                             m_nodePaths;
         #endif
 
-        // Node settings are created/destroyed by the animation graph loader
-        TVector<GraphNode::Settings*>               m_nodeSettings;
+        // Node definitions are created/destroyed by the animation graph loader
+        TVector<GraphNode::Definition*>             m_nodeDefinitions;
     };
 
     //-------------------------------------------------------------------------
@@ -89,10 +89,14 @@ namespace EE::Animation
             return m_pGraphDefinition.IsLoaded() && m_dataSet.IsValid();
         }
 
-        inline Skeleton const* GetSkeleton() const 
+        inline StringID GetVariationID() const { return m_dataSet.GetVariationID(); }
+
+        inline ResourceID const& GetDefinitionResourceID() const { return m_pGraphDefinition->GetResourceID(); }
+
+        inline Skeleton const* GetPrimarySkeleton() const 
         {
             EE_ASSERT( IsValid() );
-            return m_dataSet.GetSkeleton();
+            return m_dataSet.GetPrimarySkeleton();
         }
 
         inline GraphDefinition const* GetDefinition() const 

@@ -62,9 +62,14 @@
     <ClInclude Include="Encoding\Quantization.h" />
     <ClInclude Include="Imgui\ImguiFilteredCombo.h" />
     <ClInclude Include="Imgui\ImguiXNotifications.h" />
+    <ClInclude Include="Input\InputID.h" />
     <ClInclude Include="Logging\LoggingSystem.h" />
+    <ClInclude Include="Math\Easing.h" />
     <ClInclude Include="Platform\Platform.h" />
+    <ClInclude Include="Render\Settings\GlobalSettings_Render.h" />
     <ClInclude Include="Serialization\BitSerialization.h" />
+    <ClInclude Include="Settings\Settings.h" />
+    <ClInclude Include="Settings\SettingsRegistry.h" />
     <ClInclude Include="ThirdParty\implot\implot.h" />
     <ClInclude Include="ThirdParty\implot\implot_internal.h" />
     <ClInclude Include="Utils\TopologicalSort.h" />
@@ -88,10 +93,6 @@
     <ClInclude Include="Input\InputDevices\InputDevice_Controller.h" />
     <ClInclude Include="Input\InputDevices\InputDevice_KeyboardMouse.h" />
     <ClInclude Include="Input\InputDevices\InputDevice_XBoxController.h" />
-    <ClInclude Include="Input\InputState.h" />
-    <ClInclude Include="Input\InputStates\InputState_Controller.h" />
-    <ClInclude Include="Input\InputStates\InputState_Keyboard.h" />
-    <ClInclude Include="Input\InputStates\InputState_Mouse.h" />
     <ClInclude Include="Input\InputSystem.h" />
     <ClInclude Include="Esoterica.h" />
     <ClInclude Include="FileSystem\FileSystemUtils.h" />
@@ -152,14 +153,14 @@
     <ClInclude Include="Resource\ResourceRecord.h" />
     <ClInclude Include="Resource\ResourceRequest.h" />
     <ClInclude Include="Resource\ResourceRequesterID.h" />
-    <ClInclude Include="Resource\ResourceSettings.h" />
+    <ClInclude Include="Resource\Settings\GlobalSettings_Resource.h" />
     <ClInclude Include="Resource\ResourceSystem.h" />
     <ClInclude Include="Resource\ResourceTypeID.h" />
     <ClInclude Include="Serialization\BinarySerialization.h" />
     <ClInclude Include="Serialization\JsonSerialization.h" />
     <ClInclude Include="Drawing\DebugDrawingCommands.h" />
     <ClInclude Include="Drawing\DebugDrawing.h" />
-    <ClInclude Include="IniFile.h" />
+    <ClInclude Include="Settings\IniFile.h" />
     <ClInclude Include="ThirdParty\cmdParser\cmdParser.h" />
     <ClInclude Include="ThirdParty\concurrentqueue\blockingconcurrentqueue.h" />
     <ClInclude Include="ThirdParty\concurrentqueue\concurrentqueue.h" />
@@ -477,7 +478,6 @@
     <ClInclude Include="Time\TimeStamp.h" />
     <ClInclude Include="TypeSystem\CoreTypeConversions.h" />
     <ClInclude Include="TypeSystem\CoreTypeIDs.h" />
-    <ClInclude Include="TypeSystem\DefaultTypeInfos.h" />
     <ClInclude Include="TypeSystem\EnumInfo.h" />
     <ClInclude Include="TypeSystem\PropertyInfo.h" />
     <ClInclude Include="TypeSystem\PropertyPath.h" />
@@ -564,12 +564,16 @@
     <ClInclude Include="Types\WString.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanShader.h" />
     <ClInclude Include="_Module\API.h" />
+    <ClInclude Include="_Module\BaseModule.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Encoding\Hash.cpp" />
+    <ClCompile Include="FileSystem\FileSystem.cpp" />
     <ClCompile Include="Imgui\ImguiXNotifications.cpp" />
+    <ClCompile Include="Input\InputDevice.cpp" />
     <ClCompile Include="Logging\LoggingSystem.cpp" />
     <ClCompile Include="Logging\Platform\Log_Win32.cpp" />
+    <ClCompile Include="Math\Easing.cpp" />
     <ClCompile Include="Math\Platform\Math_Win32.h" />
     <ClCompile Include="RenderGraph\RenderGraphHelperNodes.cpp" />
     <ClCompile Include="RenderGraph\RenderGraphNodeBuilder.cpp" />
@@ -597,6 +601,8 @@
     <ClCompile Include="RHI\RHICommandBuffer.cpp" />
     <ClCompile Include="RHI\RHIHelper.cpp" />
     <ClCompile Include="RHI\RHIResourceBinding.cpp" />
+    <ClCompile Include="Platform\Platform.cpp" />
+    <ClCompile Include="Render\Settings\GlobalSettings_Render.cpp" />
     <ClCompile Include="ThirdParty\implot\implot.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_demo.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_items.cpp" />
@@ -664,7 +670,7 @@
     <ClCompile Include="Resource\ResourceProviders\PackagedResourceProvider.cpp" />
     <ClCompile Include="Resource\ResourceRecord.cpp" />
     <ClCompile Include="Resource\ResourceRequest.cpp" />
-    <ClCompile Include="Resource\ResourceSettings.cpp" />
+    <ClCompile Include="Resource\Settings\GlobalSettings_Resource.cpp" />
     <ClCompile Include="Resource\ResourceSystem.cpp" />
     <ClCompile Include="Resource\ResourceTypeID.cpp" />
     <ClCompile Include="FileSystem\FileSystemPath.cpp" />
@@ -686,7 +692,7 @@
     <ClCompile Include="Profiling.cpp" />
     <ClCompile Include="Serialization\BinarySerialization.cpp" />
     <ClCompile Include="Serialization\JsonSerialization.cpp" />
-    <ClCompile Include="IniFile.cpp" />
+    <ClCompile Include="Settings\IniFile.cpp" />
     <ClCompile Include="Systems.cpp" />
     <ClCompile Include="ThirdParty\EA\EASTL\Source\allocator_eastl.cpp" />
     <ClCompile Include="ThirdParty\EA\EASTL\Source\assert.cpp" />
@@ -722,7 +728,6 @@
     <ClCompile Include="TypeSystem\EnumInfo.cpp" />
     <ClCompile Include="TypeSystem\PropertyInfo.cpp" />
     <ClCompile Include="TypeSystem\PropertyPath.cpp" />
-    <ClCompile Include="TypeSystem\ReflectedType.cpp" />
     <ClCompile Include="TypeSystem\TypeDescriptors.cpp" />
     <ClCompile Include="TypeSystem\TypeInfo.cpp" />
     <ClCompile Include="TypeSystem\TypeRegistry.cpp" />
@@ -733,6 +738,8 @@
     <ClCompile Include="Types\UUID.cpp" />
     <ClCompile Include="Types\Platform\Types_Win32.cpp" />
     <ClCompile Include="Render\Platform\Vulkan\Backend\VulkanShader.cpp" />
+    <ClCompile Include="_Module\BaseModule.cpp" />
+    <ClCompile Include="_Module\_AutoGenerated\BaseModule.typeinfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE" />

@@ -1,7 +1,6 @@
 #include "PackagedResourceProvider.h"
 #include "Base/Resource/ResourceRequest.h"
-#include "Base/Resource/ResourceSettings.h"
-
+#include "Base/Resource/Settings/GlobalSettings_Resource.h"
 
 //-------------------------------------------------------------------------
 
@@ -20,7 +19,7 @@ namespace EE::Resource
     void PackagedResourceProvider::RequestRawResource( ResourceRequest* pRequest )
     {
         FileSystem::Path const resourceFilePath = pRequest->GetResourceID().GetResourcePath().ToFileSystemPath( m_settings.m_compiledResourcePath );
-        pRequest->OnRawResourceRequestComplete( resourceFilePath.c_str() );
+        pRequest->OnRawResourceRequestComplete( resourceFilePath.c_str(), String() );
     }
 
     void PackagedResourceProvider::CancelRequest( ResourceRequest* pRequest )

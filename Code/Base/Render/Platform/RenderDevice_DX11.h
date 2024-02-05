@@ -11,13 +11,8 @@
 
 //-------------------------------------------------------------------------
 
-namespace EE { class IniFile; }
-
-//-------------------------------------------------------------------------
-
 namespace EE::Render
 {
-<<<<<<<< HEAD:Code/Base/Render/Platform/DX11/RenderDevice_DX11.h
     #ifdef EE_VULKAN
     // temporary
     namespace Backend
@@ -29,10 +24,7 @@ namespace EE::Render
     }
     #endif
 
-    class EE_SYSTEM_API RenderDevice
-========
     class EE_BASE_API RenderDevice
->>>>>>>> heads/upstream:Code/Base/Render/Platform/RenderDevice_DX11.h
     {
 
     public:
@@ -43,7 +35,7 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         bool IsInitialized() const;
-        bool Initialize( IniFile const& iniFile );
+        bool Initialize( RenderGlobalSettings const& settings );
         bool Initialize();
         void Shutdown();
 

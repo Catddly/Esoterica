@@ -3,12 +3,12 @@
 #include "Engine/Render/Renderers/DebugRenderer.h"
 #include "Engine/Render/Renderers/ImguiRenderer.h"
 #include "Engine/Entity/EntityWorldManager.h"
-#include "Base/Render/RenderDevice.h"
+#include "Engine/Entity/EntityWorld.h"
 #include "Engine/UpdateContext.h"
+#include "Base/Render/RenderDevice.h"
 #include "Base/Profiling.h"
 #include "Base/Math/ViewVolume.h"
 #include "Base/Render/RenderPipelineRegistry.h"
-#include "Engine/Entity/EntityWorld.h"
 #include <eastl/sort.h>
 
 //-------------------------------------------------------------------------
@@ -231,7 +231,9 @@ namespace EE::Render
             Float2 const viewportSize = pViewport->GetDimensions();
             Float2 const newViewportPosition = ( viewportPosition / oldWindowDimensions ) * newWindowDimensions;
             Float2 const newViewportSize = ( viewportSize / oldWindowDimensions ) * newWindowDimensions;
-            pViewport->Resize( newViewportPosition, newViewportSize );
+            Int2 const newViewportDimensions( Math::CeilingToInt( newViewportSize.m_x ), Math::CeilingToInt( newViewportSize.m_y ) ); // Ensure we laso have valid dimensions
+            EE_ASSERT( newViewportDimensions.m_x > 0 && newViewportDimensions.m_y > 0 );
+            pViewport->Resize( newViewportPosition, newViewportDimensions );
         }
     }
 

@@ -2,7 +2,6 @@
 #include "Game/Player/Components/Component_MainPlayer.h"
 #include "Game/Player/Camera/PlayerCameraController.h"
 #include "Game/Player/Animation/PlayerAnimationController.h"
-#include "Game/Player/Animation/PlayerGraphController_Ability.h"
 #include "Engine/Physics/Components/Component_PhysicsCharacter.h"
 #include "Base/Input/InputSystem.h"
 #include "Base/Drawing/DebugDrawing.h"
@@ -13,21 +12,20 @@ namespace EE::Player
 {
     bool SlideAction::TryStartInternal( ActionContext const& ctx )
     {
-        if( ctx.m_pPlayerComponent->m_sprintFlag && ctx.m_pInputState->GetControllerState()->WasPressed( Input::ControllerButton::FaceButtonLeft ) )
+        if( ctx.m_pPlayerComponent->m_sprintFlag && ctx.m_pInputSystem->GetController()->WasPressed( Input::InputID::Controller_ThumbstickRight ) )
         {
-            auto const pControllerState = ctx.m_pInputState->GetControllerState();
+            auto const pControllerState = ctx.m_pInputSystem->GetController();
             EE_ASSERT( pControllerState != nullptr );
 
-            Vector const movementInputs = ctx.m_pInputState->GetControllerState()->GetLeftAnalogStickValue();
+            Vector const movementInputs = ctx.m_pInputSystem->GetController()->GetLeftStickValue();
             Vector const& camFwd = ctx.m_pCameraController->GetCameraRelativeForwardVector2D();
             Vector const& camRight = ctx.m_pCameraController->GetCameraRelativeRightVector2D();
             Vector const forward = camFwd * movementInputs.GetY();
             Vector const right = camRight * movementInputs.GetX();
             m_slideDirection = ( forward + right ).GetNormalized2();
 
-            ctx.m_pAnimationController->SetCharacterState( CharacterAnimationState::Ability );
-            auto pAbilityAnimController = ctx.GetAnimSubGraphController<AbilityGraphController>();
-            pAbilityAnimController->StartSlide();
+            ctx.m_pAnimationController->SetCharacterState( AnimationController::CharacterState::Ability );
+            ctx.m_pAnimationController->StartSlide();
 
             #if EE_DEVELOPMENT_TOOLS
             m_debugStartPosition = ctx.m_pCharacterComponent->GetPosition();
@@ -47,7 +45,7 @@ namespace EE::Player
 
     Action::Status SlideAction::UpdateInternal( ActionContext const& ctx )
     {
-        auto const pControllerState = ctx.m_pInputState->GetControllerState();
+        auto const pControllerState = ctx.m_pInputSystem->GetController();
         EE_ASSERT( pControllerState != nullptr );
 
         // Calculate desired player displacement
@@ -64,8 +62,7 @@ namespace EE::Player
         //-------------------------------------------------------------------------
 
         auto pGraphController = ctx.m_pAnimationController;
-        auto pAbilityGraphController = ctx.GetAnimSubGraphController<AbilityGraphController>();
-        pAbilityGraphController->SetDesiredMovement( ctx.GetDeltaTime(), desiredVelocity, ctx.m_pCharacterComponent->GetForwardVector() );
+        ctx.m_pAnimationController->SetAbilityDesiredMovement( ctx.GetDeltaTime(), desiredVelocity, ctx.m_pCharacterComponent->GetForwardVector() );
 
         //-------------------------------------------------------------------------
 
@@ -80,12 +77,13 @@ namespace EE::Player
 
         //-------------------------------------------------------------------------
 
-        if ( pGraphController->IsTransitionFullyAllowed() )
+        static StringID const slideTransitionMarkerID( "Slide" );
+        if ( pGraphController->IsTransitionFullyAllowed( slideTransitionMarkerID ) )
         {
             return Status::Completed;
         }
 
-        return pGraphController->IsTransitionConditionallyAllowed() ? Status::Interruptible : Status::Uninterruptible;
+        return pGraphController->IsTransitionConditionallyAllowed( slideTransitionMarkerID ) ? Status::Interruptible : Status::Uninterruptible;
     }
 
     void SlideAction::StopInternal( ActionContext const& ctx, StopReason reason )

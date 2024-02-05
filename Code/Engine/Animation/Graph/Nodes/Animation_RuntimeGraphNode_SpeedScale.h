@@ -11,10 +11,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public PassthroughNode::Settings
+        struct EE_ENGINE_API Definition final : public PassthroughNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( PassthroughNode::Settings, m_scaleValueNodeIdx, m_blendInTime );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( PassthroughNode::Definition, m_scaleValueNodeIdx, m_blendInTime );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 
@@ -45,14 +45,15 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public PassthroughNode::Settings
+        struct EE_ENGINE_API Definition final : public PassthroughNode::Definition
         {
-            EE_REFLECT_TYPE ( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS ( PassthroughNode::Settings, m_durationValueNodeIdx );
+            EE_REFLECT_TYPE ( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION ( PassthroughNode::Definition, m_durationValueNodeIdx, m_desiredDuration );
 
             virtual void InstantiateNode ( InstantiationContext const& context, InstantiationOptions options ) const override;
 
             int16_t                 m_durationValueNodeIdx = InvalidIndex;
+            float                   m_desiredDuration = 0.0f;
         };
 
     private:
@@ -72,10 +73,10 @@ namespace EE::Animation::GraphNodes
     {
     public:
 
-        struct EE_ENGINE_API Settings final : public PoseNode::Settings
+        struct EE_ENGINE_API Definition final : public PoseNode::Definition
         {
-            EE_REFLECT_TYPE( Settings );
-            EE_SERIALIZE_GRAPHNODESETTINGS( PoseNode::Settings, m_childNodeIdx, m_desiredVelocityValueNodeIdx, m_blendInTime );
+            EE_REFLECT_TYPE( Definition );
+            EE_SERIALIZE_GRAPHNODEDEFINITION( PoseNode::Definition, m_childNodeIdx, m_desiredVelocityValueNodeIdx, m_blendInTime );
 
             virtual void InstantiateNode( InstantiationContext const& context, InstantiationOptions options ) const override;
 

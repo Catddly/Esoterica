@@ -5,6 +5,7 @@
 #include "Engine/Render/Components/Component_SkeletalMesh.h"
 #include "Engine/Render/Shaders/EngineShaders.h"
 #include "Engine/Render/Systems/WorldSystem_Renderer.h"
+#include "Engine/Render/Settings/WorldSettings_Render.h"
 #include "Engine/Entity/Entity.h"
 #include "Engine/Entity/EntityWorldUpdateContext.h"
 #include "Engine/Entity/EntityWorld.h"
@@ -1046,9 +1047,78 @@ namespace EE::Render
         //RasterPipelineState* pPipelineState = renderTarget.HasPickingRT() ? &m_pipelineStateSkeletalPicking : &m_pipelineStateSkeletal;
         //SetupRenderStates( viewport, pPipelineState->m_pPixelShader, data );
 
-        //renderContext.SetRasterPipelineState( *pPipelineState );
-        //renderContext.SetShaderInputBinding( m_inputBindingSkeletal );
-        //renderContext.SetPrimitiveTopology( Topology::TriangleList );
+        // renderContext.SetPipelineState( *pPipelineState );
+        // renderContext.SetShaderInputBinding( m_inputBindingStatic );
+        // renderContext.SetPrimitiveTopology( Topology::TriangleList );
+
+        //-------------------------------------------------------------------------
+
+        for ( StaticMeshComponent const* pMeshComponent : data.m_staticMeshComponents )
+        {
+            auto pMesh = pMeshComponent->GetMesh();
+            Transform const& worldTransform = pMeshComponent->GetWorldTransform();
+            Vector const finalScale = pMeshComponent->GetLocalScale() * worldTransform.GetScale();
+            Matrix const worldTransformMatrix = Matrix( worldTransform.GetRotation(), worldTransform.GetTranslation(), finalScale );
+
+            ObjectTransforms transforms = data.m_transforms;
+            transforms.m_worldTransform = worldTransformMatrix;
+            transforms.m_worldTransform.SetTranslation( worldTransformMatrix.GetTranslation() );
+            transforms.m_normalTransform = transforms.m_worldTransform.GetInverse().Transpose();
+            renderContext.WriteToBuffer( m_vertexShaderStatic.GetConstBuffer( 0 ), &transforms, sizeof( transforms ) );
+
+            if ( renderTarget.HasPickingRT() )
+            {
+                PickingData const pd( pMeshComponent->GetEntityID().m_value, pMeshComponent->GetID().m_value );
+                renderContext.WriteToBuffer( m_pixelShaderPicking.GetConstBuffer( 2 ), &pd, sizeof( PickingData ) );
+            }
+
+            renderContext.SetVertexBuffer( pMesh->GetVertexBuffer() );
+            renderContext.SetIndexBuffer( pMesh->GetIndexBuffer() );
+
+            TVector<Material const*> const& materials = pMeshComponent->GetMaterials();
+            uint64_t const visibility = pMeshComponent->GetSectionVisibilityMask();
+
+            auto const numSubMeshes = pMesh->GetNumSections();
+            for ( auto i = 0u; i < numSubMeshes; i++ )
+            {
+                // Skip hidden sections
+                if ( ( visibility & ( 1ull << i ) ) == 0 )
+                {
+                    continue;
+                }
+
+                // Set material
+                if ( i < materials.size() && materials[i] )
+                {
+                    SetMaterial( renderContext, *pPipelineState->m_pPixelShader, materials[i] );
+                }
+                else // Use default material
+                {
+                    SetDefaultMaterial( renderContext, *pPipelineState->m_pPixelShader );
+                }
+
+                auto const& subMesh = pMesh->GetSection( i );
+                renderContext.DrawIndexed( subMesh.m_numIndices, subMesh.m_startIndex );
+            }
+        }
+        renderContext.ClearShaderResource( PipelineStage::Pixel, 10 );
+    }
+
+    void WorldRenderer::RenderSkeletalMeshes( Viewport const& viewport, RenderTarget const& renderTarget, RenderData const& data )
+    {
+        EE_PROFILE_FUNCTION_RENDER();
+
+        auto const& renderContext = m_pRenderDevice->GetImmediateContext();
+
+        // Set primary render state and clear the render buffer
+        //-------------------------------------------------------------------------
+
+        PipelineState* pPipelineState = renderTarget.HasPickingRT() ? &m_pipelineStateSkeletalPicking : &m_pipelineStateSkeletal;
+        SetupRenderStates( viewport, pPipelineState->m_pPixelShader, data );
+
+        // renderContext.SetPipelineState( *pPipelineState );
+        // renderContext.SetShaderInputBinding( m_inputBindingSkeletal );
+        // renderContext.SetPrimitiveTopology( Topology::TriangleList );
 
         //-------------------------------------------------------------------------
 
@@ -1635,8 +1705,9 @@ namespace EE::Render
 
         renderData.m_lightData.m_lightingFlags = lightingFlags;
 
-        #if EE_DEVELOPMENT_TOOLS
-        renderData.m_lightData.m_lightingFlags = renderData.m_lightData.m_lightingFlags | ( (int32_t) pWorldSystem->GetVisualizationMode() << (int32_t) RendererWorldSystem::VisualizationMode::BitShift );
+        #if EE_DEVELOPMENT_TOOLS 
+        auto* pRenderSettings = pWorld->GetMutableSettings<Render::RenderWorldSettings>();
+        renderData.m_lightData.m_lightingFlags = renderData.m_lightData.m_lightingFlags | ( (int32_t) pRenderSettings->m_visualizationMode << (int32_t) DebugVisualizationMode::BitShift );
         #endif
 
         //-------------------------------------------------------------------------
