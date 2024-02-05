@@ -1,5 +1,5 @@
 #pragma once
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
 #include "Base/Types/Arrays.h"
 #include "Base/Memory/Pointers.h"

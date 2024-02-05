@@ -6,6 +6,20 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RG
+{
+    class RenderGraph;
+    class RGRenderCommandContext;
+    class RGBoundPipeline;
+}
+namespace EE::RHI
+{ 
+    class RHIBuffer;
+    class RHIRenderPass;
+}
+
+//-------------------------------------------------------------------------
+
 namespace EE::Render
 {
     class DirectionalLightComponent;
@@ -99,14 +113,25 @@ namespace EE::Render
             CubemapTexture const*                       m_pSkyboxTexture;
             TVector<StaticMeshComponent const*>&        m_staticMeshComponents;
             TVector<SkeletalMeshComponent const*>&      m_skeletalMeshComponents;
+
+            RenderData(
+                ObjectTransforms const& transforms, LightData const& lightData,
+                CubemapTexture const* pSkyboxRadianceTexture, CubemapTexture const* pSkyboxTexture,
+                TVector<StaticMeshComponent const*>& staticMeshComponents, TVector<SkeletalMeshComponent const*>& skeletalMeshComponents
+            )
+                : m_transforms( transforms ), m_lightData( lightData ),
+                m_pSkyboxRadianceTexture( pSkyboxRadianceTexture ), m_pSkyboxTexture( pSkyboxTexture ),
+                m_staticMeshComponents( staticMeshComponents ), m_skeletalMeshComponents( skeletalMeshComponents )
+            {
+            }
         };
 
     public:
 
         EE_RENDERER_ID( WorldRenderer, Render::RendererPriorityLevel::Game );
 
-        static void SetMaterial( RenderContext const& renderContext, PixelShader& pixelShader, Material const* pMaterial );
-        static void SetDefaultMaterial( RenderContext const& renderContext, PixelShader& pixelShader );
+        static void SetMaterial( RG::RGRenderCommandContext& context, RG::RGBoundPipeline& boundPipeline, RHI::RHIBuffer* pMaterialDataBuffer, Material const* pMaterial );
+        static void SetDefaultMaterial( RG::RGRenderCommandContext& context, RG::RGBoundPipeline& boundPipeline, RHI::RHIBuffer* pMaterialDataBuffer );
 
     public:
 
@@ -115,49 +140,66 @@ namespace EE::Render
         void Shutdown();
 
         virtual void RenderWorld( Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget, EntityWorld* pWorld ) override final;
+        virtual void RenderWorld_Test( RG::RenderGraph& renderGraph, Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget, EntityWorld* pWorld ) override final;
 
     private:
 
-        void RenderSunShadows( Viewport const& viewport, DirectionalLightComponent* pDirectionalLightComponent, RenderData const& data );
-        void RenderStaticMeshes( Viewport const& viewport, RenderTarget const& renderTarget, RenderData const& data );
-        void RenderSkeletalMeshes( Viewport const& viewport, RenderTarget const& renderTarget, RenderData const& data );
-        void RenderSkybox( Viewport const& viewport, RenderData const& data );
+        void ComputeBrdfLut( RG::RenderGraph& renderGraph );
+
+        void RenderSunShadows( RG::RenderGraph& renderGraph, Viewport const& viewport, DirectionalLightComponent* pDirectionalLightComponent );
+        void RenderStaticMeshes( RG::RenderGraph& renderGraph, Viewport const& viewport, RenderTarget const& renderTarget );
+        void RenderSkeletalMeshes( Viewport const& viewport, RenderTarget const& renderTarget );
+        void RenderSkybox( RG::RenderGraph& renderGraph, Viewport const& viewport, RenderTarget const& renderTarget );
 
         void SetupRenderStates( Viewport const& viewport, PixelShader* pShader, RenderData const& data );
 
     private:
 
-        bool                                                    m_initialized = false;
+        bool                                                m_initialized = false;
+        bool                                                m_bBrdfLutReady = false;
 
         // Render State
-        VertexShader                                            m_vertexShaderSkybox;
-        PixelShader                                             m_pixelShaderSkybox;
-        RenderDevice*                                           m_pRenderDevice = nullptr;
-        VertexShader                                            m_vertexShaderStatic;
-        VertexShader                                            m_vertexShaderSkeletal;
-        PixelShader                                             m_pixelShader;
-        PixelShader                                             m_emptyPixelShader;
-        BlendState                                              m_blendState;
-        RasterizerState                                         m_rasterizerState;
-        SamplerState                                            m_bilinearSampler;
-        SamplerState                                            m_bilinearClampedSampler;
-        SamplerState                                            m_shadowSampler;
-        ShaderInputBindingHandle                                m_inputBindingStatic;
-        ShaderInputBindingHandle                                m_inputBindingSkeletal;
+        RenderDevice*                                       m_pRenderDevice = nullptr;
+        //RHI::RHIRenderPass*                                 m_pSkyboxRenderPass = nullptr;
+        RHI::RHIRenderPass*                                 m_pOpaqueRenderPass = nullptr;
+        RHI::RHIRenderPass*                                 m_pOpaquePickingRenderPass = nullptr;
+        RHI::RHIRenderPass*                                 m_pShadowRenderPass = nullptr;
+
+        //VertexShader                                            m_vertexShaderSkybox;
+        //PixelShader                                             m_pixelShaderSkybox;
+        //VertexShader                                            m_vertexShaderStatic;
+        //VertexShader                                            m_vertexShaderSkeletal;
+        //PixelShader                                             m_pixelShader;
+        //PixelShader                                             m_emptyPixelShader;
+        //BlendState                                              m_blendState;
+        //RasterizerState                                         m_rasterizerState;
+        //SamplerState                                            m_bilinearSampler;
+        //SamplerState                                            m_bilinearClampedSampler;
+        //SamplerState                                            m_shadowSampler;
+        //ShaderInputBindingHandle                                m_inputBindingStatic;
+        //ShaderInputBindingHandle                                m_inputBindingSkeletal;
 
         // TODO: we change the origin PipelineState to RasterPipelineState
-        RasterPipelineState                                     m_pipelineStateStatic;
-        RasterPipelineState                                     m_pipelineStateSkeletal;
-        RasterPipelineState                                     m_pipelineStateStaticShadow;
-        RasterPipelineState                                     m_pipelineStateSkeletalShadow;
-        RasterPipelineState                                     m_pipelineSkybox;
-        ComputeShader                                           m_precomputeDFGComputeShader;
-        Texture                                                 m_precomputedBRDF;
-        Texture                                                 m_shadowMap;
-        ComputePipelineState                                    m_pipelinePrecomputeBRDF;
+        //RasterPipelineState                                     m_pipelineStateStatic;
+        //RasterPipelineState                                     m_pipelineStateSkeletal;
+        //RasterPipelineState                                     m_pipelineStateStaticShadow;
+        //RasterPipelineState                                     m_pipelineStateSkeletalShadow;
+        //RasterPipelineState                                     m_pipelineSkybox;
+        //ComputeShader                                           m_precomputeDFGComputeShader;
+        //Texture                                                 m_precomputedBRDF;
+        //Texture                                                 m_shadowMap;
+        //ComputePipelineState                                    m_pipelinePrecomputeBRDF;
 
-        PixelShader                                             m_pixelShaderPicking;
-        RasterPipelineState                                     m_pipelineStateStaticPicking;
-        RasterPipelineState                                     m_pipelineStateSkeletalPicking;
+        //PixelShader                                             m_pixelShaderPicking;
+        //RasterPipelineState                                     m_pipelineStateStaticPicking;
+        //RasterPipelineState                                     m_pipelineStateSkeletalPicking;
+
+        // This is unsafe!!!
+        // In render graph render system we defer the command execution after compiling,
+        // any data reference by render graph node should be valid (i.e. alive) unless rendering is complete.
+        // User should manually keep this data alive and it will cause some issues.
+        // TODO: Add functionality to allow render graph allow any associative data within node.
+        // It is render graph's responsibility to keep this data valid.
+        RenderData*                                         m_pRenderData = nullptr;
     };
 }

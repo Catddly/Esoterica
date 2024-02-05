@@ -9,7 +9,7 @@
 
 namespace EE::Render
 {
-    class ShaderLoader : public Resource::ResourceLoader
+    class EE_ENGINE_API ShaderLoader : public Resource::ResourceLoader
     {
     public:
 
@@ -17,6 +17,7 @@ namespace EE::Render
         {
             m_loadableTypes.push_back( PixelShader::GetStaticResourceTypeID() );
             m_loadableTypes.push_back( VertexShader::GetStaticResourceTypeID() );
+            m_loadableTypes.push_back( ComputeShader::GetStaticResourceTypeID() );
         }
 
         inline void SetRenderDevicePtr( RenderDevice* pRenderDevice )
@@ -34,6 +35,6 @@ namespace EE::Render
 
     private:
 
-        RenderDevice* m_pRenderDevice;
+        RenderDevice*                       m_pRenderDevice;
     };
 }

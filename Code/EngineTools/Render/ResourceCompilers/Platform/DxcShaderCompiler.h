@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Base/FileSystem/FileSystemPath.h"
+#include "Base/Types/Arrays.h"
 #include "Base/Types/Function.h"
+//#include "Base/Types/WString.h"
 
 #include <atlbase.h> // ComPtr
 #include <dxc/dxcapi.h>
@@ -20,6 +22,12 @@ namespace EE::Render
 		Compute,
 	};
 
+    struct DxcShaderMacroDefine
+    {
+        String              m_macroName;
+        String              m_value;
+    };
+
 	class DxcShaderCompiler
 	{
 	public:
@@ -37,9 +45,13 @@ namespace EE::Render
 
 	public:
 
-		bool Compile( FileSystem::Path const& shaderSourcePath, Blob& outBlob, DxcShaderTargetProfile profile, char const* entryName = "main", DxcCompileTarget target = DxcCompileTarget::Spirv );
+        bool Compile( FileSystem::Path const& shaderSourcePath, Blob& outBlob, DxcShaderTargetProfile profile, char const* entryName = "main", TSpan<DxcShaderMacroDefine> defines = {}, DxcCompileTarget target = DxcCompileTarget::Spirv );
 
 		inline String GetLastErrorMessage() const { return m_errorMessage; }
+
+    private:
+
+        //void ProcessShaderMacroDefines( TSpan<DxcShaderMacroDefine> defines, TVector<TVector<wchar_t>>& outWDefines, TVector<TVector<wchar_t>>& outWValues, TVector<DxcDefine>& outDxcDefine );
 
 	private:
 

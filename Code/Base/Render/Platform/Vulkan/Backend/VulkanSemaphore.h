@@ -12,10 +12,16 @@ namespace EE::Render
 		class VulkanSemaphore final : public RHI::RHISemaphore
 		{
 			friend class VulkanDevice;
+			friend class VulkanSwapchain;
+			friend class VulkanCommandBufferPool;
 
 		public:
 
-			VulkanSemaphore() = default;
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+
+            VulkanSemaphore()
+                : RHISemaphore( RHI::ERHIType::Vulkan )
+            {}
 
 		private:
 

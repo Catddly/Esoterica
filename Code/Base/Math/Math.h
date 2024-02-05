@@ -230,6 +230,20 @@ namespace EE
             return isnan( n ) || isinf( n );
         }
 
+        template<typename T>
+        EE_FORCE_INLINE typename std::enable_if_t<std::is_unsigned_v<T>, bool> IsAlignTo( T value, T alignment )
+        {
+            EE_ASSERT( alignment != 0 );
+            return value % alignment == 0;
+        }
+
+        template<typename T>
+        EE_FORCE_INLINE typename std::enable_if_t<std::is_unsigned_v<T>, T> MinValueAlignTo( T value, T alignment )
+        {
+            EE_ASSERT( alignment != 0 );
+            return ( ( value + alignment - 1 ) / alignment ) * alignment;
+        }
+        
         //-------------------------------------------------------------------------
 
         // Note: returns true for 0

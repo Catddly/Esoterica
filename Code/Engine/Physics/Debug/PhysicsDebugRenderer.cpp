@@ -242,7 +242,7 @@ namespace EE::Physics
         }
 
         auto const& renderContext = m_pRenderDevice->GetImmediateContext();
-        renderContext.SetRenderTarget( renderTarget );
+        //renderContext.SetRenderTarget( renderTarget );
         renderContext.SetViewport( Float2( viewport.GetDimensions() ), Float2( viewport.GetTopLeftPosition() ) );
 
         //-------------------------------------------------------------------------

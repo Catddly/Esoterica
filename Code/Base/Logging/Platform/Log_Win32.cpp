@@ -10,7 +10,7 @@ namespace EE::Log
 {
     void TraceMessage( const char* format, ... )
     {
-        constexpr size_t const bufferSize = 512;
+        constexpr size_t const bufferSize = 2048;
         char messageBuffer[bufferSize]; // Dont make this static as we need this to be threadsafe!!!
 
         va_list args;
@@ -20,7 +20,7 @@ namespace EE::Log
 
         // Add newlines
         if ( numCharsWritten < 509 )
-        {
+        {   
             messageBuffer[numCharsWritten] = '\r';
             messageBuffer[numCharsWritten + 1] = '\n';
             messageBuffer[numCharsWritten + 2] = 0;

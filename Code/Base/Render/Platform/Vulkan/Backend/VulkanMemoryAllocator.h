@@ -2,7 +2,7 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Memory/Pointers.h"
-#include "VulkanCommonSettings.h"
+#include "VulkanCommon.h"
 
 #if VULKAN_USE_VMA_ALLOCATION
 #include <vma/vk_mem_alloc.h>
@@ -17,6 +17,7 @@ namespace EE::Render
 		class VulkanMemoryAllocator
 		{
             friend class VulkanDevice;
+            friend class VulkanBuffer;
 
 		public:
 

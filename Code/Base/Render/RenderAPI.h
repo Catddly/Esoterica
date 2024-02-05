@@ -6,6 +6,9 @@
 
 namespace EE::Render
 {
+    // Note: If you modified this enum, please keep data in this file consistent:
+    //       RenderDevice_DX11.cpp : g_semanticNames
+    //       ResourceCompiler_RenderShader.cpp : g_semanticNames
     enum class DataSemantic : uint8_t
     {
         Position = 0,
@@ -20,41 +23,45 @@ namespace EE::Render
         None,
     };
 
-    enum class DataFormat : uint8_t
-    {
-        Unknown = 0,
-        UInt_R8,
-        UInt_R8G8,
-        UInt_R8G8B8A8,
+    // Note: If you modified this enum, please keep data in this file consistent:
+    //       RenderDevice_DX11.cpp : g_formatConversion
+    //       ResourceCompiler_RenderShader.cpp : g_formatConversion
+    //       RenderVertexFormats.cpp: g_dataTypeSizes
+    //enum class DataFormat : uint8_t
+    //{
+    //    Unknown = 0,
+    //    UInt_R8,
+    //    UInt_R8G8,
+    //    UInt_R8G8B8A8,
 
-        UNorm_R8,
-        UNorm_R8G8,
-        UNorm_R8G8B8A8,
+    //    UNorm_R8,
+    //    UNorm_R8G8,
+    //    UNorm_R8G8B8A8,
 
-        UInt_R32,
-        UInt_R32G32,
-        UInt_R32G32B32,
-        UInt_R32G32B32A32,
+    //    UInt_R32,
+    //    UInt_R32G32,
+    //    UInt_R32G32B32,
+    //    UInt_R32G32B32A32,
 
-        SInt_R32,
-        SInt_R32G32,
-        SInt_R32G32B32,
-        SInt_R32G32B32A32,
+    //    SInt_R32,
+    //    SInt_R32G32,
+    //    SInt_R32G32B32,
+    //    SInt_R32G32B32A32,
 
-        Float_R16,
-        Float_R16G16,
-        Float_R16G16B16A16,
+    //    Float_R16,
+    //    Float_R16G16,
+    //    Float_R16G16B16A16,
 
-        Float_R32,
-        Float_R32G32,
-        Float_R32G32B32,
-        Float_R32G32B32A32,
+    //    Float_R32,
+    //    Float_R32G32,
+    //    Float_R32G32B32,
+    //    Float_R32G32B32A32,
 
-        // Special case format that changes based on texture usage
-        Float_X32,
+    //    // Special case format that changes based on texture usage
+    //    Float_X32,
 
-        Count,
-    };
+    //    Count,
+    //};
 
     enum Usage : uint8_t
     {

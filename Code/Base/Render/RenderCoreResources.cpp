@@ -1,6 +1,13 @@
 #include "RenderCoreResources.h"
 #include "RenderDevice.h"
 #include "RenderUtils.h"
+#include "Base/RHI/Resource/RHIResourceCreationCommons.h"
+#include "Base/RHI/RHIDevice.h"
+
+namespace EE::RHI
+{
+    class RHITexture;
+}
 
 //-------------------------------------------------------------------------
 
@@ -13,7 +20,7 @@ namespace EE::Render::CoreResources
 
     struct DefaultResourceContainer
     {
-        Texture m_defaultTexture;
+        RHI::RHITexture* m_pDefaultTexture = nullptr;
     };
 
     static DefaultResourceContainer* g_pDefaultResources = nullptr;
@@ -23,6 +30,8 @@ namespace EE::Render::CoreResources
     void Initialize( RenderDevice* pRenderDevice )
     {
         EE_ASSERT( pRenderDevice != nullptr );
+        auto* pRhiDevice = pRenderDevice->GetRHIDevice();
+        EE_ASSERT( pRhiDevice );
 
         //-------------------------------------------------------------------------
 
@@ -32,18 +41,30 @@ namespace EE::Render::CoreResources
         //-------------------------------------------------------------------------
 
         // Create default texture
-        Utils::CreateTextureFromBase64( pRenderDevice, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ), g_pDefaultResources->m_defaultTexture );
+        //Utils::CreateTextureFromBase64( pRenderDevice, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ), g_pDefaultResources->m_defaultTexture );
+
+        RHI::RHITextureBufferData texData;
+        Utils::FetchTextureBufferDataFromBase64( texData, g_defaultTexturePngBase64Encoded, sizeof( g_defaultTexturePngBase64Encoded ) );
+        EE_ASSERT( texData.HasValidData() );
+        RHI::RHITextureCreateDesc defaultTexDesc = RHI::RHITextureCreateDesc::NewInitData( std::move( texData ), RHI::EPixelFormat::RGBA8Unorm );
+        defaultTexDesc.m_usage.SetFlag( RHI::ETextureUsage::Sampled );
+
+        g_pDefaultResources->m_pDefaultTexture = pRhiDevice->CreateTexture( defaultTexDesc );
+        EE_ASSERT( g_pDefaultResources->m_pDefaultTexture );
     }
 
     void Shutdown( RenderDevice* pRenderDevice )
     {
         EE_ASSERT( pRenderDevice != nullptr );
+        auto* pRhiDevice = pRenderDevice->GetRHIDevice();
+        EE_ASSERT( pRhiDevice );
 
         //-------------------------------------------------------------------------
 
         if ( g_pDefaultResources != nullptr )
         {
-            pRenderDevice->DestroyTexture( g_pDefaultResources->m_defaultTexture );
+            //pRenderDevice->DestroyTexture( g_pDefaultResources->m_defaultTexture );
+            pRhiDevice->DestroyTexture( g_pDefaultResources->m_pDefaultTexture );
 
             //-------------------------------------------------------------------------
 
@@ -51,9 +72,9 @@ namespace EE::Render::CoreResources
         }
     }
 
-    Texture const* GetMissingTexture()
+    RHI::RHITexture* GetMissingTexture()
     {
         EE_ASSERT( g_pDefaultResources != nullptr );
-        return &g_pDefaultResources->m_defaultTexture;
+        return g_pDefaultResources->m_pDefaultTexture;
     }
 }

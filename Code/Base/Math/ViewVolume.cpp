@@ -317,7 +317,9 @@ namespace EE::Math
     {
         if ( IsOrthographic() )
         {
-            m_projectionMatrix = CreateOrthographicProjectionMatrix( m_viewDimensions.m_x, m_viewDimensions.m_y, m_depthRange.m_begin, m_depthRange.m_end );
+            //m_projectionMatrix = CreateOrthographicProjectionMatrix( m_viewDimensions.m_x, m_viewDimensions.m_y, m_depthRange.m_begin, m_depthRange.m_end );
+            // Note: reverse z
+            m_projectionMatrix = CreateOrthographicProjectionMatrix( m_viewDimensions.m_x, m_viewDimensions.m_y, m_depthRange.m_end, m_depthRange.m_begin );
         }
         else
         {

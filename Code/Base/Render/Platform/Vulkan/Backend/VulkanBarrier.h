@@ -10,30 +10,30 @@ namespace EE::Render
 {
 	namespace Backend
 	{
-		struct MemoryBarrierTransition
+		struct VkMemoryBarrierTransition
 		{
 			VkPipelineStageFlags				m_srcStage;
 			VkPipelineStageFlags				m_dstStage;
 			VkMemoryBarrier						m_barrier;
 		};
 
-		struct BufferBarrierTransition
+		struct VkBufferBarrierTransition
 		{
 			VkPipelineStageFlags				m_srcStage;
 			VkPipelineStageFlags				m_dstStage;
 			VkBufferMemoryBarrier				m_barrier;
 		};
 
-		struct ImageBarrierTransition
+		struct VkTextureBarrierTransition
 		{
 			VkPipelineStageFlags				m_srcStage;
 			VkPipelineStageFlags				m_dstStage;
 			VkImageMemoryBarrier				m_barrier;
 		};
 
-		MemoryBarrierTransition GetMemoryBarrierTransition( GlobalBarrier const& globalBarrier );
-		BufferBarrierTransition GetBufferBarrierTransition( BufferBarrier const& bufferBarrier );
-		ImageBarrierTransition GetImageBarrierTransition( ImageBarrier const& imageBarrier );
+		VkMemoryBarrierTransition GetMemoryBarrierTransition( GlobalBarrier const& globalBarrier );
+		VkBufferBarrierTransition GetBufferBarrierTransition( BufferBarrier const& bufferBarrier );
+		VkTextureBarrierTransition GetTextureBarrierTransition( ImageBarrier const& imageBarrier );
 
 		//-------------------------------------------------------------------------
 

@@ -9,6 +9,7 @@
 //-------------------------------------------------------------------------
 
 namespace EE { class EntityWorld; }
+namespace EE::RG { class RenderGraph; }
 
 //-------------------------------------------------------------------------
 
@@ -45,7 +46,10 @@ namespace EE::Render
         virtual int32_t GetPriority() const = 0;
 
         virtual void RenderWorld( Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget, EntityWorld* pWorld ) {};
+        virtual void RenderWorld_Test( RG::RenderGraph& renderGraph, Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget, EntityWorld* pWorld ) {};
+
         virtual void RenderViewport( Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget ) {};
+        virtual void RenderViewport_Test( RG::RenderGraph& renderGraph, Seconds const deltaTime, Viewport const& viewport, RenderTarget const& renderTarget ) {};
     };
 }
 

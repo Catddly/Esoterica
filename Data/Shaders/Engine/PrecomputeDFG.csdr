@@ -1,0 +1,8 @@
+{
+    "TypeID": "EE::Render::ComputeShaderResourceDescriptor",
+    "m_shaderType": "Compute",
+    "m_shaderBackendLanguage": "Vulkan",
+    "m_shaderLanguage": "Hlsl",
+    "m_shaderPath": "data://shaders/engine/cs_precomputedfg.hlsl",
+    "m_shaderEntryName": "main"
+}

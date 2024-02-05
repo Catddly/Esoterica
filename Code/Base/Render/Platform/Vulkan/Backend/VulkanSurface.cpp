@@ -1,14 +1,14 @@
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
 #include "VulkanSurface.h"
-#include "VulkanCommonSettings.h"
+#include "VulkanCommon.h"
 #include "VulkanInstance.h"
 
 namespace EE::Render
 {
 	namespace Backend
 	{
-		VulkanSurface::VulkanSurface( TSharedPtr<VulkanInstance> pInstance )
+		VulkanSurface::VulkanSurface( TSharedPtr<VulkanInstance> pInstance, void* pActiveWindowHandle )
 			: m_pInstance ( pInstance )
 		{
 			LoadVulkanFuncPointer();
@@ -16,7 +16,7 @@ namespace EE::Render
 			EE_ASSERT( m_loadFuncs.m_pCreateFunc != nullptr );
 
 			#ifdef _WIN32
-			EE_ASSERT( CreateWin32Surface() );
+            EE_ASSERT( CreateWin32Surface( reinterpret_cast<HWND>( pActiveWindowHandle ) ) );
 			#endif
 		}
 
@@ -40,16 +40,14 @@ namespace EE::Render
 		}
 
 		#ifdef _WIN32
-		bool VulkanSurface::CreateWin32Surface()
+		bool VulkanSurface::CreateWin32Surface( HWND activeWindow )
 		{
-			HWND hwnd = GetActiveWindow();
-
-			if ( hwnd == nullptr )
+			if ( activeWindow == nullptr )
 			{
 				return false;
 			}
 
-			HINSTANCE hinstance = (HINSTANCE) GetWindowLongPtr( hwnd, GWLP_HINSTANCE );
+			HINSTANCE hinstance = (HINSTANCE) GetWindowLongPtr( activeWindow, GWLP_HINSTANCE );
 
 			if ( hinstance == nullptr )
 			{
@@ -60,7 +58,7 @@ namespace EE::Render
 			win32SurfaceCI.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 			win32SurfaceCI.flags = VkFlags( 0 );
 			win32SurfaceCI.hinstance = hinstance;
-			win32SurfaceCI.hwnd = hwnd;
+			win32SurfaceCI.hwnd = activeWindow;
 			win32SurfaceCI.pNext = nullptr;
 
 			VK_SUCCEEDED( m_loadFuncs.m_pCreateFunc( m_pInstance->m_pHandle, &win32SurfaceCI, nullptr, &m_pHandle ) );

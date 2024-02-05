@@ -63,6 +63,12 @@ namespace eastl
 
     template <typename Key, typename T, size_t nodeCount, bool bEnableOverflow, typename Compare, typename OverflowAllocator>
     class fixed_map;
+
+    template <typename E, typename Allocator>
+    class list;
+
+    template <typename T, size_t nodeCount, bool bEnableOverflow, typename OverflowAllocator>
+    class fixed_list;
 }
 
 //-------------------------------------------------------------------------
@@ -93,4 +99,9 @@ namespace EE
     template <class K, class V> using TMap = eastl::map<K, V, eastl::less<K>, eastl::allocator>;
     template <class K, class V, size_t NodeCount> using TInlineMap = eastl::fixed_map<K, V, NodeCount, true, eastl::less<K>, eastl::allocator>;
     template <class K, class V, size_t NodeCount> using TFixedMap = eastl::fixed_map<K, V, NodeCount, false, eastl::less<K>, eastl::allocator>;
+
+    template <typename E> using TList = eastl::list<E, eastl::allocator>;
+
+    template<typename T, size_t S> using TInlineList = eastl::fixed_list<T, S, true, eastl::allocator>;
+    template<typename T, size_t S> using TFixedList = eastl::fixed_list<T, S, false, eastl::allocator>;
 }

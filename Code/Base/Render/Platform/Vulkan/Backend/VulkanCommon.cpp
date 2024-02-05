@@ -1,6 +1,5 @@
-#ifdef EE_VULKAN
-
-#include "VulkanCommonSettings.h"
+#if defined(EE_VULKAN)
+#include "VulkanCommon.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -42,6 +41,7 @@ namespace EE::Render
 			VK_KHR_MAINTENANCE1_EXTENSION_NAME,
 			VK_KHR_MAINTENANCE2_EXTENSION_NAME,
 			VK_KHR_MAINTENANCE3_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE_4_EXTENSION_NAME, // allow descriptor set has NOT consumed slot
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME, // swapchain
 
 			VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,

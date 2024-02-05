@@ -44,7 +44,7 @@ namespace EE::Render
 
         // Text rendering
         TVector<DebugFontGlyphVertex>               m_intermediateGlyphVertexData;
-        TVector<uint16_t>                             m_intermediateGlyphIndexData;
+        TVector<uint16_t>                           m_intermediateGlyphIndexData;
     };
 }
 #endif

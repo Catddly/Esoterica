@@ -13,13 +13,13 @@
     <EE_BUILD_DIR>$(SolutionDir)Build\</EE_BUILD_DIR>
     <OutDir>$(EE_BUILD_DIR)$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(EE_BUILD_DIR)_Temp\$(Platform)_$(Configuration)\$(ProjectName)\</IntDir>
-    <EE_GRAPHIC_DX11>True</EE_GRAPHIC_DX11>
-    <EE_GRAPHIC_VULKAN>True</EE_GRAPHIC_VULKAN>
+    <EE_RHI_ENABLE_DX11>True</EE_RHI_ENABLE_DX11>
+    <EE_RHI_ENABLE_VULKAN>True</EE_RHI_ENABLE_VULKAN>
   </PropertyGroup>
-  <ImportGroup Label="PropertySheets" Condition="$(EE_GRAPHIC_DX11) == 'True'">
+  <ImportGroup Label="PropertySheets" Condition="$(EE_RHI_ENABLE_DX11) == 'True'">
     <Import Project="$(SolutionDir)Code\PropertySheets\Esoterica.DX11.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="$(EE_GRAPHIC_VULKAN) == 'True'">
+  <ImportGroup Label="PropertySheets" Condition="$(EE_RHI_ENABLE_VULKAN) == 'True'">
     <Import Project="$(SolutionDir)Code\PropertySheets\Esoterica.Vulkan.props" />
   </ImportGroup>
   <PropertyGroup>

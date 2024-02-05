@@ -1,7 +1,7 @@
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
 #include "VulkanInstance.h"
-#include "VulkanCommonSettings.h"
+#include "VulkanCommon.h"
 #include "Base/Memory/Memory.h"
 #include "Base/Logging/Log.h"
 

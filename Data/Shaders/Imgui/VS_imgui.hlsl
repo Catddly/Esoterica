@@ -1,13 +1,15 @@
-cbuffer vertexBuffer : register( b0 )
+[[vk::binding(0)]]
+cbuffer ubo
 {
     float4x4 ProjectionMatrix;
 };
 
+// The member order of this struct must be the same as ImDrawVert
 struct VS_INPUT
 {
     float2 pos : POSITION;
-    float4 col : COLOR0;
     float2 uv  : TEXCOORD0;
+    float4 col : COLOR0;
 };
 
 struct PS_INPUT

@@ -1,5 +1,5 @@
 #pragma once
-#if defined(_WIN32) && defined(EE_DX11)
+#if defined(_WIN32)
 
 #include "Base/_Module/API.h"
 
@@ -61,11 +61,11 @@ namespace EE
             void SetBlendState( BlendState const& blendState ) const;
 
             // Render Targets
-            void SetRenderTarget( RenderTarget const& renderTarget ) const;
+            //void SetRenderTarget( RenderTarget const& renderTarget ) const;
             void SetRenderTarget( ViewDSHandle const& dsView ) const;
             void SetRenderTarget( nullptr_t ) const;
             void ClearDepthStencilView( ViewDSHandle const& dsView, float depth, uint8_t stencil ) const;
-            void ClearRenderTargetViews( RenderTarget const& renderTarget ) const;
+            //void ClearRenderTargetViews( RenderTarget const& renderTarget ) const;
 
             // Drawing
             void SetPrimitiveTopology( Topology topology ) const;

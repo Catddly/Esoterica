@@ -1,12 +1,16 @@
 #pragma once
 
+#include "../RHITaggedType.h"
+
 namespace EE::RHI
 {
-    class RHIResource
+    class EE_BASE_API RHIResource : public RHITaggedType
     {
     public:
 
-        RHIResource() = default;
+        RHIResource( ERHIType rhiType = ERHIType::Invalid )
+            : RHITaggedType( rhiType )
+        {}
         virtual ~RHIResource() = default;
 
         RHIResource( RHIResource const& ) = delete;
@@ -16,16 +20,39 @@ namespace EE::RHI
         RHIResource& operator=( RHIResource&& ) = default;
     };
 
-    class RHISynchronazationPrimitive : public RHIResource
+    class RHIDevice;
+
+    class EE_BASE_API IRHIResourceWrapper
     {
     public:
 
-        virtual ~RHISynchronazationPrimitive() = default;
+        virtual ~IRHIResourceWrapper() = default;
 
     public:
 
+        struct ResourceCreateParameters
+        {
+        };
 
+    public:
+
+        // Release resources own by this resource wrapper.
+        virtual void Release( RHIDevice* pDevice ) = 0;
+
+        inline bool IsInitialized() const { return m_isInitialized; }
+
+    protected:
+
+        // Initialize resources by pass unique create parameters.
+        // Ensure type safety by using wrapper functions sush as Initialize( RHIDevice* pDevice, MyResourceCreateParameters const& createParams )
+        // which MyResourceCreateParameters is derived from ResourceCreateParameters.
+        virtual bool InitializeBase( RHIDevice* pDevice, ResourceCreateParameters const& createParams ) = 0;
+
+    protected:
+
+        bool                            m_isInitialized = false;
     };
+
 }
 
 

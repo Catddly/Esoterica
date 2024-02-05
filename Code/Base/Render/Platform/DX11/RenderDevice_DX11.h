@@ -1,11 +1,10 @@
 #pragma once
-#if defined(_WIN32) && defined(EE_DX11)
+//#if defined(_WIN32)
 
 #include "RenderContext_DX11.h"
 #include "Base/Types/Color.h"
 #include "Base/Threading/Threading.h"
-
-#include "Base/Memory/Pointers.h"
+#include "Base/Render/RenderTexture.h"
 
 #include <D3D11.h>
 
@@ -33,7 +32,7 @@ namespace EE::Render
         // Temporary
         //-------------------------------------------------------------------------
 
-        inline TSharedPtr<RHI::RHIDevice> GetRHIDevice() { return m_pRHIDevice; }
+        inline RHI::RHIDevice* GetRHIDevice() const { return m_pRHIDevice; }
 
         //-------------------------------------------------------------------------
 
@@ -51,11 +50,11 @@ namespace EE::Render
         void LockDevice() { m_deviceMutex.lock(); }
         void UnlockDevice() { m_deviceMutex.unlock(); }
 
-        // Swap Chains
+        // Swapchain
         //-------------------------------------------------------------------------
 
-        RenderTarget const* GetPrimaryWindowRenderTarget() const { return &m_primaryWindow.m_renderTarget; }
-        RenderTarget* GetPrimaryWindowRenderTarget() { return &m_primaryWindow.m_renderTarget; }
+        SwapchainRenderTarget const* GetPrimaryWindowRenderTarget() const { return &m_primaryWindow.m_renderTarget; }
+        inline SwapchainRenderTarget* GetPrimaryWindowRenderTarget() { return &m_primaryWindow.m_renderTarget; }
         inline Int2 GetPrimaryWindowDimensions() const { return m_resolution; }
 
         void CreateSecondaryRenderWindow( RenderWindow& window, HWND platformWindowHandle );
@@ -91,10 +90,10 @@ namespace EE::Render
         void DestroyBlendState( BlendState& state );
 
         // Textures and Sampling
-        void CreateDataTexture( Texture& texture, TextureFormat format, uint8_t const* rawData, size_t size );
-        inline void CreateDataTexture( Texture& texture, TextureFormat format, Blob const& rawData ) { CreateDataTexture( texture, format, rawData.data(), rawData.size() ); }
-        void CreateTexture( Texture& texture, DataFormat format, Int2 dimensions, uint32_t usage );
-        void DestroyTexture( Texture& texture );
+        void CreateDataTexture( Texture& texture, RawTextureDataFormat format, uint8_t const* rawData, size_t size );
+        inline void CreateDataTexture( Texture& texture, RawTextureDataFormat format, Blob const& rawData ) { CreateDataTexture( texture, format, rawData.data(), rawData.size() ); }
+        void CreateTexture( Texture& texture, VertexLayoutDescriptor::VertexDataFormat format, Int2 dimensions, uint32_t usage );
+        inline void DestroyTexture( Texture& texture );
 
         void CreateSamplerState( SamplerState& state );
         void DestroySamplerState( SamplerState& state );
@@ -111,8 +110,6 @@ namespace EE::Render
 
         bool CreateDeviceAndSwapchain();
         void DestroyDeviceAndSwapchain();
-
-        bool CreateWindowRenderTarget( RenderWindow& renderWindow, Int2 dimensions );
 
         bool CreateDefaultDepthStencilStates();
         void DestroyDefaultDepthStencilStates();
@@ -132,12 +129,12 @@ namespace EE::Render
         RenderWindow                            m_primaryWindow;
         RenderContext                           m_immediateContext;
 
-        TSharedPtr<RHI::RHIDevice>              m_pRHIDevice = nullptr;
-        TSharedPtr<RHI::RHISwapchain>           m_pRHISwapchain = nullptr;
+        RHI::RHIDevice*                         m_pRHIDevice = nullptr;
+        //RHI::RHISwapchain*                      m_pRHISwapchain = nullptr;
 
         // Lock to allow loading resources while rendering across different threads
         Threading::RecursiveMutex               m_deviceMutex;
     };
 }
 
-#endif
+//#endif

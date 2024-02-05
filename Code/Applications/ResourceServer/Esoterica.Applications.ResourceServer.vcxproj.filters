@@ -5,6 +5,7 @@
     <ClCompile Include="ResourceServerApplication.cpp" />
     <ClCompile Include="ResourceServerUI.cpp" />
     <ClCompile Include="ResourceServerContext.cpp" />
+    <ClCompile Include="LocalResourceProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ResourceServerApplication.h" />
@@ -15,6 +16,7 @@
       <Filter>Resources</Filter>
     </ClInclude>
     <ClInclude Include="ResourceServerContext.h" />
+    <ClInclude Include="LocalResourceProvider.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\ResourceServerBusyOverlay.ico">

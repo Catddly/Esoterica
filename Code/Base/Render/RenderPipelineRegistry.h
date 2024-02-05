@@ -1,14 +1,11 @@
 #pragma once
 
-#include "Base/_Module/API.h"
-
 #include "Base/Systems.h"
 #include "Base/Resource/ResourcePtr.h"
 #include "Base/Render/RenderShader.h"
 #include "Base/Render/RenderPipeline.h"
 #include "Base/Render/RenderPipelineState.h"
 #include "Base/Types/IDVector.h"
-#include "Base/Memory/Pointers.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 #include <numeric>
@@ -18,12 +15,13 @@
 namespace EE
 {
 	class TaskSystem;
-	namespace { class ResourceSystem; }
+    namespace Resource { class ResourceSystem; class ResourceServer; }
 }
 
 namespace EE::RHI
 {
     class RHIDevice;
+    class RHIPipelineState;
 }
 
 //-------------------------------------------------------------------------
@@ -36,7 +34,7 @@ namespace EE::Render
 
 	public:
 
-		PipelineHandle() = default;
+        PipelineHandle() = default;
 
 		inline bool IsValid() const
 		{
@@ -47,6 +45,11 @@ namespace EE::Render
 		{
 			return m_ID;
 		}
+
+        inline PipelineType GetPipelineType() const
+        {
+            return m_type;
+        }
 
 	public:
 
@@ -90,17 +93,18 @@ namespace eastl
 
 namespace EE::Render
 {
-	class RasterPipelineEntry
+	class EE_BASE_API RasterPipelineEntry
 	{
-		friend class PipelineRegistry;
-
 	public:
 
 		inline PipelineHandle GetID() const { return m_handle; }
 		inline bool IsReadyToCreatePipelineLayout() const { return m_vertexShader.IsLoaded() && m_pixelShader.IsLoaded(); }
-        inline bool IsEntryRegisteredIntoRHI() const { return false; }
+        // A pipeline entry is visible means that it is ready to be used outside.
+        // If a pipeline is NOT fully ready, it is invisible to outside, as if it doesn't exist.
+        // This function should only be called with PipelineRegistry.
+        inline bool IsVisible() const { return m_pPipelineState != nullptr; }
 
-	private:
+	public:
 
 		// TODO: support more shader type
 		TResourcePtr<VertexShader>			    m_vertexShader;
@@ -108,22 +112,29 @@ namespace EE::Render
 
         RHI::RHIRasterPipelineStateCreateDesc   m_desc;
 
-		PipelineHandle						    m_handle;
+        RHI::RHIPipelineState*                  m_pPipelineState = nullptr;
+        PipelineHandle                          m_handle;
 	};
 
-	class ComputePipelineEntry
+	class EE_BASE_API ComputePipelineEntry
 	{
-		friend class PipelineRegistry;
+    public:
 
-	public:
+        inline PipelineHandle GetID() const { return m_handle; }
+        inline bool IsReadyToCreatePipelineLayout() const { return m_computeShader.IsLoaded(); }
+        // A pipeline entry is visible means that it is ready to be used outside.
+        // If a pipeline is NOT fully ready, it is invisible to outside, as if it doesn't exist.
+        // This function should only be called with PipelineRegistry.
+        inline bool IsVisible() const { return m_pPipelineState != nullptr; }
 
-		inline PipelineHandle GetID() const { return m_handle; }
+    public:
 
-	private:
+        TResourcePtr<ComputeShader>			    m_computeShader;
 
-		//ComputeShader*					m_pComputeShader = nullptr;
+        RHI::RHIComputePipelineStateCreateDesc  m_desc;
 
-		PipelineHandle					m_handle;
+        RHI::RHIPipelineState*                  m_pPipelineState = nullptr;
+		PipelineHandle					        m_handle;
 	};
 
 	//-------------------------------------------------------------------------
@@ -134,7 +145,7 @@ namespace EE::Render
 	public:
 
 		PipelineRegistry() = default;
-		~PipelineRegistry();
+        ~PipelineRegistry();
 
 		PipelineRegistry( PipelineRegistry const& ) = delete;
 		PipelineRegistry& operator=( PipelineRegistry const& ) = delete;
@@ -144,37 +155,72 @@ namespace EE::Render
 
 	public:
 
-		void Initialize( SystemRegistry const& systemRegistry );
+        // Initialize pipeline registry with remote compilation mode.
+        // If resource system doesn't exists, please provide a upper layer class which derive from this PipelineRegistry to get more functionality.
+		bool Initialize( Resource::ResourceSystem* pResourceSystem );
 		void Shutdown();
 
-		[[nodiscard]] PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
-		[[nodiscard]] PipelineHandle RegisterComputePipeline( ComputePipelineDesc const& computePipelineDesc );
+		[[nodiscard]] inline PipelineHandle RegisterRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& rasterPipelineDesc );
+		[[nodiscard]] inline PipelineHandle RegisterComputePipeline( RHI::RHIComputePipelineStateCreateDesc const& computePipelineDesc );
 
-		void LoadAndUpdatePipelines( TSharedPtr<RHI::RHIDevice> const& pDevice );
+        bool IsPipelineReady( PipelineHandle const& pipelineHandle ) const;
+        inline bool IsBusy() const
+        {
+            return !m_waitToLoadRasterPipelines.empty()
+                || !m_waitToRegisteredRasterPipelines.empty()
+                || !m_retryRasterPipelineCaches.empty()
+                || !m_waitToLoadComputePipelines.empty()
+                || !m_waitToRegisteredComputePipelines.empty()
+                || !m_retryComputePipelineCaches.empty();
+        }
+
+        RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
+
+        // Update pipeline registry.
+        // This function will block until all pipeline loading is completed.
+        bool UpdateBlock( RHI::RHIDevice* pDevice );
+        
+        void DestroyAllPipelineStates( RHI::RHIDevice* pDevice );
 
 	private:
 
-		void LoadPipelineShaders();
-        void CreateRasterPipelineStateLayout( TSharedPtr<RasterPipelineEntry> const& rasterEntry, TSharedPtr<RHI::RHIDevice> const& pDevice );
+        // Update pipeline loading status
+        void UpdateLoadedPipelineShaders();
+        // Registered loaded pipelines to create actual RHI resources
+        bool TryCreatePipelineForLoadedPipelineShaders( RHI::RHIDevice* pDevice );
 
+        inline bool AreAllRequestedPipelineLoaded() const;
+
+        // Create RHI raster pipeline state for certain RasterPipelineEntry.
+        // This function can't have any side-effects, since it may be call for the same entry multiple time.
+        bool TryCreateRHIRasterPipelineStateForEntry( TSharedPtr<RasterPipelineEntry>& rasterEntry, RHI::RHIDevice* pDevice );
+        bool TryCreateRHIComputePipelineStateForEntry( TSharedPtr<ComputePipelineEntry>& computeEntry, RHI::RHIDevice* pDevice );
+
+        // Unload all pipeline shaders inside all registries.
 		void UnloadAllPipelineShaders();
 
 	private:
 
-		bool															    m_isInitialized = false;
+		bool															        m_isInitialized = false;
 
-		TaskSystem*														    m_pTaskSystem = nullptr;
-		Resource::ResourceSystem*										    m_pResourceSystem = nullptr;
+		Resource::ResourceSystem*										        m_pResourceSystem = nullptr;
 
         // TODO: may be extract to single pipeline cache class
-		TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>		    m_rasterPipelineStatesCache;
-		THashMap<RHI::RHIRasterPipelineStateCreateDesc, PipelineHandle>     m_rasterPipelineHandlesCache;
+		mutable TIDVector<PipelineHandle, TSharedPtr<RasterPipelineEntry>>      m_rasterPipelineStatesCache;
+		THashMap<RHI::RHIRasterPipelineStateCreateDesc, PipelineHandle>         m_rasterPipelineHandlesCache;
 
-        TIDVector<PipelineHandle, ComputePipelineEntry>					    m_computePipelineStates;
-        //THashMap<ComputePipelineDesc, PipelineHandle>					    m_computePipelineHandles;
+        mutable TIDVector<PipelineHandle, TSharedPtr<ComputePipelineEntry>>     m_computePipelineStatesCache;
+        THashMap<RHI::RHIComputePipelineStateCreateDesc, PipelineHandle>        m_computePipelineHandlesCache;
 
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToSubmitRasterPipelines;
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToLoadRasterPipelines;
-        TVector<TSharedPtr<RasterPipelineEntry>>						    m_waitToRegisteredRasterPipelines;
+        // TODO: state machine update pattern
+        //TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToSubmitRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToLoadRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>						        m_waitToRegisteredRasterPipelines;
+        TVector<TSharedPtr<RasterPipelineEntry>>                                m_retryRasterPipelineCaches;
+
+        //TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToSubmitComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToLoadComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>						        m_waitToRegisteredComputePipelines;
+        TVector<TSharedPtr<ComputePipelineEntry>>                               m_retryComputePipelineCaches;
 	};
 }

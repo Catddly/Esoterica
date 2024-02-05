@@ -1,4 +1,4 @@
-#if defined(_WIN32) && defined(EE_DX11)
+#if defined(_WIN32)
 
 #include "RenderContext_DX11.h"
 #include "Base/Types/Color.h"
@@ -35,7 +35,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pVertexShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->VSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pVertexShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->VSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pVertexShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -55,7 +55,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pGeometryShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->GSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pGeometryShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->GSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pGeometryShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -73,7 +73,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pHullShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->HSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pHullShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->HSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pHullShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -91,7 +91,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pPixelShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->PSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pPixelShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->PSSetConstantBuffers( (uint32_t) i, 1, (ID3D11Buffer**) &pipelineState.m_pPixelShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -127,7 +127,7 @@ namespace EE::Render
             auto const numCbuffers = pipelineState.m_pComputeShader->GetNumConstBuffers();
             for ( auto i = 0u; i < numCbuffers; i++ )
             {
-                m_pDeviceContext->CSSetConstantBuffers( (uint32_t)i, 1, (ID3D11Buffer**)&pipelineState.m_pComputeShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
+                //m_pDeviceContext->CSSetConstantBuffers( (uint32_t)i, 1, (ID3D11Buffer**)&pipelineState.m_pComputeShader->GetConstBuffer( i ).GetResourceHandle().m_pData );
             }
         }
         else
@@ -291,8 +291,8 @@ namespace EE::Render
         D3D11_MAPPED_SUBRESOURCE mappedData;
         EE::Memory::MemsetZero( &mappedData, sizeof( D3D11_MAPPED_SUBRESOURCE ) );
 
-        auto result = m_pDeviceContext->Map( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData );
-        EE_ASSERT( SUCCEEDED( result ) );
+        //auto result = m_pDeviceContext->Map( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData );
+        //EE_ASSERT( SUCCEEDED( result ) );
         return (uint8_t*) mappedData.pData;
     }
 
@@ -300,7 +300,7 @@ namespace EE::Render
     {
         // Check that we have write access to this buffer and that the data to write is within the buffer size
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_usage == RenderBuffer::Usage::CPU_and_GPU );
-        m_pDeviceContext->Unmap( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0 );
+        //m_pDeviceContext->Unmap( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, 0 );
     }
 
     void RenderContext::WriteToBuffer( RenderBuffer const& buffer, void const* pData, size_t const dataSize ) const
@@ -314,13 +314,13 @@ namespace EE::Render
     void RenderContext::SetVertexBuffer( RenderBuffer const& buffer, uint32_t offset ) const
     {
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_type == RenderBuffer::Type::Vertex );
-        m_pDeviceContext->IASetVertexBuffers( 0, 1, (ID3D11Buffer**) &buffer.GetResourceHandle().m_pData, &buffer.m_byteStride, &offset );
+        //m_pDeviceContext->IASetVertexBuffers( 0, 1, (ID3D11Buffer**) &buffer.GetResourceHandle().m_pData, &buffer.m_byteStride, &offset );
     }
 
     void RenderContext::SetIndexBuffer( RenderBuffer const& buffer, uint32_t offset ) const
     {
         EE_ASSERT( IsValid() && buffer.IsValid() && buffer.m_type == RenderBuffer::Type::Index );
-        m_pDeviceContext->IASetIndexBuffer( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, buffer.m_byteStride == 4 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, offset );
+        //m_pDeviceContext->IASetIndexBuffer( (ID3D11Buffer*) buffer.GetResourceHandle().m_pData, buffer.m_byteStride == 4 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, offset );
     }
 
     //-------------------------------------------------------------------------
@@ -388,29 +388,29 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    void RenderContext::SetRenderTarget( RenderTarget const& renderTarget ) const
-    {
-        EE_ASSERT( IsValid() && renderTarget.IsValid() );
+    //void RenderContext::SetRenderTarget( RenderTarget const& renderTarget ) const
+    //{
+    //    EE_ASSERT( IsValid() && renderTarget.IsValid() );
 
-        // Get render targets
-        int32_t const numViews = renderTarget.HasPickingRT() ? 2 : 1;
-        ID3D11RenderTargetView* renderTargetViews[2] =
-        {
-            (ID3D11RenderTargetView*) renderTarget.GetRenderTargetHandle().m_pData,
-            renderTarget.HasPickingRT() ? (ID3D11RenderTargetView*) renderTarget.GetPickingRenderTargetHandle().m_pData : nullptr,
-        };
+    //    // Get render targets
+    //    int32_t const numViews = renderTarget.HasPickingRT() ? 2 : 1;
+    //    ID3D11RenderTargetView* renderTargetViews[2] =
+    //    {
+    //        (ID3D11RenderTargetView*) renderTarget.GetRenderTargetHandle().m_pData,
+    //        renderTarget.HasPickingRT() ? (ID3D11RenderTargetView*) renderTarget.GetPickingRenderTargetHandle().m_pData : nullptr,
+    //    };
 
-        // Get depth stencil
-        ID3D11DepthStencilView* pDepthStencilView = nullptr;
-        if ( renderTarget.HasDepthStencil() )
-        {
-            pDepthStencilView = (ID3D11DepthStencilView*) renderTarget.GetDepthStencilHandle().m_pData;
-        }
+    //    // Get depth stencil
+    //    ID3D11DepthStencilView* pDepthStencilView = nullptr;
+    //    if ( renderTarget.HasDepthStencil() )
+    //    {
+    //        pDepthStencilView = (ID3D11DepthStencilView*) renderTarget.GetDepthStencilHandle().m_pData;
+    //    }
 
-        //-------------------------------------------------------------------------
+    //    //-------------------------------------------------------------------------
 
-        m_pDeviceContext->OMSetRenderTargets( numViews, renderTargetViews, pDepthStencilView );
-    }
+    //    m_pDeviceContext->OMSetRenderTargets( numViews, renderTargetViews, pDepthStencilView );
+    //}
 
     void RenderContext::SetRenderTarget( ViewDSHandle const& dsView ) const
     {
@@ -430,24 +430,24 @@ namespace EE::Render
         m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsView.m_pData, D3D10_CLEAR_DEPTH, depth, stencil );
     }
 
-    void RenderContext::ClearRenderTargetViews( RenderTarget const& renderTarget ) const
-    {
-        EE_ASSERT( IsValid() && renderTarget.IsValid() );
+    //void RenderContext::ClearRenderTargetViews( RenderTarget const& renderTarget ) const
+    //{
+    //    EE_ASSERT( IsValid() && renderTarget.IsValid() );
 
-        ViewRTHandle const& rtHandle = renderTarget.GetRenderTargetHandle();
-        m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) rtHandle.m_pData, &s_defaultClearColor.m_x );
+    //    ViewRTHandle const& rtHandle = renderTarget.GetRenderTargetHandle();
+    //    m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) rtHandle.m_pData, &s_defaultClearColor.m_x );
 
-        ViewDSHandle const& dsHandle = renderTarget.GetDepthStencilHandle();
-        m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsHandle.m_pData, D3D10_CLEAR_DEPTH, 1.0f, 0 );
+    //    ViewDSHandle const& dsHandle = renderTarget.GetDepthStencilHandle();
+    //    m_pDeviceContext->ClearDepthStencilView( (ID3D11DepthStencilView*) dsHandle.m_pData, D3D10_CLEAR_DEPTH, 1.0f, 0 );
 
-        //-------------------------------------------------------------------------
+    //    //-------------------------------------------------------------------------
 
-        if ( renderTarget.HasPickingRT() )
-        {
-            ViewRTHandle const& pickingHandle = renderTarget.GetPickingRenderTargetHandle();
-            m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) pickingHandle.m_pData, &Float4::Zero.m_x );
-        }
-    }
+    //    if ( renderTarget.HasPickingRT() )
+    //    {
+    //        ViewRTHandle const& pickingHandle = renderTarget.GetPickingRenderTargetHandle();
+    //        m_pDeviceContext->ClearRenderTargetView( (ID3D11RenderTargetView*) pickingHandle.m_pData, &Float4::Zero.m_x );
+    //    }
+    //}
 
     //-------------------------------------------------------------------------
 
@@ -506,8 +506,8 @@ namespace EE::Render
 
     void RenderContext::Present( RenderWindow& window ) const
     {
-        auto pSwapChain = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
-        pSwapChain->Present( 0, 0 );
+        //auto pSwapChain = reinterpret_cast<IDXGISwapChain*>( window.m_pSwapChain );
+        //pSwapChain->Present( 0, 0 );
     }
 }
 

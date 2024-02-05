@@ -1,4 +1,5 @@
 #include "RenderShader.h"
+#include "Base\RHI\Resource\RHIShader.h"
 
 //-------------------------------------------------------------------------
 
@@ -19,6 +20,13 @@ namespace EE
             m_byteCode.resize( byteCodeSize );
             memcpy( m_byteCode.data(), pByteCode, byteCodeSize );
             m_cbuffers = constBuffers;
+        }
+
+        //-------------------------------------------------------------------------
+
+        bool Shader::IsValid() const
+        {
+            return ( m_rhiShader != nullptr && m_rhiShader->IsValid() ) || m_shaderHandle.IsValid();
         }
 
         //-------------------------------------------------------------------------

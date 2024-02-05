@@ -1,6 +1,6 @@
 #if defined(EE_VULKAN)
 #include "VulkanMemoryAllocator.h"
-#include "VulkanCommonSettings.h"
+#include "VulkanCommon.h"
 #include "VulkanInstance.h"
 #include "VulkanPhysicalDevice.h"
 #include "VulkanDevice.h"

@@ -55,7 +55,7 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-    bool DxcShaderCompiler::Compile( FileSystem::Path const& shaderSourcePath, Blob& outBlob, DxcShaderTargetProfile profile, char const* entryName, DxcCompileTarget target )
+    bool DxcShaderCompiler::Compile( FileSystem::Path const& shaderSourcePath, Blob& outBlob, DxcShaderTargetProfile profile, char const* entryName, TSpan<DxcShaderMacroDefine> defines, DxcCompileTarget target )
     {
         EE_ASSERT( m_pCompiler && m_pUtils && m_pIncludeHandler );
         EE_ASSERT( shaderSourcePath.Exists() );
@@ -125,6 +125,8 @@ namespace EE::Render
             //L"Qstrip_debug",   // strip debug infos into separate blob
         };
 
+        //DxcDefine
+
         if ( target == DxcCompileTarget::Spirv )
         {
             arguments.push_back( L"-spirv" );
@@ -134,19 +136,35 @@ namespace EE::Render
         // Compile shader
         //-------------------------------------------------------------------------
 
+        //TVector<TVector<wchar_t>> wideDefines;
+        //TVector<TVector<wchar_t>> wideValues;
+
+        //TVector<DxcDefine> wideDxcDefines;
+
+        //ProcessShaderMacroDefines( defines, wideDefines, wideValues, wideDxcDefines );
+
         DxcBuffer buffer = {};
         buffer.Encoding = DXC_CP_ACP;
         buffer.Ptr = sourceBlob->GetBufferPointer();
         buffer.Size = sourceBlob->GetBufferSize();
 
         CComPtr<IDxcResult> result = nullptr;
-        hres = m_pCompiler->Compile(
+        hres = m_pCompiler->Compile (
             &buffer,
             arguments.data(),
             static_cast<uint32_t>( arguments.size() ),
             m_pIncludeHandler,
             IID_PPV_ARGS( &result )
         );
+
+        //m_pCompiler->Compile(
+        //    pBlobEncoding,
+        //    wShaderSourceName.data(), wShaderEntryName.data(), targetProfile,
+        //    arguments.data(), static_cast<uint32_t>( arguments.size() ),
+        //    wideDxcDefines.data(), static_cast<uint32_t>( wideDxcDefines.size() ),
+        //    m_pIncludeHandler,
+        //    result._PtrClass
+        //);
 
         if ( FAILED( hres ) )
         {
@@ -206,6 +224,40 @@ namespace EE::Render
 
         return true;
     }
+
+    //void DxcShaderCompiler::ProcessShaderMacroDefines( TSpan<DxcShaderMacroDefine> defines, TVector<TVector<wchar_t>>& outWDefines, TVector<TVector<wchar_t>>& outWValues, TVector<DxcDefine>& outDxcDefine )
+    //{
+    //    for ( DxcShaderMacroDefine const& define : defines )
+    //    {
+    //        if ( define.m_value.empty() )
+    //        {
+    //            WString outWString;
+    //            EE_ASSERT( StringUtils::StringToWString( define.m_macroName, outWString ) );
+    //            outWDefines.emplace_back( eastl::move( outWString ) );
+    //            outWValues.emplace_back( L"1" );
+
+    //            DxcDefine dxcDefine;
+    //            dxcDefine.Name = outWDefines.back().data();
+    //            dxcDefine.Value = outWValues.back().data();
+    //            outDxcDefine.push_back( dxcDefine );
+    //        }
+    //        else
+    //        {
+    //            WString outWString;
+    //            EE_ASSERT( StringUtils::StringToWString( define.m_macroName, outWString ) );
+    //            WString outWValue;
+    //            EE_ASSERT( StringUtils::StringToWString( define.m_value, outWValue ) );
+
+    //            outWDefines.emplace_back( eastl::move( outWString ) );
+    //            outWValues.emplace_back( eastl::move( outWValue ) );
+
+    //            DxcDefine dxcDefine;
+    //            dxcDefine.Name = outWDefines.back().data();
+    //            dxcDefine.Value = outWValues.back().data();
+    //            outDxcDefine.push_back( dxcDefine );
+    //        }
+    //    }
+    //}
 
     //-------------------------------------------------------------------------
 

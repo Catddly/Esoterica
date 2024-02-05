@@ -1,4 +1,5 @@
 #include "ResourceServerApplication.h"
+#include "LocalResourceProvider.h"
 #include "Resources/Resource.h"
 #include "Applications/Shared/LivePP/LivePP.h"
 
@@ -21,6 +22,7 @@ namespace EE
     ResourceServerApplication::ResourceServerApplication( HINSTANCE pInstance )
         : Win32Application( pInstance, "Esoterica Resource Server", IDI_RESOURCESERVER, TBitFlags<InitOptions>( Win32Application::InitOptions::StartMinimized, Win32Application::InitOptions::Borderless ) )
         , m_resourceServerUI( m_resourceServer, m_imguiSystem.GetImageCache() )
+        , m_renderGraph("Resource Server RenderGraph")
     {}
 
     LRESULT ResourceServerApplication::WindowMessageProcessor( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -268,6 +270,41 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
+        Resource::ResourceSettings settings;
+        if ( !settings.ReadSettings( iniFile ) )
+        {
+            EE_LOG_ERROR( "Resource Provider", nullptr, "Failed to read resource settings from ini file!" );
+            return false;
+        }
+
+        m_pResourceProvider = EE::New<Resource::LocalResourceProvider>( &m_resourceServer, settings );
+
+        if ( m_pResourceProvider == nullptr )
+        {
+            EE_LOG_ERROR( "Resource", nullptr, "Failed to create resource provider" );
+            return false;
+        }
+        
+        if ( !m_pResourceProvider->Initialize() )
+        {
+            EE_LOG_ERROR( "Resource", nullptr, "Failed to intialize resource provider" );
+            EE::Delete( m_pResourceProvider );
+            return false;
+        }
+
+        m_taskSystem.Initialize();
+        m_resourceSystem.Initialize( m_pResourceProvider );
+
+        m_shaderLoader.SetRenderDevicePtr( m_pRenderDevice );
+        m_resourceSystem.RegisterResourceLoader( &m_shaderLoader );
+
+        //-------------------------------------------------------------------------
+
+        m_pipelineRegistry.Initialize( &m_resourceSystem );
+        m_renderGraph.AttachToPipelineRegistry( &m_pipelineRegistry );
+
+        //-------------------------------------------------------------------------
+
         m_imguiSystem.Initialize( m_pRenderDevice );
         m_imguiRenderer.Initialize( m_pRenderDevice );
         m_resourceServerUI.Initialize();
@@ -279,6 +316,8 @@ namespace EE
 
     bool ResourceServerApplication::Shutdown()
     {
+        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
+
         if ( IsInitialized() )
         {
             m_resourceServerUI.Shutdown();
@@ -287,6 +326,21 @@ namespace EE
         }
 
         //-------------------------------------------------------------------------
+
+        m_renderGraph.DestroyAllResources( m_pRenderDevice );
+        m_pipelineRegistry.DestroyAllPipelineStates( m_pRenderDevice->GetRHIDevice() );
+        m_pipelineRegistry.Shutdown();
+
+        //-------------------------------------------------------------------------
+
+        m_resourceSystem.Shutdown();
+        m_taskSystem.Shutdown();
+        
+        if ( m_pResourceProvider )
+        {
+            m_pResourceProvider->Shutdown();
+            EE::Delete( m_pResourceProvider );
+        }
 
         m_resourceServer.Shutdown();
 
@@ -318,10 +372,12 @@ namespace EE
 
             // Sleep when idle to reduce CPU load
             auto const isBusy = m_resourceServer.IsBusy();
-            if( !isBusy )
+            if ( !isBusy )
             {
                 Threading::Sleep( 1 );
             }
+
+            m_resourceSystem.Update();
 
             // Update task bar
             //-------------------------------------------------------------------------
@@ -362,8 +418,24 @@ namespace EE
 
                 m_imguiSystem.EndFrame();
 
-                m_imguiRenderer.RenderViewport( m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
-                m_pRenderDevice->PresentFrame();
+                m_imguiRenderer.RenderViewport_Test( m_renderGraph, m_deltaTime, m_viewport, *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
+
+                // TODO: defer resource creation
+                m_pRenderDevice->GetRHIDevice()->BeginFrame();
+
+                m_pipelineRegistry.UpdateBlock( m_pRenderDevice->GetRHIDevice() );
+                bool bCompileResult = m_renderGraph.Compile( m_pRenderDevice );
+ 
+                if ( bCompileResult )
+                {
+                    m_renderGraph.Execute( m_pRenderDevice->GetRHIDevice() );
+                    m_renderGraph.Present( m_pRenderDevice->GetRHIDevice(), *m_pRenderDevice->GetPrimaryWindowRenderTarget() );
+                    
+                    m_pRenderDevice->PresentFrame();
+                }
+
+                m_pRenderDevice->GetRHIDevice()->EndFrame();
+                m_renderGraph.Retire();
             }
         }
 

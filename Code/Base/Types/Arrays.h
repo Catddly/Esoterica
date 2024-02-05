@@ -4,6 +4,7 @@
 #include "EASTL/vector.h"
 #include "EASTL/fixed_vector.h"
 #include "EASTL/array.h"
+#include "EASTL/span.h"
 
 //-------------------------------------------------------------------------
 
@@ -17,6 +18,8 @@ namespace EE
     template<typename T, eastl_size_t S> using TInlineVector = eastl::fixed_vector<T, S, true>;
     template<typename T, eastl_size_t S> using TFixedVector = eastl::fixed_vector<T, S, false>;
     template<typename T, eastl_size_t S> using TArray = eastl::array<T, S>;
+
+    template<typename T> using TSpan = eastl::span<T>;
 
     using Blob = TVector<uint8_t>;
 

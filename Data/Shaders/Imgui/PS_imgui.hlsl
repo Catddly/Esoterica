@@ -5,11 +5,11 @@ struct PS_INPUT
     float2 uv  : TEXCOORD0;
 };
 
-sampler sampler_llr;
-Texture2D texture0;
+[[vk::binding(1)]] Texture2D fontTexture;
+[[vk::binding(2)]] sampler sampler_llr;
 
 float4 main( PS_INPUT input ) : SV_TARGET
 {
-    float4 out_col = input.col * texture0.Sample(sampler_llr, input.uv);
+    float4 out_col = input.col * fontTexture.Sample(sampler_llr, input.uv);
     return out_col;
 }

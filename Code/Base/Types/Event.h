@@ -81,7 +81,7 @@ namespace EE
             return EventBindingID( boundUser.m_ID );
         }
 
-        inline void Unbind( EventBindingID bindingID )
+        inline void Unbind( EventBindingID& bindingID )
         {
             auto searchPredicate = [] ( BoundUser const& boundUser, EventBindingID const& bindingID ) { return boundUser.m_ID == bindingID.m_ID; };
             auto foundIter = eastl::find( m_boundUsers.begin(), m_boundUsers.end(), bindingID, searchPredicate );

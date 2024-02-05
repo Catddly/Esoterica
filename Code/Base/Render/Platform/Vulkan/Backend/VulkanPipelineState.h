@@ -1,7 +1,7 @@
 #pragma once
 #if defined(EE_VULKAN)
 
-#include "Base/Types/HashMap.h"
+#include "Base/Types/Map.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
@@ -11,27 +11,76 @@ namespace EE::Render
 {
     namespace Backend
     {
-        class VulkanPipelineState : public RHI::RHIRasterPipelineState
+        struct VulkanCommonPipelineStates
+        {
+            VkPipeline                                                              m_pPipeline = nullptr;
+            VkPipelineLayout                                                        m_pPipelineLayout = nullptr;
+
+            VkPipelineBindPoint                                                     m_pipelineBindPoint;
+        };
+
+        struct VulkanCommonPipelineInfo
+        {
+            TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet>  m_setDescriptorLayouts;
+            TVector<TVector<VkDescriptorPoolSize>>                                  m_setPoolSizes;
+            TInlineVector<VkDescriptorSetLayout, RHI::NumMaxResourceBindingSet>     m_setLayouts;
+        };
+
+        class VulkanRasterPipelineState final : public RHI::RHIRasterPipelineState
         {
             friend class VulkanDevice;
-
-            using SetDescriptorLayout = THashMap<uint32_t, VkDescriptorType>;
+            friend class VulkanCommandBuffer;
 
         public:
 
-            VulkanPipelineState() = default;
-            virtual ~VulkanPipelineState() = default;
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+
+            VulkanRasterPipelineState()
+                : RHIRasterPipelineState( RHI::ERHIType::Vulkan )
+            {}
+            virtual ~VulkanRasterPipelineState() = default;
+
+        public:
+
+            inline virtual TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_pipelineInfo.m_setDescriptorLayouts; }
 
         private:
 
-            VkPipeline                                                          m_pPipeline;
-            VkPipelineLayout                                                    m_pPipelineLayout;
+            VulkanCommonPipelineStates                                           m_pipelineState;
+            VulkanCommonPipelineInfo                                                m_pipelineInfo;
+        };
 
-            VkPipelineBindPoint                                                 m_pipelineBindPoint;
+        class VulkanComputePipelineState final : public RHI::RHIComputePipelineState
+        {
+            friend class VulkanDevice;
+            friend class VulkanCommandBuffer;
 
-            TInlineVector<SetDescriptorLayout, RHI::MAX_DESCRIPTOR_SET_COUNT>   m_setDescriptorLayouts;
-            TInlineVector<VkDescriptorPoolSize, RHI::MAX_DESCRIPTOR_SET_COUNT>  m_setPoolSizes;
-            TInlineVector<VkDescriptorSetLayout, RHI::MAX_DESCRIPTOR_SET_COUNT> m_setLayouts;
+        public:
+
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+
+            VulkanComputePipelineState()
+                : RHIComputePipelineState( RHI::ERHIType::Vulkan )
+            {
+            }
+            virtual ~VulkanComputePipelineState() = default;
+
+        public:
+
+            inline virtual TInlineVector<RHI::SetDescriptorLayout, RHI::NumMaxResourceBindingSet> const& GetResourceSetLayouts() const { return m_pipelineInfo.m_setDescriptorLayouts; }
+
+            inline virtual uint32_t GetThreadGroupSizeX() const override { return m_dispathGroupWidth; };
+            inline virtual uint32_t GetThreadGroupSizeY() const override { return m_dispathGroupHeight; };
+            inline virtual uint32_t GetThreadGroupSizeZ() const override { return m_dispathGroupDepth; };
+
+        private:
+
+            VulkanCommonPipelineStates                                           m_pipelineState;
+            VulkanCommonPipelineInfo                                                m_pipelineInfo;
+
+            uint32_t                                                                m_dispathGroupWidth = 1;
+            uint32_t                                                                m_dispathGroupHeight = 1;
+            uint32_t                                                                m_dispathGroupDepth = 1;
         };
     }
 }

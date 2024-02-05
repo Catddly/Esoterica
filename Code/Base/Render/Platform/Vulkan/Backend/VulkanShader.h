@@ -1,5 +1,5 @@
 #pragma once
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
 #include "Base/RHI/Resource/RHIShader.h"
 
@@ -13,7 +13,17 @@ namespace EE::Render
         {
         public:
 
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+
+            VulkanShader()
+                : RHIShader( RHI::ERHIType::Vulkan )
+            {}
             ~VulkanShader() = default;
+
+            virtual bool IsValid() const override
+            {
+                return m_pModule != nullptr;
+            }
 
         private:
 

@@ -1,4 +1,5 @@
 #pragma once
+#if defined(EE_VULKAN)
 
 #include "Base/Encoding/Hash.h"
 
@@ -41,3 +42,5 @@ namespace eastl
         }
     };
 }
+
+#endif

@@ -3,6 +3,7 @@
 #include "Engine/Render/RendererRegistry.h"
 #include "Base/Render/RenderViewport.h"
 #include "Base/Systems.h"
+#include "Base/RenderGraph/RenderGraph.h"
 
 //-------------------------------------------------------------------------
 // EE Renderer System
@@ -24,6 +25,8 @@ namespace EE
         class ImguiRenderer;
         class RenderTarget;
 
+        class PipelineRegistry;
+
         //-------------------------------------------------------------------------
 
         class RenderingSystem : public ISystem
@@ -43,22 +46,33 @@ namespace EE
 
         public:
 
+            RenderingSystem()
+                : m_renderGraph( "Rendering System Render Graph" )
+            {
+            }
+
+        public:
+
             EE_SYSTEM( RenderingSystem );
 
         public:
 
-            void Initialize( RenderDevice* pRenderDevice, Float2 primaryWindowDimensions, RendererRegistry* pRegistry, EntityWorldManager* pWorldManager );
+            void Initialize( RenderDevice* pRenderDevice, PipelineRegistry* pRenderPipelineRegistry, Float2 primaryWindowDimensions, RendererRegistry* pRegistry, EntityWorldManager* pWorldManager );
             void Shutdown();
 
             void ResizePrimaryRenderTarget( Int2 newMainWindowDimensions );
             void Update( UpdateContext const& ctx );
+
+            // Should be called before any render commands had been issued.
+            // (e.g. Imgui UI System draw commands and any render graph commands)
+            void ResizeWorldRenderTargets();
 
             //-------------------------------------------------------------------------
 
             void CreateCustomRenderTargetForViewport( Viewport const* pViewport, bool requiresPickingBuffer = false );
             void DestroyCustomRenderTargetForViewport( Viewport const* pViewport );
 
-            ViewSRVHandle const& GetRenderTargetTextureForViewport( Viewport const* pViewport ) const;
+            RenderTarget const& GetRenderTargetForViewport( Viewport const* pViewport ) const;
             Render::PickingID GetViewportPickingID( Viewport const* pViewport, Int2 const& pixelCoords ) const;
 
         private:
@@ -74,6 +88,10 @@ namespace EE
             TVector<IRenderer*>                             m_customRenderers;
 
             TInlineVector<ViewportRenderTarget, 5>          m_viewportRenderTargets;
+
+            // Rendering
+            PipelineRegistry*                               m_pRenderPipelineRegistry = nullptr;
+            RG::RenderGraph                                 m_renderGraph;
 
             //-------------------------------------------------------------------------
 

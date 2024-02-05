@@ -622,7 +622,7 @@ namespace eastl
 
 			template <typename Functor>
 			void CreateForwardFunctor(Functor&& functor)
-			{
+ 			{
 				using DecayedFunctorType = typename eastl::decay<Functor>::type;
 				using FunctionManagerType = typename Base::template function_manager<DecayedFunctorType, R, Args...>;
 

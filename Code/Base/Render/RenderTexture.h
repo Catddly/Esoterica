@@ -9,6 +9,14 @@
 
 //-------------------------------------------------------------------------
 
+namespace EE::RHI
+{
+    class RHIDevice;
+    class RHITexture;
+}
+
+//-------------------------------------------------------------------------
+
 namespace EE::Render
 {
     // Specified the texel usage aspect.
@@ -20,14 +28,14 @@ namespace EE::Render
         Metadata, // Used as metadata to store information about other data.
     };
 
-    struct TextureSubresourceRange
-    {
-        TBitFlags<ImageAspectFlags>		m_aspectFlags;
-        uint32_t							m_baseMipLevel;
-        uint32_t							m_levelCount;
-        uint32_t							m_baseArrayLayer;
-        uint32_t							m_layerCount;
-    };
+    //struct TextureSubresourceRange
+    //{
+    //    TBitFlags<ImageAspectFlags>		    m_aspectFlags;
+    //    uint32_t							m_baseMipLevel;
+    //    uint32_t							m_levelCount;
+    //    uint32_t							m_baseArrayLayer;
+    //    uint32_t							m_layerCount;
+    //};
 
     enum class ImageMemoryLayout
     {
@@ -41,7 +49,7 @@ namespace EE::Render
         GeneralAndPresentation,
     };
 
-    enum class TextureFormat : uint8_t
+    enum class RawTextureDataFormat : uint8_t
     {
         Raw,
         DDS,
@@ -85,6 +93,8 @@ namespace EE::Render
         friend class TextureCompiler;
         friend class TextureLoader;
 
+        friend class RHI::RHIDevice;
+
         EE_RESOURCE( 'txtr', "Render Texture" );
         EE_SERIALIZE( m_format, m_rawData );
 
@@ -93,36 +103,39 @@ namespace EE::Render
         Texture() = default;
         Texture( Int2 const& dimensions ) : m_dimensions( dimensions ) {}
 
-        virtual bool IsValid() const override { return m_textureHandle.IsValid(); }
+        virtual bool IsValid() const override { return m_pTexture != nullptr; }
         inline Int2 const& GetDimensions() const { return m_dimensions; }
 
-        inline bool operator==( Texture const& rhs ) const { return m_shaderResourceView == m_shaderResourceView; }
-        inline bool operator!=( Texture const& rhs ) const { return m_shaderResourceView != m_shaderResourceView; }
+        inline bool operator==( Texture const& rhs ) const { return m_pTexture == m_pTexture; }
+        inline bool operator!=( Texture const& rhs ) const { return m_pTexture != m_pTexture; }
+
+        inline RHI::RHITexture* GetRHITexture() const { return m_pTexture; }
 
         // Resource Views
         //-------------------------------------------------------------------------
 
-        inline bool HasShaderResourceView() const { return m_shaderResourceView.IsValid(); }
-        inline ViewSRVHandle const& GetShaderResourceView() const { return m_shaderResourceView; }
+        //inline bool HasShaderResourceView() const { return m_shaderResourceView.IsValid(); }
+        //inline ViewSRVHandle const& GetShaderResourceView() const { return m_shaderResourceView; }
 
-        inline bool HasUnorderedAccessView() const { return m_unorderedAccessView.IsValid(); }
-        inline ViewUAVHandle const& GetUnorderedAccessView() const { return m_unorderedAccessView; }
-        
-        inline bool HasRenderTargetView() const { return m_renderTargetView.IsValid(); }
-        inline ViewRTHandle const& GetRenderTargetView() const { return m_renderTargetView; }
-        
-        inline bool HasDepthStencilView() const { return m_depthStencilView.IsValid(); }
-        inline ViewDSHandle const& GetDepthStencilView() const { return m_depthStencilView; }
+        //inline bool HasUnorderedAccessView() const { return m_unorderedAccessView.IsValid(); }
+        //inline ViewUAVHandle const& GetUnorderedAccessView() const { return m_unorderedAccessView; }
+        //
+        //inline bool HasRenderTargetView() const { return m_renderTargetView.IsValid(); }
+        //inline ViewRTHandle const& GetRenderTargetView() const { return m_renderTargetView; }
+        //
+        //inline bool HasDepthStencilView() const { return m_depthStencilView.IsValid(); }
+        //inline ViewDSHandle const& GetDepthStencilView() const { return m_depthStencilView; }
 
     protected:
 
-        TextureHandle           m_textureHandle;
-        ViewSRVHandle           m_shaderResourceView;
-        ViewUAVHandle           m_unorderedAccessView;
-        ViewRTHandle            m_renderTargetView;
-        ViewDSHandle            m_depthStencilView;
+        //TextureHandle           m_textureHandle;
+        RHI::RHITexture*        m_pTexture = nullptr;
+        //ViewSRVHandle           m_shaderResourceView;
+        //ViewUAVHandle           m_unorderedAccessView;
+        //ViewRTHandle            m_renderTargetView;
+        //ViewDSHandle            m_depthStencilView;
         Int2                    m_dimensions = Int2(0, 0);
-        TextureFormat           m_format;
+        RawTextureDataFormat           m_format;
         Blob                    m_rawData; // Temporary storage for the raw data used during installation, cleared when installation completes
     };
 

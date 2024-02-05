@@ -49,7 +49,7 @@ namespace EE::Render
     {
         if ( IsResourceLoaded() )
         {
-            ImGui::Image( ImGuiX::ToIm( m_workspaceResource.GetPtr() ), Float2( m_workspaceResource->GetDimensions() ) );
+            ImGui::Image( ImGuiX::ToIm( *m_workspaceResource.GetPtr() ), Float2( m_workspaceResource->GetDimensions() ) );
         }
     }
 }

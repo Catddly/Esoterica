@@ -1,8 +1,9 @@
 #pragma once
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
 #include "Base/Types/Arrays.h"
 #include "Base/Memory/Pointers.h"
+#include "Base/RHI/RHICommandQueue.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -40,10 +41,18 @@ namespace EE::Render
 				return m_index != std::numeric_limits<uint32_t>::max();
 			}
 
+        public:
+
+            // return an queue index of this queue family.
+            // If can NOT allocate new queue for this queue family, return -1;
+            int32_t AllocateQueueFor( RHI::CommandQueueType queueType );
+
 		public:
 
 			uint32_t						m_index = std::numeric_limits<uint32_t>::max();
 			VkQueueFamilyProperties			m_props;
+
+            int32_t                         m_allocatedQueueCount = 0;
 		};
 
 		class VulkanPhysicalDevice

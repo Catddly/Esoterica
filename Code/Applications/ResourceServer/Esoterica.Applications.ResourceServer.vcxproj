@@ -92,11 +92,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
-     <PreBuildEvent>
+    <PreBuildEvent>
       <Command>taskkill /F /IM EsotericaResourceServer.exe 2&gt;&amp;1 | exit /B 0</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="LocalResourceProvider.cpp" />
     <ClCompile Include="ResourceServer.cpp" />
     <ClCompile Include="ResourceServerApplication.cpp" />
     <ClCompile Include="ResourceServerContext.cpp" />
@@ -114,6 +115,7 @@
     <ResourceCompile Include="Resources\Esoterica.Applications.ResourceServer.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LocalResourceProvider.h" />
     <ClInclude Include="ResourceServerApplication.h" />
     <ClInclude Include="ResourceServerContext.h" />
     <ClInclude Include="ResourceServerUI.h" />
