@@ -66,7 +66,7 @@ namespace EE::ImGuiX
         //-------------------------------------------------------------------------
 
         ImageInfo info;
-        info.m_ID = (void*) &pTexture->GetShaderResourceView();
+        info.m_ID = reinterpret_cast<void*>( pTexture );
         info.m_pTexture = pTexture;
         info.m_size = Float2( static_cast<float>( pTexture->GetDesc().m_width ), static_cast<float>( pTexture->GetDesc().m_height ) );
 
@@ -104,7 +104,7 @@ namespace EE::ImGuiX
         //-------------------------------------------------------------------------
 
         ImageInfo info;
-        info.m_ID = (void*) &pTexture->GetShaderResourceView();
+        info.m_ID = reinterpret_cast<void*>( pTexture );
         info.m_pTexture = pTexture;
         info.m_size = Float2( static_cast<float>( pTexture->GetDesc().m_width ), static_cast<float>( pTexture->GetDesc().m_height ) );
 
@@ -146,7 +146,7 @@ namespace EE::ImGuiX
 
     ImTextureID GetImTextureID( Render::Texture const* pTexture )
     {
-        return (void*) &pTexture->GetShaderResourceView();
+        return reinterpret_cast<void*>( pTexture->GetRHITexture() );
     }
 }
 #endif

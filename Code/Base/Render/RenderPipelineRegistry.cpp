@@ -1,4 +1,5 @@
 #include "RenderPipelineRegistry.h"
+#include "Base/Logging/Log.h"
 #include "Base/Time/Timers.h"
 #include "Base/Resource/ResourceSystem.h"
 #include "Base/Resource/ResourceRequesterID.h"
@@ -408,7 +409,7 @@ namespace EE::Render
             rasterEntry->m_pPipelineState = pPipelineState;
 
             // TODO: add render graph debug name
-            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", rasterEntry->m_desc.GetHash() );
+            EE_LOG_INFO( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", rasterEntry->m_desc.GetHash() );
 
             return true;
         }
@@ -429,7 +430,7 @@ namespace EE::Render
             computeEntry->m_pPipelineState = pPipelineState;
 
             // TODO: add render graph debug name
-            EE_LOG_MESSAGE( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", computeEntry->m_desc.GetHash() );
+            EE_LOG_INFO( "Render", "PipelineRegistry", "[%u] Pipeline Visible.", computeEntry->m_desc.GetHash() );
 
             return true;
         }

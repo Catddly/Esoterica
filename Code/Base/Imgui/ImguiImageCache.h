@@ -11,7 +11,8 @@
 
 namespace EE
 {
-    namespace Render{ class RenderDevice; class Texture; }
+    namespace RHI { class RHITexture; }
+    namespace Render { class RenderDevice; class Texture; }
 }
 
 //-------------------------------------------------------------------------
@@ -25,7 +26,8 @@ namespace EE::ImGuiX
     public:
 
         ImTextureID             m_ID = 0;
-        Render::Texture*        m_pTexture = nullptr;
+        RHI::RHITexture*        m_pTexture = nullptr;
+        //Render::Texture*        m_pTexture = nullptr;
         ImVec2                  m_size = ImVec2( 0, 0 );
     };
 

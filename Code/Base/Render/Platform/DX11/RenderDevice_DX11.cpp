@@ -7,15 +7,14 @@
 
 #include "RenderDevice_DX11.h"
 #include "Base/Render/RenderCoreResources.h"
-#include "Base/IniFile.h"
+#include "Base/Render/Settings/GlobalSettings_Render.h"
 #include "Base/Profiling.h"
+#include "Base/Render/Platform/Windows/TextureLoader_Win32.h"
 
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/Resource/RHIShader.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/RHIDowncastHelper.h"
-
-#include "Base/Render/Platform/Windows/TextureLoader_Win32.h"
 
 //-------------------------------------------------------------------------
 
@@ -71,20 +70,11 @@ namespace EE::Render
         return m_pRHIDevice != nullptr;
     }
 
-    bool RenderDevice::Initialize( IniFile const& iniFile )
+    bool RenderDevice::Initialize( RenderGlobalSettings const& settings )
     {
-        EE_ASSERT( iniFile.IsValid() );
-
-        m_resolution.m_x = iniFile.GetIntOrDefault( "Render:ResolutionX", 1280 );
-        m_resolution.m_y = iniFile.GetIntOrDefault( "Render:ResolutionY", 720 );
-        m_refreshRate = iniFile.GetFloatOrDefault( "Render:RefreshRate", 60 );
-        m_isFullscreen = iniFile.GetBoolOrDefault( "Render:Fullscreen", false );
-
-        //-------------------------------------------------------------------------
-
-        if ( m_resolution.m_x < 0 || m_resolution.m_y < 0 || m_refreshRate < 0 )
+        if ( settings.m_resolution.m_x < 0 || settings.m_resolution.m_y < 0 || settings.m_refreshRate < 0 )
         {
-            EE_LOG_ERROR( "Render", "Render Device", "Invalid render settings read from ini file." );
+            EE_LOG_ERROR( "Render", "Render Device", "Invalid render settings!" );
             return false;
         }
 

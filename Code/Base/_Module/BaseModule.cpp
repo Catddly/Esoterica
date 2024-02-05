@@ -5,6 +5,7 @@
 #include "Base/Resource/ResourceProviders/PackagedResourceProvider.h"
 #include "Base/Resource/Settings/GlobalSettings_Resource.h"
 #include "Base/Render/Settings/GlobalSettings_Render.h"
+#include "Base/RHI/RHIDevice.h"
 
 #ifdef _WIN32
 #include "Base/Platform/PlatformUtils_Win32.h"
@@ -162,6 +163,8 @@ namespace EE
 
     void BaseModule::ShutdownModule()
     {
+        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
+
         // Unregister Systems
         //-------------------------------------------------------------------------
 

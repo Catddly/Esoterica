@@ -6,9 +6,16 @@
 #if EE_DEVELOPMENT_TOOLS
 namespace EE::Resource
 {
+    LocalResourceProvider::LocalResourceProvider( ResourceServer& resourceServer )
+        : m_resourceServer( resourceServer ), ResourceProvider( *resourceServer.m_pSettings )
+    {
+    }
+
+    //-------------------------------------------------------------------------
+
     bool LocalResourceProvider::IsReady() const
     {
-        return m_pResourceServer != nullptr;
+        return true;
     }
 
     //-------------------------------------------------------------------------
@@ -33,7 +40,7 @@ namespace EE::Resource
             for ( uint32_t i = 0; i < m_pendingRequests.size(); ++i )
             {
                 auto* pRequest = m_pendingRequests[i];
-                m_pResourceServer->CompileResource( pRequest->GetResourceID() );
+                m_resourceServer.CompileResource( pRequest->GetResourceID() );
 
                 m_sentRequests.emplace_back( pRequest );
             }
@@ -49,7 +56,7 @@ namespace EE::Resource
                 continue;
             }
 
-            auto& compilationRequests = m_pResourceServer->GetRequests();
+            auto& compilationRequests = m_resourceServer.GetRequests();
             
             auto predicate = [] ( CompilationRequest const* pRequest, ResourceID const& resourceID ) { return pRequest->GetResourceID() == resourceID; };
             auto iterator = VectorFind( compilationRequests, pRequest->GetResourceID(), predicate );
@@ -60,11 +67,11 @@ namespace EE::Resource
             {
                 if ( foundCompilationRequest->HasSucceeded() )
                 {
-                    pRequest->OnRawResourceRequestComplete( foundCompilationRequest->GetDestinationFilePath().ToString() );
+                    pRequest->OnRawResourceRequestComplete( foundCompilationRequest->GetDestinationFilePath().ToString(), foundCompilationRequest->GetLog() );
                 }
                 else // failed
                 {
-                    pRequest->OnRawResourceRequestComplete( "" );
+                    pRequest->OnRawResourceRequestComplete( "", foundCompilationRequest->GetLog() );
                 }
             }
             else
@@ -227,5 +234,7 @@ namespace EE::Resource
         static TVector<ResourceID> emptyVector;
         return emptyVector;
     }
+
+
 }
 #endif

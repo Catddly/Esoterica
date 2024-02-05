@@ -263,14 +263,7 @@ namespace EE
 
         //-------------------------------------------------------------------------
 
-        Resource::ResourceSettings settings;
-        if ( !settings.ReadSettings( iniFile ) )
-        {
-            EE_LOG_ERROR( "Resource Provider", nullptr, "Failed to read resource settings from ini file!" );
-            return false;
-        }
-
-        m_pResourceProvider = EE::New<Resource::LocalResourceProvider>( &m_resourceServer, settings );
+        m_pResourceProvider = EE::New<Resource::LocalResourceProvider>( m_resourceServer );
 
         if ( m_pResourceProvider == nullptr )
         {

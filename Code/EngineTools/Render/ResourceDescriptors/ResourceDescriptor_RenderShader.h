@@ -41,6 +41,7 @@ namespace EE::Render
     public:
 
         virtual bool IsValid() const override { return m_shaderPath.IsValid(); }
+        virtual bool IsUserCreateableDescriptor() const override { return true; }
 
         virtual void GetCompileDependencies( TVector<ResourcePath>& outDependencies ) override
         {
@@ -56,10 +57,12 @@ namespace EE::Render
             m_shaderPath.Clear();
         }
 
+        virtual ResourceTypeID GetCompiledResourceTypeID() const override { return Shader::GetStaticResourceTypeID(); }
+
     public:
 
         EE_REFLECT() ShaderType                        m_shaderType = ShaderType::Vertex;
-        EE_REFLECT() ShaderBackendLanguage             m_shaderBackendLanguage = ShaderBackendLanguage::DX11;
+        EE_REFLECT() ShaderBackendLanguage             m_shaderBackendLanguage = ShaderBackendLanguage::Vulkan;
         EE_REFLECT() ShaderLanguage                    m_shaderLanguage = ShaderLanguage::Hlsl;
         EE_REFLECT() ResourcePath                      m_shaderPath;
         EE_REFLECT() String                            m_shaderEntryName = "main";

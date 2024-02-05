@@ -182,7 +182,7 @@ namespace EE::Render
         }
 
         Texture texture;
-        texture.m_format = TextureFormat::DDS;
+        texture.m_format = RawTextureDataFormat::DDS;
         texture.m_rawData.resize( ddsData.GetBufferSize() );
         memcpy( texture.m_rawData.data(), ddsData.GetBufferPointer(), ddsData.GetBufferSize() );
 

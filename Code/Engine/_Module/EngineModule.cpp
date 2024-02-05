@@ -6,7 +6,6 @@
 #include "Engine/Physics/Physics.h"
 #include "Base/Resource/ResourceSystem.h"
 #include "Base/Network/NetworkSystem.h"
-#include "Base/RHI/RHIDevice.h"
 
 //-------------------------------------------------------------------------
 
@@ -150,8 +149,6 @@ namespace EE
         //-------------------------------------------------------------------------
         // Unregister resource loaders
         //-------------------------------------------------------------------------
-
-        m_pRenderDevice->GetRHIDevice()->WaitUntilIdle();
 
         context.m_pResourceSystem->UnregisterResourceLoader( &m_navmeshLoader );
 

@@ -82,7 +82,7 @@ namespace EE
         RG::RenderGraph                                     m_renderGraph;
 
         Render::PipelineRegistry                            m_pipelineRegistry;
-        TaskSystem                                          m_taskSystem = TaskSystem( 4 );
+        TaskSystem                                          m_taskSystem = TaskSystem( 4 ); // Note: only used by local resource system. Do NOT need too much cores.
         Resource::ResourceProvider*                         m_pResourceProvider = nullptr;
         Resource::ResourceSystem                            m_resourceSystem = Resource::ResourceSystem( m_taskSystem );
 

@@ -3,7 +3,6 @@
 #include "Base/FileSystem/FileSystemPath.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Function.h"
-//#include "Base/Types/WString.h"
 
 #include <atlbase.h> // ComPtr
 #include <dxc/dxcapi.h>

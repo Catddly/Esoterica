@@ -8,15 +8,14 @@ namespace EE::Resource
 {
     class ResourceServer;
     class ResourceSystem;
+    class ResourceRequest;
 
+    // Resource provider to pass resource requests directly by resource server itself.
     class LocalResourceProvider final : public ResourceProvider 
     {
     public:
 
-        LocalResourceProvider( ResourceServer* pResourceServer, ResourceSettings const& settings )
-            : m_pResourceServer( pResourceServer ), ResourceProvider( settings )
-        {
-        }
+        LocalResourceProvider( ResourceServer& resourceServer );
 
         virtual bool IsReady() const override;
 
@@ -33,7 +32,7 @@ namespace EE::Resource
 
     private:
 
-        ResourceServer*                         m_pResourceServer = nullptr;
+        ResourceServer&                         m_resourceServer;
 
         TVector<ResourceRequest*>               m_pendingRequests; // Requests we need to sent
         TVector<ResourceRequest*>               m_sentRequests; // Request that were sent but we're still waiting for a response

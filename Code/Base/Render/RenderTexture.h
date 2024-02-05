@@ -135,7 +135,7 @@ namespace EE::Render
         //ViewRTHandle            m_renderTargetView;
         //ViewDSHandle            m_depthStencilView;
         Int2                    m_dimensions = Int2(0, 0);
-        RawTextureDataFormat           m_format;
+        RawTextureDataFormat    m_format;
         Blob                    m_rawData; // Temporary storage for the raw data used during installation, cleared when installation completes
     };
 

@@ -26,6 +26,8 @@ namespace EE::Resource
 
     class ResourceServer
     {
+        friend class LocalResourceProvider;
+
     public:
 
         struct BusyState

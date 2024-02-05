@@ -603,6 +603,7 @@
     <ClCompile Include="RHI\RHIResourceBinding.cpp" />
     <ClCompile Include="Platform\Platform.cpp" />
     <ClCompile Include="Render\Settings\GlobalSettings_Render.cpp" />
+    <ClCompile Include="Settings\SettingsRegistry.cpp" />
     <ClCompile Include="ThirdParty\implot\implot.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_demo.cpp" />
     <ClCompile Include="ThirdParty\implot\implot_items.cpp" />

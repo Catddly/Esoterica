@@ -772,7 +772,7 @@ namespace EE::Render
         }
         else
         {
-            return Error( "Unknown shader graphic backend" );
+            return Error( "Unknown shader graphic backend." );
         }
     }
 
@@ -892,7 +892,7 @@ namespace EE::Render
         }
         if ( pShader->GetPipelineStage() == PipelineStage::Vertex )
         {
-            Resource::ResourceHeader hdr( s_version, PixelShader::GetStaticResourceTypeID(), ctx.m_sourceResourceHash );
+            Resource::ResourceHeader hdr( s_version, VertexShader::GetStaticResourceTypeID(), ctx.m_sourceResourceHash );
             archive << hdr << *static_cast<VertexShader*>( pShader.get() );
         }
 

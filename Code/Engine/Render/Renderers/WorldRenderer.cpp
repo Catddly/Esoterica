@@ -761,7 +761,7 @@ namespace EE::Render
         pickingDataDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
         pickingDataDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
 
-        EE_LOG_MESSAGE( "Render", "World Renderer", "Test: %p", m_pRenderData->m_pSkyboxTexture );
+        EE_LOG_INFO( "Render", "World Renderer", "Test: %p", m_pRenderData->m_pSkyboxTexture );
 
         {
             auto node = renderGraph.AddNode( bUsePickingPipeline ? "Static Mesh Lit Picking" : "Static Mesh Lit" );
@@ -1053,102 +1053,18 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        for ( StaticMeshComponent const* pMeshComponent : data.m_staticMeshComponents )
-        {
-            auto pMesh = pMeshComponent->GetMesh();
-            Transform const& worldTransform = pMeshComponent->GetWorldTransform();
-            Vector const finalScale = pMeshComponent->GetLocalScale() * worldTransform.GetScale();
-            Matrix const worldTransformMatrix = Matrix( worldTransform.GetRotation(), worldTransform.GetTranslation(), finalScale );
-
-            ObjectTransforms transforms = data.m_transforms;
-            transforms.m_worldTransform = worldTransformMatrix;
-            transforms.m_worldTransform.SetTranslation( worldTransformMatrix.GetTranslation() );
-            transforms.m_normalTransform = transforms.m_worldTransform.GetInverse().Transpose();
-            renderContext.WriteToBuffer( m_vertexShaderStatic.GetConstBuffer( 0 ), &transforms, sizeof( transforms ) );
-
-            if ( renderTarget.HasPickingRT() )
-            {
-                PickingData const pd( pMeshComponent->GetEntityID().m_value, pMeshComponent->GetID().m_value );
-                renderContext.WriteToBuffer( m_pixelShaderPicking.GetConstBuffer( 2 ), &pd, sizeof( PickingData ) );
-            }
-
-            renderContext.SetVertexBuffer( pMesh->GetVertexBuffer() );
-            renderContext.SetIndexBuffer( pMesh->GetIndexBuffer() );
-
-            TVector<Material const*> const& materials = pMeshComponent->GetMaterials();
-            uint64_t const visibility = pMeshComponent->GetSectionVisibilityMask();
-
-            auto const numSubMeshes = pMesh->GetNumSections();
-            for ( auto i = 0u; i < numSubMeshes; i++ )
-            {
-                // Skip hidden sections
-                if ( ( visibility & ( 1ull << i ) ) == 0 )
-                {
-                    continue;
-                }
-
-                // Set material
-                if ( i < materials.size() && materials[i] )
-                {
-                    SetMaterial( renderContext, *pPipelineState->m_pPixelShader, materials[i] );
-                }
-                else // Use default material
-                {
-                    SetDefaultMaterial( renderContext, *pPipelineState->m_pPixelShader );
-                }
-
-                auto const& subMesh = pMesh->GetSection( i );
-                renderContext.DrawIndexed( subMesh.m_numIndices, subMesh.m_startIndex );
-            }
-        }
-        renderContext.ClearShaderResource( PipelineStage::Pixel, 10 );
-    }
-
-    void WorldRenderer::RenderSkeletalMeshes( Viewport const& viewport, RenderTarget const& renderTarget, RenderData const& data )
-    {
-        EE_PROFILE_FUNCTION_RENDER();
-
-        auto const& renderContext = m_pRenderDevice->GetImmediateContext();
-
-        // Set primary render state and clear the render buffer
-        //-------------------------------------------------------------------------
-
-        PipelineState* pPipelineState = renderTarget.HasPickingRT() ? &m_pipelineStateSkeletalPicking : &m_pipelineStateSkeletal;
-        SetupRenderStates( viewport, pPipelineState->m_pPixelShader, data );
-
-        // renderContext.SetPipelineState( *pPipelineState );
-        // renderContext.SetShaderInputBinding( m_inputBindingSkeletal );
-        // renderContext.SetPrimitiveTopology( Topology::TriangleList );
-
-        //-------------------------------------------------------------------------
-
-        SkeletalMesh const* pCurrentMesh = nullptr;
-
-        //for ( SkeletalMeshComponent const* pMeshComponent : data.m_skeletalMeshComponents )
+        //for ( StaticMeshComponent const* pMeshComponent : data.m_staticMeshComponents )
         //{
-        //    if ( pMeshComponent->GetMesh() != pCurrentMesh )
-        //    {
-        //        pCurrentMesh = pMeshComponent->GetMesh();
-        //        EE_ASSERT( pCurrentMesh != nullptr && pCurrentMesh->IsValid() );
+        //    auto pMesh = pMeshComponent->GetMesh();
+        //    Transform const& worldTransform = pMeshComponent->GetWorldTransform();
+        //    Vector const finalScale = pMeshComponent->GetLocalScale() * worldTransform.GetScale();
+        //    Matrix const worldTransformMatrix = Matrix( worldTransform.GetRotation(), worldTransform.GetTranslation(), finalScale );
 
-        //        //renderContext.SetVertexBuffer( pCurrentMesh->GetVertexBuffer() );
-        //        //renderContext.SetIndexBuffer( pCurrentMesh->GetIndexBuffer() );
-        //    }
-
-        //    // Update Bones and Transforms
-        //    //-------------------------------------------------------------------------
-
-        //    Matrix worldTransform = pMeshComponent->GetWorldTransform().ToMatrix();
         //    ObjectTransforms transforms = data.m_transforms;
-        //    transforms.m_worldTransform = worldTransform;
-        //    transforms.m_worldTransform.SetTranslation( worldTransform.GetTranslation() );
+        //    transforms.m_worldTransform = worldTransformMatrix;
+        //    transforms.m_worldTransform.SetTranslation( worldTransformMatrix.GetTranslation() );
         //    transforms.m_normalTransform = transforms.m_worldTransform.GetInverse().Transpose();
-        //    //renderContext.WriteToBuffer( m_vertexShaderSkeletal.GetConstBuffer( 0 ), &transforms, sizeof( transforms ) );
-
-        //    //auto const& bonesConstBuffer = m_vertexShaderSkeletal.GetConstBuffer( 1 );
-        //    auto const& boneTransforms = pMeshComponent->GetSkinningTransforms();
-        //    EE_ASSERT( boneTransforms.size() == pCurrentMesh->GetNumBones() );
-        //    //renderContext.WriteToBuffer( bonesConstBuffer, boneTransforms.data(), sizeof( Matrix ) * pCurrentMesh->GetNumBones() );
+        //    renderContext.WriteToBuffer( m_vertexShaderStatic.GetConstBuffer( 0 ), &transforms, sizeof( transforms ) );
 
         //    if ( renderTarget.HasPickingRT() )
         //    {
@@ -1156,30 +1072,114 @@ namespace EE::Render
         //        renderContext.WriteToBuffer( m_pixelShaderPicking.GetConstBuffer( 2 ), &pd, sizeof( PickingData ) );
         //    }
 
-        //    // Draw sub-meshes
-        //    //-------------------------------------------------------------------------
+        //    renderContext.SetVertexBuffer( pMesh->GetVertexBuffer() );
+        //    renderContext.SetIndexBuffer( pMesh->GetIndexBuffer() );
 
         //    TVector<Material const*> const& materials = pMeshComponent->GetMaterials();
+        //    uint64_t const visibility = pMeshComponent->GetSectionVisibilityMask();
 
-        //    auto const numSubMeshes = pCurrentMesh->GetNumSections();
+        //    auto const numSubMeshes = pMesh->GetNumSections();
         //    for ( auto i = 0u; i < numSubMeshes; i++ )
         //    {
-        //        //if ( i < materials.size() && materials[i] )
-        //        //{
-        //        //    SetMaterial( renderContext, *pPipelineState->m_pPixelShader, materials[i] );
-        //        //}
-        //        //else // Use default material
-        //        //{
-        //        //    SetDefaultMaterial( renderContext, *pPipelineState->m_pPixelShader );
-        //        //}
+        //        // Skip hidden sections
+        //        if ( ( visibility & ( 1ull << i ) ) == 0 )
+        //        {
+        //            continue;
+        //        }
 
-        //        // Draw mesh
-        //        auto const& subMesh = pCurrentMesh->GetSection( i );
+        //        // Set material
+        //        if ( i < materials.size() && materials[i] )
+        //        {
+        //            SetMaterial( renderContext, *pPipelineState->m_pPixelShader, materials[i] );
+        //        }
+        //        else // Use default material
+        //        {
+        //            SetDefaultMaterial( renderContext, *pPipelineState->m_pPixelShader );
+        //        }
+
+        //        auto const& subMesh = pMesh->GetSection( i );
         //        renderContext.DrawIndexed( subMesh.m_numIndices, subMesh.m_startIndex );
         //    }
         //}
-        renderContext.ClearShaderResource( PipelineStage::Pixel, 10 );
+        //renderContext.ClearShaderResource( PipelineStage::Pixel, 10 );
     }
+
+    //void WorldRenderer::RenderSkeletalMeshes( Viewport const& viewport, RenderTarget const& renderTarget, RenderData const& data )
+    //{
+    //    EE_PROFILE_FUNCTION_RENDER();
+
+    //    auto const& renderContext = m_pRenderDevice->GetImmediateContext();
+
+    //    // Set primary render state and clear the render buffer
+    //    //-------------------------------------------------------------------------
+
+    //    //PipelineState* pPipelineState = renderTarget.HasPickingRT() ? &m_pipelineStateSkeletalPicking : &m_pipelineStateSkeletal;
+    //    //SetupRenderStates( viewport, pPipelineState->m_pPixelShader, data );
+
+    //    // renderContext.SetPipelineState( *pPipelineState );
+    //    // renderContext.SetShaderInputBinding( m_inputBindingSkeletal );
+    //    // renderContext.SetPrimitiveTopology( Topology::TriangleList );
+
+    //    //-------------------------------------------------------------------------
+
+    //    SkeletalMesh const* pCurrentMesh = nullptr;
+
+    //    //for ( SkeletalMeshComponent const* pMeshComponent : data.m_skeletalMeshComponents )
+    //    //{
+    //    //    if ( pMeshComponent->GetMesh() != pCurrentMesh )
+    //    //    {
+    //    //        pCurrentMesh = pMeshComponent->GetMesh();
+    //    //        EE_ASSERT( pCurrentMesh != nullptr && pCurrentMesh->IsValid() );
+
+    //    //        //renderContext.SetVertexBuffer( pCurrentMesh->GetVertexBuffer() );
+    //    //        //renderContext.SetIndexBuffer( pCurrentMesh->GetIndexBuffer() );
+    //    //    }
+
+    //    //    // Update Bones and Transforms
+    //    //    //-------------------------------------------------------------------------
+
+    //    //    Matrix worldTransform = pMeshComponent->GetWorldTransform().ToMatrix();
+    //    //    ObjectTransforms transforms = data.m_transforms;
+    //    //    transforms.m_worldTransform = worldTransform;
+    //    //    transforms.m_worldTransform.SetTranslation( worldTransform.GetTranslation() );
+    //    //    transforms.m_normalTransform = transforms.m_worldTransform.GetInverse().Transpose();
+    //    //    //renderContext.WriteToBuffer( m_vertexShaderSkeletal.GetConstBuffer( 0 ), &transforms, sizeof( transforms ) );
+
+    //    //    //auto const& bonesConstBuffer = m_vertexShaderSkeletal.GetConstBuffer( 1 );
+    //    //    auto const& boneTransforms = pMeshComponent->GetSkinningTransforms();
+    //    //    EE_ASSERT( boneTransforms.size() == pCurrentMesh->GetNumBones() );
+    //    //    //renderContext.WriteToBuffer( bonesConstBuffer, boneTransforms.data(), sizeof( Matrix ) * pCurrentMesh->GetNumBones() );
+
+    //    //    if ( renderTarget.HasPickingRT() )
+    //    //    {
+    //    //        PickingData const pd( pMeshComponent->GetEntityID().m_value, pMeshComponent->GetID().m_value );
+    //    //        renderContext.WriteToBuffer( m_pixelShaderPicking.GetConstBuffer( 2 ), &pd, sizeof( PickingData ) );
+    //    //    }
+
+    //    //    // Draw sub-meshes
+    //    //    //-------------------------------------------------------------------------
+
+    //    //    TVector<Material const*> const& materials = pMeshComponent->GetMaterials();
+
+    //    //    auto const numSubMeshes = pCurrentMesh->GetNumSections();
+    //    //    for ( auto i = 0u; i < numSubMeshes; i++ )
+    //    //    {
+    //    //        //if ( i < materials.size() && materials[i] )
+    //    //        //{
+    //    //        //    SetMaterial( renderContext, *pPipelineState->m_pPixelShader, materials[i] );
+    //    //        //}
+    //    //        //else // Use default material
+    //    //        //{
+    //    //        //    SetDefaultMaterial( renderContext, *pPipelineState->m_pPixelShader );
+    //    //        //}
+
+    //    //        // Draw mesh
+    //    //        auto const& subMesh = pCurrentMesh->GetSection( i );
+    //    //        renderContext.DrawIndexed( subMesh.m_numIndices, subMesh.m_startIndex );
+    //    //    }
+    //    //}
+    //    renderContext.ClearShaderResource( PipelineStage::Pixel, 10 );
+    //}
 
     void WorldRenderer::RenderSkybox( RG::RenderGraph& renderGraph, Viewport const& viewport, RenderTarget const& renderTarget )
     {
@@ -1836,9 +1836,9 @@ namespace EE::Render
 
         m_pRenderData->m_lightData.m_lightingFlags = lightingFlags;
 
-        #if EE_DEVELOPMENT_TOOLS
-        m_pRenderData->m_lightData.m_lightingFlags = m_pRenderData->m_lightData.m_lightingFlags | ( (int32_t) pWorldSystem->GetVisualizationMode() << (int32_t) RendererWorldSystem::VisualizationMode::BitShift );
-        #endif
+        //#if EE_DEVELOPMENT_TOOLS
+        //m_pRenderData->m_lightData.m_lightingFlags = m_pRenderData->m_lightData.m_lightingFlags | ( (int32_t) pWorldSystem->GetVisualizationMode() << (int32_t) RendererWorldSystem::VisualizationMode::BitShift );
+        //#endif
 
         //-------------------------------------------------------------------------
 

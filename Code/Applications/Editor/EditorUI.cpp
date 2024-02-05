@@ -1123,7 +1123,7 @@ namespace EE
                     EE_ASSERT( pEditorTool->HasEntityWorld() && pWorld != nullptr );
 
                     EditorTool::ViewportInfo viewportInfo;
-                    viewportInfo.m_pViewportRenderTargetTexture = (void*) &m_pRenderingSystem->GetRenderTargetTextureForViewport( pWorld->GetViewport() );
+                    viewportInfo.m_pViewportRenderTargetTexture = (void*) m_pRenderingSystem->GetRenderTargetForViewport( pWorld->GetViewport() ).GetRHIRenderTarget();
                     viewportInfo.m_retrievePickingID = [this, pWorld] ( Int2 const& pixelCoords ) { return m_pRenderingSystem->GetViewportPickingID( pWorld->GetViewport(), pixelCoords ); };
 
                     ImGuiWindowFlags const viewportWindowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavFocus;

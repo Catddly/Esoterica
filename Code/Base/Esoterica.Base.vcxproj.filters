@@ -382,9 +382,6 @@
     <ClCompile Include="ThirdParty\implot\implot_items.cpp">
       <Filter>ThirdParty\implot</Filter>
     </ClCompile>
-    <ClCompile Include="TypeSystem\ReflectedType.cpp">
-      <Filter>TypeSystem</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\TopologicalSort.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -503,8 +500,8 @@
     <ClCompile Include="Platform\Platform.cpp" />
     <ClCompile Include="Math\Easing.cpp" />
     <ClCompile Include="Input\InputDevice.cpp" />
-    <ClCompile Include="Settings\SettingsRegistry.cpp" />
     <ClCompile Include="Render\Settings\GlobalSettings_Render.cpp" />
+    <ClCompile Include="Settings\SettingsRegistry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -514,7 +511,6 @@
     <ClInclude Include="Render\RenderViewport.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="IniFile.h" />
     <ClInclude Include="Settings\IniFile.h" />
     <ClInclude Include="Logging\Log.h" />
     <ClInclude Include="Profiling.h" />
