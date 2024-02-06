@@ -483,6 +483,17 @@ namespace EE::RHI
         return bufferDesc;
     }
 
+    RHIBufferCreateDesc RHIBufferCreateDesc::NewUniformBufferPersistentMapping( uint32_t sizeInByte )
+    {
+        EE_ASSERT( sizeInByte > 0 );
+
+        RHIBufferCreateDesc bufferDesc = {};
+        bufferDesc.m_desireSize = sizeInByte;
+        bufferDesc.m_usage.SetFlag( EBufferUsage::Uniform );
+        bufferDesc.AsPersistentMapping();
+        return bufferDesc;
+    }
+
     RHIBufferCreateDesc RHIBufferCreateDesc::NewStorageBuffer( uint32_t sizeInByte )
     {
         EE_ASSERT( sizeInByte > 0 );

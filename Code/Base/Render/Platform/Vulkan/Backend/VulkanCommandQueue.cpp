@@ -28,6 +28,11 @@ namespace EE::Render
 
             EE_ASSERT( m_pHandle != nullptr );
         }
+
+        void VulkanCommandQueue::WaitUntilIdle() const
+        {
+            vkQueueWaitIdle( m_pHandle );
+        }
 	}
 }
 

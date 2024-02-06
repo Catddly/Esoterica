@@ -34,6 +34,8 @@ namespace EE::Render
             inline virtual uint32_t GetDeviceIndex() const override { return m_queueFamily.m_index; }
             inline virtual RHI::CommandQueueType GetType() const override { return m_type; }
 
+            inline virtual void WaitUntilIdle() const override;
+
         private:
 
             VkQueue								m_pHandle = nullptr;

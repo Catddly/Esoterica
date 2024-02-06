@@ -420,6 +420,7 @@ namespace EE::RHI
         static RHIBufferCreateDesc NewVertexBuffer( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewIndexBuffer( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewUniformBuffer( uint32_t sizeInByte );
+        static RHIBufferCreateDesc NewUniformBufferPersistentMapping( uint32_t sizeInByte );
         static RHIBufferCreateDesc NewStorageBuffer( uint32_t sizeInByte );
 
         // User must ensure that pData must have the same size as the buffer.
@@ -432,6 +433,13 @@ namespace EE::RHI
         }
 
         bool IsValid() const;
+
+        inline void AsPersistentMapping()
+        {
+            m_memoryFlag.ClearAllFlags();
+            m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
+        }
 
         size_t GetHash() const
         {
@@ -544,7 +552,7 @@ namespace EE::RHI
 
         // Depends on the pixel format
         
-        Color                                           m_clearColorValue = Colors::Black;
+        Color                                           m_clearColorValue = Colors::Transparent;
         // Note: reverse z
         float                                           m_clearDepthValue = 0.0f;
         uint32_t                                        m_clearStencilValue = 0u;

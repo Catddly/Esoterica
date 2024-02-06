@@ -122,9 +122,12 @@ namespace EE::RG
         inline static BufferDesc NewVertexBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewVertexBuffer( sizeInByte ) }; }
         inline static BufferDesc NewIndexBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewIndexBuffer( sizeInByte ) }; }
         inline static BufferDesc NewUniformBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewUniformBuffer( sizeInByte ) }; }
+        inline static BufferDesc NewUniformBufferPersistentMapping( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewUniformBufferPersistentMapping( sizeInByte ) }; }
         inline static BufferDesc NewStorageBuffer( uint32_t sizeInByte ) { return BufferDesc{ InnerDescType::NewStorageBuffer( sizeInByte ) }; }
 
         inline bool IsValid() const { return m_desc.IsValid(); }
+
+        inline void AsPersistentMapping() { m_desc.AsPersistentMapping(); }
 
 	public:
 

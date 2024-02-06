@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Base/_Module/API.h"
+#include "Base/Types/Event.h"
 #include "Base/RHI/Resource/RHIResource.h"
 #include "RenderTexture.h"
 
@@ -139,5 +140,7 @@ namespace EE::Render
         RHI::RHISemaphore*              m_pTextureAcquireSemaphore = nullptr;
         RHI::RHISemaphore*              m_pRenderCompleteSemaphore = nullptr;
         uint32_t                        m_frameIndex = 0;
+
+        EventBindingID                  m_onSwapchainTextureDestroyedEventId;
     };
 }

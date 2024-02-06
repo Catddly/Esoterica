@@ -34,6 +34,8 @@ namespace EE::RHI
         virtual uint32_t GetDeviceIndex() const = 0;
         virtual CommandQueueType GetType() const = 0;
 
+        virtual void WaitUntilIdle() const = 0;
+
     private:
 
     };

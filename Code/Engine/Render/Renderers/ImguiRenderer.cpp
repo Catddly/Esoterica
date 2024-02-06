@@ -330,7 +330,7 @@ namespace EE::Render
         auto fontTextureCreateDesc = RHI::RHITextureCreateDesc::NewInitData( texBufferData, RHI::EPixelFormat::RGBA8Unorm );
         fontTextureCreateDesc.m_usage.SetFlag( RHI::ETextureUsage::Sampled );
 
-        m_fontTexture = m_pRenderDevice->GetRHIDevice()->CreateTexture( fontTextureCreateDesc );
+        m_fontTexture = pRhiDevice->CreateTexture( fontTextureCreateDesc );
 
         if ( !m_fontTexture )
         {
@@ -661,19 +661,15 @@ namespace EE::Render
             // Resource creation
             //-------------------------------------------------------------------------
 
-            auto uboDesc = RG::BufferDesc::NewUniformBuffer( sizeof( float ) * 4 * 4 );
-            uboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            uboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            auto uboDesc = RG::BufferDesc::NewUniformBufferPersistentMapping( sizeof( float ) * 4 * 4 );
             auto uboResource = renderGraph.CreateTemporaryResource( uboDesc );
 
             auto vboDesc = RG::BufferDesc::NewVertexBuffer( pDrawData->TotalVtxCount * sizeof( ImDrawVert ) );
-            vboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            vboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            vboDesc.AsPersistentMapping();
             auto vboResource = renderGraph.GetOrCreateNamedResource( "ImguiDynamicVertexBuffer", vboDesc );
 
             auto iboDesc = RG::BufferDesc::NewIndexBuffer( pDrawData->TotalIdxCount * sizeof( ImDrawIdx ) );
-            iboDesc.m_desc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            iboDesc.m_desc.m_memoryFlag.SetFlag( RHI::ERenderResourceMemoryFlag::PersistentMapping );
+            iboDesc.AsPersistentMapping();
             auto iboResource = renderGraph.GetOrCreateNamedResource( "ImguiDynamicIndexBuffer", iboDesc );
 
             auto rtResource = renderGraph.ImportResource( renderTarget, RHI::RenderResourceBarrierState::Undefined );
@@ -697,8 +693,8 @@ namespace EE::Render
 
             auto vboBinding = nodeBuilder.RasterRead( vboResource, RHI::RenderResourceBarrierState::VertexBuffer );
             auto iboBinding = nodeBuilder.RasterRead( iboResource, RHI::RenderResourceBarrierState::IndexBuffer );
-
             auto uboBinding = nodeBuilder.RasterRead( uboResource, RHI::RenderResourceBarrierState::VertexShaderReadUniformBuffer );
+
             auto rtBinding = nodeBuilder.RasterWrite( rtResource, RHI::RenderResourceBarrierState::ColorAttachmentReadWrite );
 
             RHI::RHIRenderPass* pRenderPass = m_pRenderPass;
@@ -720,6 +716,13 @@ namespace EE::Render
                     { ( R + L ) / ( L - R ),  ( T + B ) / ( B - T ), 0.5f, 1.0f },
                 };
 
+                //float scaleAndTranslate[4]; // 2 floats of scale, 2 floats of translate
+                //scaleAndTranslate[0] = 2.0f / pDrawData->DisplaySize.x;
+                //scaleAndTranslate[1] = 2.0f / pDrawData->DisplaySize.y;
+                ////float translate[2];
+                //scaleAndTranslate[2] = -1.0f - pDrawData->DisplayPos.x * scaleAndTranslate[0];
+                //scaleAndTranslate[3] = -1.0f - pDrawData->DisplayPos.y * scaleAndTranslate[1];
+
                 RHI::RHIBuffer* pUniformBuffer = context.GetCompiledBufferResource( uboBinding );
                 EE_ASSERT( pUniformBuffer );
                 auto* pDevice = context.GetRHIDevice();
@@ -734,6 +737,8 @@ namespace EE::Render
                 RHI::RHIBuffer* pIndexBuffer = context.GetCompiledBufferResource( iboBinding );
                 EE_ASSERT( pVertexBuffer );
                 EE_ASSERT( pIndexBuffer );
+
+                EE_STATIC_ASSERT( sizeof( ImDrawIdx ) == sizeof( uint32_t ), "Inconsist type of index format for index buffer." );
 
                 // Copy vertices into our vertex and index buffers and record the command lists
                 {

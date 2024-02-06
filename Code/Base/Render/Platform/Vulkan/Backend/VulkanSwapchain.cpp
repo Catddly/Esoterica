@@ -121,7 +121,7 @@ namespace EE::Render
         {
             EE_ASSERT( m_loadFuncs.m_pAcquireNextImageKHRFunc );
 
-            constexpr uint64_t InfiniteWaitTimeOut = std::numeric_limits<uint64_t>::max();
+            uint64_t constexpr InfiniteWaitTimeOut = std::numeric_limits<uint64_t>::max();
             RHI::RHISemaphore* pAcquireSemaphore = m_textureAcquireSemaphores[m_currentRenderFrameIndex];
             EE_ASSERT( pAcquireSemaphore );
             auto* pVkAcquireSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pAcquireSemaphore );
@@ -221,6 +221,8 @@ namespace EE::Render
 
         bool VulkanSwapchain::CreateOrRecreate( InitConfig const& config, VkSwapchainKHR pOldSwapchain )
         {
+            m_pDevice->GetMainGraphicCommandQueue()->WaitUntilIdle();
+
             m_initConfig = config;
 
             // platform specific
@@ -392,6 +394,8 @@ namespace EE::Render
 
                 // reset render frame index
                 m_currentRenderFrameIndex = 0;
+
+                
             }
 
             // fetch swapchain images
@@ -415,6 +419,17 @@ namespace EE::Render
             }
 
             EE_ASSERT( m_presentTextures.size() == swapchainImages.size() );
+
+            if ( pOldSwapchain )
+            {
+                //m_textureAcquireSemaphores.resize( m_presentTextures.size() );
+                ////m_renderCompleteSemaphores.resize( m_presentTextures.size() );
+                //for ( uint32_t i = 0; i < m_presentTextures.size(); ++i )
+                //{
+                //    m_textureAcquireSemaphores[i] = static_cast<VulkanSemaphore*>( m_pDevice->CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc{} ) );
+                //    //m_renderCompleteSemaphores[i] = static_cast<VulkanSemaphore*>( m_pDevice->CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc{} ) );
+                //}
+            }
 
             return true;
         }
