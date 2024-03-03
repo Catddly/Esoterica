@@ -72,7 +72,7 @@ namespace EE::Render
                 uploadRef.m_uploadAllMips = true;
             }
 
-            DispatchImmediateTransferCommandAndWait( pDevice, [this, &uploadRefs, dstBarrierState] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            DispatchImmediateGraphicCommandAndWait( pDevice, [this, &uploadRefs, dstBarrierState] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
             {
                 pCommandBuffer->CopyBufferToTexture( this, dstBarrierState, uploadRefs );
 

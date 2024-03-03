@@ -516,40 +516,40 @@ namespace EE::Render
         // Viewport Support
         //-------------------------------------------------------------------------
 
-        if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
-        {
-            ImGui::UpdatePlatformWindows();
+        //if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
+        //{
+        //    //ImGui::UpdatePlatformWindows();
 
-            //-------------------------------------------------------------------------
+        //    //-------------------------------------------------------------------------
 
-            ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+        //    //ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
 
-            for ( int i = 1; i < platformIO.Viewports.Size; i++ )
-            {
-                ImGuiViewport* pViewport = platformIO.Viewports[i];
-                if ( pViewport->Flags & ImGuiViewportFlags_IsMinimized )
-                {
-                    continue;
-                }
+        //    //for ( int i = 1; i < platformIO.Viewports.Size; i++ )
+        //    //{
+        //    //    ImGuiViewport* pViewport = platformIO.Viewports[i];
+        //    //    if ( pViewport->Flags & ImGuiViewportFlags_IsMinimized )
+        //    //    {
+        //    //        continue;
+        //    //    }
 
-                auto* pSecondarySwapChain = (RenderWindow*) pViewport->RendererUserData;
-                EE_ASSERT( pSecondarySwapChain != nullptr );
+        //    //    auto* pSecondarySwapChain = (RenderWindow*) pViewport->RendererUserData;
+        //    //    EE_ASSERT( pSecondarySwapChain != nullptr );
 
-                //renderContext.SetRenderTarget( *pSecondarySwapChain->GetRenderTarget() );
-                 
-                // TODO: render target clear up
-                //if ( !( pViewport->Flags & ImGuiViewportFlags_NoRendererClear ) )
-                //{
-                //    renderContext.ClearRenderTargetViews( *pSecondarySwapChain->GetRenderTarget() );
-                //}
-                
-                //RenderImguiData( renderContext, pViewport->DrawData );
-                RenderImguiData( renderGraph, *pSecondarySwapChain->GetRenderTarget(), pViewport->DrawData );
-                //renderContext.Present( *pSecondarySwapChain );
+        //    //    //renderContext.SetRenderTarget( *pSecondarySwapChain->GetRenderTarget() );
+        //    //     
+        //    //    // TODO: render target clear up
+        //    //    //if ( !( pViewport->Flags & ImGuiViewportFlags_NoRendererClear ) )
+        //    //    //{
+        //    //    //    renderContext.ClearRenderTargetViews( *pSecondarySwapChain->GetRenderTarget() );
+        //    //    //}
+        //    //    
+        //    //    //RenderImguiData( renderContext, pViewport->DrawData );
+        //    //    RenderImguiData( renderGraph, *pSecondarySwapChain->GetRenderTarget(), pViewport->DrawData );
+        //    //    //renderContext.Present( *pSecondarySwapChain );
 
-                pSecondarySwapChain->Present();
-            }
-        }
+        //    //    pSecondarySwapChain->Present();
+        //    //}
+        //}
     }
 
     void ImguiRenderer::RenderImguiData( RG::RenderGraph& renderGraph, RenderTarget const& renderTarget, ImDrawData const* pDrawData )

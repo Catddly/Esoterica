@@ -47,6 +47,16 @@ namespace EE::Render
             // If can NOT allocate new queue for this queue family, return -1;
             int32_t AllocateQueueFor( RHI::CommandQueueType queueType );
 
+            friend bool operator==( QueueFamily const& lhs, QueueFamily const& rhs )
+            {
+                return lhs.m_index == rhs.m_index;
+            }
+
+            friend bool operator!=( QueueFamily const& lhs, QueueFamily const& rhs )
+            {
+                return lhs.m_index != rhs.m_index;
+            }
+
 		public:
 
 			uint32_t						m_index = std::numeric_limits<uint32_t>::max();

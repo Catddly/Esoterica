@@ -146,7 +146,7 @@ namespace EE
         //-------------------------------------------------------------------------
 
         #if EE_DEVELOPMENT_TOOLS
-        m_imguiSystem.Initialize( m_pRenderDevice, &m_inputSystem, true );
+        m_imguiSystem.Initialize( m_pRenderDevice, &m_inputSystem, false );
         #endif
 
         // Register Systems

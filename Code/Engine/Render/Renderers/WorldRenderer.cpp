@@ -1848,7 +1848,7 @@ namespace EE::Render
             m_bBrdfLutReady = true;
         }
 
-        RenderSunShadows( renderGraph, viewport, pDirectionalLightComponent );
+        //RenderSunShadows( renderGraph, viewport, pDirectionalLightComponent );
         {
             //immediateContext.SetRenderTarget( renderTarget );
             //RenderStaticMeshes( renderGraph, viewport, renderTarget );

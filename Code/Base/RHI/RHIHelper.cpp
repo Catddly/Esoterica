@@ -8,7 +8,7 @@ namespace EE::RHI
     void DispatchImmediateGraphicCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
     {
         EE_ASSERT( pDevice );
-
+        
         auto* pCommandBuffer = pDevice->GetImmediateGraphicCommandBuffer();
 
         if ( pCommandBuffer )

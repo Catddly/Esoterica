@@ -165,7 +165,11 @@ namespace EE::Render
                 }
 
                 VkFence fence = pCommandBuffer->m_sync.IsValid() ? reinterpret_cast<VkFence>( pCommandBuffer->m_sync.m_pHandle ) : nullptr;
+                
+                // Note: [Temporary] Use lock to let different threads can submit to the same queue.
+                pCommandQueue->Lock();
                 VK_SUCCEEDED( vkQueueSubmit( pCommandQueue->m_pHandle, 1, &submitInfo, fence ) );
+                pCommandQueue->Unlock();
 
                 m_submittedCommandBuffers.push_back( pCommandBuffer );
             }

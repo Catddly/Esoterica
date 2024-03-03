@@ -394,8 +394,6 @@ namespace EE::Render
 
                 // reset render frame index
                 m_currentRenderFrameIndex = 0;
-
-                
             }
 
             // fetch swapchain images

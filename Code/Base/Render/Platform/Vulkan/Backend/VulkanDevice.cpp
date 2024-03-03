@@ -1295,7 +1295,7 @@ namespace EE::Render
             // Copy staging buffer to buffer
             //-------------------------------------------------------------------------
 
-            DispatchImmediateTransferCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            DispatchImmediateGraphicCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
             {
                 pCommandBuffer->CopyBufferToBuffer( pStagingBuffer, pBuffer );
                 return true;

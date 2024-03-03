@@ -108,6 +108,9 @@ namespace EE::Render
             //m_pRenderDevice->DestroyBuffer( pMesh->m_vertexBuffer );
             //m_pRenderDevice->DestroyBuffer( pMesh->m_indexBuffer );
             m_pRenderDevice->UnlockDevice();
+
+            pMesh->m_vertexBuffer.m_pBuffer = nullptr;
+            pMesh->m_indexBuffer.m_pBuffer = nullptr;
         }
     }
 
