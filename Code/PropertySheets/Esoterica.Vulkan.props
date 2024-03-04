@@ -2,15 +2,17 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <EE_VK_PATH>$(VULKAN_SDK)</EE_VK_PATH>
+    <VULKAN_DIR>$(SolutionDir)External\VulkanSDK\</VULKAN_DIR>
+    <VULKAN_LIB_DIR>$(VULKAN_DIR)Lib</VULKAN_LIB_DIR>
+    <VULKAN_INCLUDE_DIR>$(VULKAN_DIR)Include</VULKAN_INCLUDE_DIR>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(EE_VK_PATH)\Include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="!$(ProjectName.Contains('Tools'))">EE_VULKAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(EE_VK_PATH)\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_LIB_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <!-- dxcompiler.lib should not be included in all applications **/ -->
       <AdditionalDependencies>vulkan-1.lib;dxcompiler.lib;spirv-cross-core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>

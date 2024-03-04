@@ -73,8 +73,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Esoterica.Base", "Code\Base
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Platforms", "Platforms", "{C6737ED1-BFAF-4119-A0B6-92CEBC0FA505}"
 	ProjectSection(SolutionItems) = preProject
-		Code\PropertySheets\Esoterica.DX11.props = Code\PropertySheets\Esoterica.DX11.props
-		Code\PropertySheets\Esoterica.Vulkan.props = Code\PropertySheets\Esoterica.Vulkan.props
 		Code\PropertySheets\Esoterica.Win32.props = Code\PropertySheets\Esoterica.Win32.props
 	EndProjectSection
 EndProject
@@ -87,6 +85,12 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Esoterica.Game.Tools", "Code\GameTools\Esoterica.Game.Tools.vcxproj", "{A9123702-50A2-42A7-BE0B-6468C298B509}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "4. Base", "4. Base", "{D235CCAC-5FC9-4ECF-8238-4A2849CBD4A0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Graphics", "Graphics", "{4A67185D-DB9B-4702-86E2-13FA14DFC774}"
+	ProjectSection(SolutionItems) = preProject
+		Code\PropertySheets\Esoterica.DX11.props = Code\PropertySheets\Esoterica.DX11.props
+		Code\PropertySheets\Esoterica.Vulkan.props = Code\PropertySheets\Esoterica.Vulkan.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -177,6 +181,7 @@ Global
 		{20C5D09A-3DA8-4CEA-9269-65DC6E6CD460} = {FA658C92-4747-4F44-84F5-90F90BD69B5A}
 		{821AFA79-DF18-4414-9775-E0C0F45BAD78} = {9D6C7A6E-449A-4D52-AA7F-7F6DA3B418D4}
 		{A9123702-50A2-42A7-BE0B-6468C298B509} = {FA658C92-4747-4F44-84F5-90F90BD69B5A}
+		{4A67185D-DB9B-4702-86E2-13FA14DFC774} = {CE2201AC-CE64-4BD9-8317-4E4E5B370CD9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9B3C65B2-09F5-4AAD-909C-407AB4B18705}
