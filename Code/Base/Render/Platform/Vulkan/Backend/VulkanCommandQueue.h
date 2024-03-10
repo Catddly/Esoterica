@@ -25,30 +25,30 @@ namespace EE::Render
             VulkanCommandQueue()
                 : RHI::RHICommandQueue( RHI::ERHIType::Vulkan )
             {}
-            VulkanCommandQueue( VulkanDevice const& device, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex );
+            VulkanCommandQueue( VulkanDevice* pDevice, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex );
             virtual ~VulkanCommandQueue() = default;
 
         public:
 
-            inline void Lock() { m_queueSubmitMutex.lock(); }
-            inline void Unlock() { m_queueSubmitMutex.unlock(); }
-
             inline bool IsValid() const { return m_pHandle != nullptr; }
 
-            inline virtual uint32_t GetDeviceIndex() const override { return m_queueFamily.m_index; }
+            inline virtual uint32_t GetQueueIndex() const override { return m_queueFamily.m_index; }
             inline virtual RHI::CommandQueueType GetType() const override { return m_type; }
 
             inline virtual void WaitUntilIdle() const override;
 
+            //virtual void AddTransferCommandSyncPoint() override;
+
+            virtual void FlushToGPU() override;
 
         private:
+
+            VulkanDevice*                       m_pDevice = nullptr;
 
             VkQueue								m_pHandle = nullptr;
             RHI::CommandQueueType               m_type = RHI::CommandQueueType::Unknown;
             QueueFamily							m_queueFamily;
             uint32_t                            m_queueIndex = 0;
-
-            Threading::Mutex                    m_queueSubmitMutex;
         };
     }
 }

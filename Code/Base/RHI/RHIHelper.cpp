@@ -14,13 +14,13 @@ namespace EE::RHI
         if ( pCommandBuffer )
         {
             EE_ASSERT( pDevice->BeginCommandBuffer( pCommandBuffer ) );
-
             EE_ASSERT( commandCallback( pCommandBuffer ) );
-
             pDevice->EndCommandBuffer( pCommandBuffer );
 
             pDevice->SubmitCommandBuffer( pCommandBuffer, {}, {}, {} );
-            pDevice->WaitUntilIdle();
+            
+            // TODO: GPU sync primitives
+            //pDevice->WaitUntilIdle();
         }
     }
 
@@ -33,13 +33,13 @@ namespace EE::RHI
         if ( pCommandBuffer )
         {
             EE_ASSERT( pDevice->BeginCommandBuffer( pCommandBuffer ) );
-
             EE_ASSERT( commandCallback( pCommandBuffer ) );
-
             pDevice->EndCommandBuffer( pCommandBuffer );
 
             pDevice->SubmitCommandBuffer( pCommandBuffer, {}, {}, {} );
-            pDevice->WaitUntilIdle();
+
+            // TODO: GPU sync primitives
+            //pDevice->WaitUntilIdle();
         }
     }
 

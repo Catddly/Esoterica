@@ -13,8 +13,10 @@ namespace EE::Render
 {
     namespace Backend
     {
-        VulkanCommandBuffer* VulkanCommandBufferPool::Allocate()
+        RHI::RHICommandBuffer* VulkanCommandBufferPool::Allocate()
         {
+            EE_ASSERT( Threading::GetCurrentThreadID() == GetThreadID() );
+
             if ( !m_pDevice || !m_pCommandQueue )
             {
                 return nullptr;
@@ -81,102 +83,26 @@ namespace EE::Render
             return nullptr;
         }
 
-        void VulkanCommandBufferPool::SubmitToQueue( VulkanCommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages )
+        void VulkanCommandBufferPool::Restore( RHI::RHICommandBuffer* pCommandBuffer )
         {
-            EE_ASSERT( waitStages.size() == pWaitSemaphores.size() );
+            EE_ASSERT( Threading::GetCurrentThreadID() == GetThreadID() );
+            EE_UNIMPLEMENTED_FUNCTION();
 
-            TInlineVector<VkSemaphore, 8> waitSemaphores;
-            TInlineVector<VkSemaphore, 8> signalSemaphores;
-            TInlineVector<VkPipelineStageFlags, 8> waitDstStages;
+            //if ( auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer ) )
+            //{
+            //    EE_ASSERT( !pVkCommandBuffer->IsRecording() );
 
-            waitSemaphores.reserve( pWaitSemaphores.size() );
-            signalSemaphores.reserve( pSignalSemaphores.size() );
-            waitDstStages.reserve( waitStages.size() );
-
-            if ( pCommandBuffer )
-            {
-                EE_ASSERT( !pCommandBuffer->IsRecording() );
-
-                auto* pCommandBufferPool = pCommandBuffer->m_pCommandBufferPool;
-                EE_ASSERT( pCommandBufferPool );
-                auto* pCommandQueue = pCommandBufferPool->m_pCommandQueue;
-                EE_ASSERT( pCommandQueue );
-
-                if ( pCommandBuffer->m_sync.IsValid() )
-                {
-                    pCommandBuffer->m_sync.Reset( m_pDevice );
-                }
-
-                VkSubmitInfo submitInfo = {};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                submitInfo.pCommandBuffers = &pCommandBuffer->m_pHandle;
-                submitInfo.commandBufferCount = 1;
-
-                if ( !pWaitSemaphores.empty() )
-                {
-                    for ( auto& pWaitSemaphore : pWaitSemaphores )
-                    {
-                        if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pWaitSemaphore ) )
-                        {
-                            waitSemaphores.push_back( pVkSemaphore->m_pHandle );
-                        }
-                    }
-
-                    submitInfo.waitSemaphoreCount = static_cast<uint32_t>( waitSemaphores.size() );
-                    submitInfo.pWaitSemaphores = waitSemaphores.data();
-                }
-                else
-                {
-                    submitInfo.waitSemaphoreCount = 0;
-                    submitInfo.pWaitSemaphores = nullptr;
-                }
-
-                if ( !pSignalSemaphores.empty() )
-                {
-                    for ( auto& pSignalSemaphore : pSignalSemaphores )
-                    {
-                        if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pSignalSemaphore ) )
-                        {
-                            signalSemaphores.push_back( pVkSemaphore->m_pHandle );
-                        }
-                    }
-
-                    submitInfo.signalSemaphoreCount = static_cast<uint32_t>( signalSemaphores.size() );
-                    submitInfo.pSignalSemaphores = signalSemaphores.data();
-                }
-                else
-                {
-                    submitInfo.signalSemaphoreCount = 0;
-                    submitInfo.pSignalSemaphores = nullptr;
-                }
-
-                if ( !waitStages.empty() )
-                {
-                    for ( auto& waitStage : waitStages )
-                    {
-                        waitDstStages.push_back( ToVulkanPipelineStageFlags( waitStage ) );
-                    }
-
-                    submitInfo.pWaitDstStageMask = waitDstStages.data();
-                }
-                else
-                {
-                    submitInfo.pWaitDstStageMask = nullptr;
-                }
-
-                VkFence fence = pCommandBuffer->m_sync.IsValid() ? reinterpret_cast<VkFence>( pCommandBuffer->m_sync.m_pHandle ) : nullptr;
-                
-                // Note: [Temporary] Use lock to let different threads can submit to the same queue.
-                pCommandQueue->Lock();
-                VK_SUCCEEDED( vkQueueSubmit( pCommandQueue->m_pHandle, 1, &submitInfo, fence ) );
-                pCommandQueue->Unlock();
-
-                m_submittedCommandBuffers.push_back( pCommandBuffer );
-            }
+            //    VulkanCommandBuffer** pFoundCommandBuffer = eastl::find_if( m_submittedCommandBuffers.begin(), m_submittedCommandBuffers.end(), [=] ( VulkanCommandBuffer* pToFindBuffer )
+            //    {
+            //        return pToFindBuffer == pVkCommandBuffer;
+            //    });
+            //}
         }
 
         void VulkanCommandBufferPool::Reset()
         {
+            Threading::ScopeLock lock(m_mutex);
+
             for ( auto& pool : m_poolHandles )
             {
                 VK_SUCCEEDED( vkResetCommandPool( m_pDevice->m_pHandle, pool, 0 ) );
@@ -194,11 +120,12 @@ namespace EE::Render
             }
 
             m_submittedCommandBuffers.clear();
-            m_bReadyToAllocate = true;
         }
 
-        void VulkanCommandBufferPool::WaitUntilAllCommandsFinish()
+        void VulkanCommandBufferPool::WaitUntilAllCommandsFinished()
         {
+            Threading::ScopeLock lock( m_mutex );
+
             TInlineVector<VkFence, NumMaxCommandBufferPerPool> toWaitFences;
             for ( auto* pSubmittedCommandBuffer : m_submittedCommandBuffers )
             {
@@ -212,17 +139,135 @@ namespace EE::Render
             {
                 WaitAllFences( toWaitFences );
             }
+        }
 
-            m_bReadyToAllocate = false;
+        void VulkanCommandBufferPool::Submit( RHI::RHICommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages )
+        {
+            //EE_ASSERT( waitStages.size() == pWaitSemaphores.size() );
+
+            //TInlineVector<VkSemaphore, 8> waitSemaphores;
+            //TInlineVector<VkSemaphore, 8> signalSemaphores;
+            //TInlineVector<VkPipelineStageFlags, 8> waitDstStages;
+
+            //waitSemaphores.reserve( pWaitSemaphores.size() );
+            //signalSemaphores.reserve( pSignalSemaphores.size() );
+            //waitDstStages.reserve( waitStages.size() );
+
+            //if ( auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer ) )
+            //{
+            //    EE_ASSERT( !pVkCommandBuffer->IsRecording() );
+
+            //    auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
+            //    if ( pCommandBufferPool != this )
+            //    {
+            //        EE_LOG_FATAL_ERROR( "Render", "Vulkan Command Buffer Pool", "Try to submit command buffer to the pool which it is not originated from." );
+            //    }
+            //    auto* pCommandQueue = pCommandBufferPool->m_pCommandQueue;
+            //    EE_ASSERT( pCommandQueue );
+
+            //    if ( pCommandBuffer->m_sync.IsValid() )
+            //    {
+            //        pCommandBuffer->m_sync.Reset( m_pDevice );
+            //    }
+
+            //    VkSubmitInfo submitInfo = {};
+            //    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            //    submitInfo.pCommandBuffers = &pVkCommandBuffer->m_pHandle;
+            //    submitInfo.commandBufferCount = 1;
+
+            //    if ( !pWaitSemaphores.empty() )
+            //    {
+            //        for ( auto& pWaitSemaphore : pWaitSemaphores )
+            //        {
+            //            if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pWaitSemaphore ) )
+            //            {
+            //                waitSemaphores.push_back( pVkSemaphore->m_pHandle );
+            //            }
+            //        }
+
+            //        submitInfo.waitSemaphoreCount = static_cast<uint32_t>( waitSemaphores.size() );
+            //        submitInfo.pWaitSemaphores = waitSemaphores.data();
+            //    }
+            //    else
+            //    {
+            //        submitInfo.waitSemaphoreCount = 0;
+            //        submitInfo.pWaitSemaphores = nullptr;
+            //    }
+
+            //    if ( !pSignalSemaphores.empty() )
+            //    {
+            //        for ( auto& pSignalSemaphore : pSignalSemaphores )
+            //        {
+            //            if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pSignalSemaphore ) )
+            //            {
+            //                signalSemaphores.push_back( pVkSemaphore->m_pHandle );
+            //            }
+            //        }
+
+            //        submitInfo.signalSemaphoreCount = static_cast<uint32_t>( signalSemaphores.size() );
+            //        submitInfo.pSignalSemaphores = signalSemaphores.data();
+            //    }
+            //    else
+            //    {
+            //        submitInfo.signalSemaphoreCount = 0;
+            //        submitInfo.pSignalSemaphores = nullptr;
+            //    }
+
+            //    if ( !waitStages.empty() )
+            //    {
+            //        for ( auto& waitStage : waitStages )
+            //        {
+            //            waitDstStages.push_back( ToVulkanPipelineStageFlags( waitStage ) );
+            //        }
+
+            //        submitInfo.pWaitDstStageMask = waitDstStages.data();
+            //    }
+            //    else
+            //    {
+            //        submitInfo.pWaitDstStageMask = nullptr;
+            //    }
+
+            //    VkFence fence = pCommandBuffer->m_sync.IsValid() ? reinterpret_cast<VkFence>( pCommandBuffer->m_sync.m_pHandle ) : nullptr;
+            //    
+            //    VK_SUCCEEDED( vkQueueSubmit( pCommandQueue->m_pHandle, 1, &submitInfo, fence ) );
+
+            //}
+            
+            EE_ASSERT( waitStages.size() == pWaitSemaphores.size() );
+
+            if ( auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer ) )
+            {
+                {
+                    Threading::ScopeLock lock( m_mutex );
+                    m_submittedCommandBuffers.push_back( pVkCommandBuffer );
+                }
+
+                RHI::CommandQueueRenderCommand task;
+
+                task.m_pCommandBuffer = pCommandBuffer;
+
+                task.m_pSignalSemaphores.reserve( pSignalSemaphores.size() );
+                memcpy( task.m_pSignalSemaphores.data(), pSignalSemaphores.data(), pSignalSemaphores.size() );
+
+                task.m_pWaitSemaphores.reserve( pWaitSemaphores.size() );
+                memcpy( task.m_pWaitSemaphores.data(), pWaitSemaphores.data(), pWaitSemaphores.size() );
+
+                task.m_waitStages.reserve( waitStages.size() );
+                memcpy( task.m_waitStages.data(), waitStages.data(), waitStages.size() );
+
+                m_pCommandQueue->Submit( task );
+            }
         }
 
         //-------------------------------------------------------------------------
 
         VulkanCommandBufferPool::VulkanCommandBufferPool( VulkanDevice* pDevice, VulkanCommandQueue* pCommandQueue )
-            : m_pDevice( pDevice ), m_pCommandQueue( pCommandQueue )
+            : m_pDevice( pDevice ), RHI::RHICommandBufferPool( RHI::ERHIType::Vulkan )
         {
             EE_ASSERT( m_pDevice );
-            EE_ASSERT( m_pCommandQueue );
+            EE_ASSERT( pCommandQueue );
+
+            m_pCommandQueue = pCommandQueue;
 
             // TODO: assertion on constructor
             CreateNewPool();
@@ -257,7 +302,7 @@ namespace EE::Render
         {
             VkCommandPoolCreateInfo poolCI = {};
             poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            poolCI.queueFamilyIndex = m_pCommandQueue->GetDeviceIndex();
+            poolCI.queueFamilyIndex = m_pCommandQueue->GetQueueIndex();
             poolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             VkCommandPool pool;

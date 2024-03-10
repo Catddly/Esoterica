@@ -62,9 +62,9 @@ namespace EE::RG
         {
             // update stale buffer immediately
             pDevice->GetRHIDevice()->DeferRelease( pStaleBuffer );
-            pDevice->LockDevice();
+            //pDevice->LockDevice();
             auto* pNewBuffer = pDevice->GetRHIDevice()->CreateBuffer( bufferDesc );
-            pDevice->UnlockDevice();
+            //pDevice->UnlockDevice();
             EE_ASSERT( pNewBuffer );
 
             m_namedBuffers[name] = pNewBuffer;
@@ -90,9 +90,9 @@ namespace EE::RG
         {
             // update stale texture immediately
             pDevice->GetRHIDevice()->DeferRelease( pStaleTexture );
-            pDevice->LockDevice();
+            //pDevice->LockDevice();
             auto* pNewTexture = pDevice->GetRHIDevice()->CreateTexture( textureDesc );
-            pDevice->UnlockDevice();
+            //pDevice->UnlockDevice();
             EE_ASSERT( pNewTexture );
 
             m_namedTextures[name] = pNewTexture;
@@ -111,9 +111,9 @@ namespace EE::RG
             return iterator->second;
         }
            
-        pDevice->LockDevice();
+        //pDevice->LockDevice();
         auto* pNewBuffer = pDevice->GetRHIDevice()->CreateBuffer( bufferDesc );
-        pDevice->UnlockDevice();
+        //pDevice->UnlockDevice();
         EE_ASSERT( pNewBuffer );
         m_namedBuffers.insert( { name, pNewBuffer } );
 
@@ -128,9 +128,9 @@ namespace EE::RG
             return iterator->second;
         }
 
-        pDevice->LockDevice();
+        //pDevice->LockDevice();
         auto* pNewTexture = pDevice->GetRHIDevice()->CreateTexture( textureDesc );
-        pDevice->UnlockDevice();
+        //pDevice->UnlockDevice();
         EE_ASSERT( pNewTexture );
         m_namedTextures.insert( { name, pNewTexture } );
 
@@ -175,7 +175,7 @@ namespace EE::RG
     {
         EE_ASSERT( pDevice != nullptr );
 
-        pDevice->LockDevice();
+        //pDevice->LockDevice();
         for ( auto& [name, namedBuffer] : m_namedBuffers )
         {
             pDevice->GetRHIDevice()->DestroyBuffer( namedBuffer );
@@ -208,7 +208,7 @@ namespace EE::RG
                 pTexture = nullptr;
             }
         }
-        pDevice->UnlockDevice();
+        //pDevice->UnlockDevice();
 
         m_bufferCache.clear();
         m_textureCache.clear();

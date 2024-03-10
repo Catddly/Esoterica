@@ -27,6 +27,7 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanResourceBinding.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h" />
+    <ClInclude Include="RHI\RHICommandBufferPool.h" />
     <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\Resource\RHIDescriptorSet.h" />
     <ClInclude Include="RHI\Resource\RHITextureView.h" />
@@ -552,7 +553,7 @@
     <ClInclude Include="Types\Arrays.h" />
     <ClInclude Include="Types\BitFlags.h" />
     <ClInclude Include="Types\LoadingStatus.h" />
-    <ClInclude Include="Types\RefCount.h" />
+    <ClInclude Include="Types\RefCounting.h" />
     <ClInclude Include="Types\ScopedValue.h" />
     <ClInclude Include="Types\Set.h" />
     <ClInclude Include="Types\String.h" />
@@ -594,6 +595,8 @@
     <ClCompile Include="Render\RenderWindow.cpp" />
     <ClCompile Include="RHI\Resource\RHIBuffer.cpp" />
     <ClCompile Include="RHI\Resource\RHIDescriptorSet.cpp" />
+    <ClCompile Include="RHI\RHICommandBufferPool.cpp" />
+    <ClCompile Include="RHI\RHICommandQueue.cpp" />
     <ClCompile Include="RHI\RHIDevice.cpp" />
     <ClCompile Include="RHI\Resource\RHIRenderPass.cpp" />
     <ClCompile Include="RHI\Resource\RHIResourceCreationCommons.cpp" />

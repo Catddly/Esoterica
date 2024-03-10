@@ -43,9 +43,9 @@ namespace EE::RG
                     auto* pBuffer = cache.FetchAvailableTemporaryBuffer( desc.m_desc );
                     if ( !pBuffer )
                     {
-                        pDevice->LockDevice();
+                        //pDevice->LockDevice();
                         pBuffer = pDevice->GetRHIDevice()->CreateBuffer( desc.m_desc );
-                        pDevice->UnlockDevice();
+                        //pDevice->UnlockDevice();
                     }
 
                     EE_ASSERT( pBuffer != nullptr );
@@ -91,9 +91,9 @@ namespace EE::RG
                     auto* pTexture = cache.FetchAvailableTemporaryTexture( desc.m_desc );
                     if ( !pTexture )
                     {
-                        pDevice->LockDevice();
+                        //pDevice->LockDevice();
                         pTexture = pDevice->GetRHIDevice()->CreateTexture( desc.m_desc );
-                        pDevice->UnlockDevice();
+                        //pDevice->UnlockDevice();
                     }
 
                     EE_ASSERT( pTexture != nullptr );

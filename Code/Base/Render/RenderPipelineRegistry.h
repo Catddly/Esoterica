@@ -174,7 +174,7 @@ namespace EE::Render
                 || !m_retryComputePipelineCaches.empty();
         }
 
-        RHI::RHIPipelineState* GetPipeline( PipelineHandle const& pipelineHandle ) const;
+        RHI::RHIPipelineState* TryGetRHIPipelineHandle( PipelineHandle const& pipelineHandle ) const;
 
         // Update pipeline registry.
         // This function will block until all pipeline loading is completed.

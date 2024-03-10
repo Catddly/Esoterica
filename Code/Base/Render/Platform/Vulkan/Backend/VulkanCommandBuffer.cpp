@@ -22,6 +22,47 @@ namespace EE::Render
         TInlineVector<VkBufferMemoryBarrier, 32> VulkanCommandBuffer::m_sBufferBarriers;
         TInlineVector<VkImageMemoryBarrier, 32> VulkanCommandBuffer::m_sTextureBarriers;
 
+        // Synchronization
+        //-------------------------------------------------------------------------
+
+        //RHI::RenderCommandSyncPoint VulkanCommandBuffer::SetSyncPoint( Render::PipelineStage stage )
+        //{
+        //    if ( auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice ) )
+        //    {
+        //        VkEventCreateInfo createInfo = {};
+        //        createInfo.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
+        //        createInfo.flags = VK_EVENT_CREATE_DEVICE_ONLY_BIT;
+
+        //        VkEvent syncEvent;
+        //        VK_SUCCEEDED( vkCreateEvent( pVkDevice->m_pHandle, &createInfo, nullptr, &syncEvent ) );
+
+        //        VkPipelineStageFlags stageFlags = ToVulkanPipelineStageFlags( stage );
+        //        m_syncPoints.push_back( { syncEvent, stageFlags } );
+        //        vkCmdSetEvent( m_pHandle, syncEvent, stageFlags );
+
+        //        return RHI::RenderCommandSyncPoint{ static_cast<int32_t>( m_syncPoints.size() - 1 ) };
+        //    }
+
+        //    return RHI::RenderCommandSyncPoint{ -1 };
+        //}
+
+        //void VulkanCommandBuffer::WaitSyncPoint( RHI::RenderCommandSyncPoint syncPoint, Render::PipelineStage stage )
+        //{
+        //    auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+        //    if ( pVkDevice
+        //         && syncPoint.m_syncPointIndex > 0 
+        //         && syncPoint.m_syncPointIndex < m_syncPoints.size() )
+        //    {
+        //        auto& srcSyncPoint = m_syncPoints[syncPoint.m_syncPointIndex];
+
+        //        vkCmdWaitEvents( m_pHandle, 1, &srcSyncPoint.first,
+        //                         srcSyncPoint.second, ToVulkanPipelineStageFlags( stage ),
+        //                         0, nullptr,
+        //                         0, nullptr,
+        //                         0, nullptr);
+        //    }
+        //}
+
         // Render Commands
         //-------------------------------------------------------------------------
 
@@ -497,7 +538,7 @@ namespace EE::Render
             bufferBarriers[0].m_offset = 0;
             bufferBarriers[0].m_pRhiBuffer = pSrcBuffer;
             // No queue resource ownership transfer happened
-            bufferBarriers[0].m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
+            bufferBarriers[0].m_srcQueueFamilyIndex = m_pCommandBufferPool->GetQueueIndex();
             bufferBarriers[0].m_dstQueueFamilyIndex = bufferBarriers[0].m_srcQueueFamilyIndex;
             bufferBarriers[0].m_previousAccessesCount = 1;
             bufferBarriers[0].m_pPreviousAccesses = &prevSrcBarrierState;
@@ -508,8 +549,8 @@ namespace EE::Render
             bufferBarriers[1].m_offset = 0;
             bufferBarriers[1].m_pRhiBuffer = pDstBuffer;
             // No queue resource ownership transfer happened
-            bufferBarriers[1].m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
-            bufferBarriers[1].m_dstQueueFamilyIndex = bufferBarriers[0].m_srcQueueFamilyIndex;
+            bufferBarriers[1].m_srcQueueFamilyIndex = m_pCommandBufferPool->GetQueueIndex();
+            bufferBarriers[1].m_dstQueueFamilyIndex = bufferBarriers[1].m_srcQueueFamilyIndex;
             bufferBarriers[1].m_previousAccessesCount = 1;
             bufferBarriers[1].m_pPreviousAccesses = &prevDstBarrierState;
             bufferBarriers[1].m_nextAccessesCount = 1;
@@ -656,7 +697,7 @@ namespace EE::Render
                 barrier.m_discardContents = subresourceRef.m_layer == 0;
                 barrier.m_pRhiTexture = pDstTexture;
                 // for now, no queue resource transfer
-                barrier.m_srcQueueFamilyIndex = m_pCommandBufferPool->m_pCommandQueue->GetDeviceIndex();
+                barrier.m_srcQueueFamilyIndex = m_pCommandBufferPool->GetQueueIndex();
                 barrier.m_dstQueueFamilyIndex = barrier.m_srcQueueFamilyIndex;
                 barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
                 barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
@@ -1323,6 +1364,14 @@ namespace EE::Render
 		void VulkanCommandBuffer::CleanUp()
 		{
             m_updatedDescriptorSets.clear();
+
+            if ( auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice ) )
+            {
+                for ( auto& syncEvent : m_syncPoints )
+                {
+                    vkDestroyEvent( pVkDevice->m_pHandle, syncEvent.first, nullptr );
+                }
+            }
 		}
 
         //-------------------------------------------------------------------------

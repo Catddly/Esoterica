@@ -3,6 +3,8 @@
 
 #include "Base/Types/Arrays.h"
 #include "Base/Render/RenderAPI.h"
+#include "Base/Threading/Threading.h"
+#include "Base/RHI/RHICommandBufferPool.h"
 
 #include <vulkan/vulkan_core.h>
 #include <limits>
@@ -21,7 +23,7 @@ namespace EE::Render
         class VulkanCommandBuffer;
         class VulkanCommandQueue;
 
-        class VulkanCommandBufferPool
+        class VulkanCommandBufferPool final : public RHI::RHICommandBufferPool
         {
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
@@ -32,29 +34,25 @@ namespace EE::Render
 
         public:
 
+            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+
+            VulkanCommandBufferPool()
+                : RHI::RHICommandBufferPool( RHI::ERHIType::Vulkan )
+            {
+            }
             VulkanCommandBufferPool( VulkanDevice* pDevice, VulkanCommandQueue* pCommandQueue );
             ~VulkanCommandBufferPool();
 
-            VulkanCommandBufferPool( VulkanCommandBufferPool const& ) = delete;
-            VulkanCommandBufferPool& operator=( VulkanCommandBufferPool const& ) = delete;
-
-            VulkanCommandBufferPool( VulkanCommandBufferPool&& ) = delete;
-            VulkanCommandBufferPool& operator=( VulkanCommandBufferPool&& ) = delete;
-
             //-------------------------------------------------------------------------
 
-            VulkanCommandBuffer* Allocate();
+            virtual RHI::RHICommandBuffer* Allocate() override;
+            virtual void Restore( RHI::RHICommandBuffer* pCommandBuffer ) override;
 
-            void SubmitToQueue( VulkanCommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages );
+            virtual void Reset() override;
 
-            bool IsReadyToAllocate() const { return m_bReadyToAllocate; }
+            virtual void WaitUntilAllCommandsFinished() override;
 
-            // Wait until all commands inside this command buffer pool are finished.
-            void WaitUntilAllCommandsFinish();
-
-            // Reset whole command buffer pool for next command allocation and record.
-            // After reset, IsReadyToAllocate() will return true. Otherwise false.
-            void Reset();
+            virtual void Submit( RHI::RHICommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages ) override;
 
         private:
 
@@ -69,15 +67,14 @@ namespace EE::Render
         private:
 
             VulkanDevice*                           m_pDevice = nullptr;
-            VulkanCommandQueue*                     m_pCommandQueue = nullptr;
 
             TVector<VkCommandPool>                  m_poolHandles;
 
             AllocatedCommandBufferArray             m_allocatedCommandBuffers;
             TVector<VulkanCommandBuffer*>           m_submittedCommandBuffers;
             TVector<VulkanCommandBuffer*>           m_idleCommandBuffers;
-        
-            bool                                    m_bReadyToAllocate = false;
+
+            Threading::Mutex                        m_mutex;
         };
     }
 }

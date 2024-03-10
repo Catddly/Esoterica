@@ -5,7 +5,7 @@ namespace EE::RHI
 {
     void RHIBuffer::Enqueue( DeferReleaseQueue& queue )
     {
-        queue.m_deferReleaseBuffers.push( this );
+        queue.m_deferReleaseBuffers.enqueue( this );
     }
 
     void RHIBuffer::Release( RHIDevice* pDevice )

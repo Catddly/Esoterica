@@ -5,6 +5,7 @@
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/Resource/RHIRenderPass.h"
+#include "Base/RHI/RHICommandQueue.h"
 #include "Base/RHI/RHICommandBuffer.h"
 
 namespace EE::RG
@@ -319,6 +320,8 @@ namespace EE::RG
     {
         EE_ASSERT( pDevice );
         pDevice->SubmitCommandBuffer( m_pCommandBuffer, m_waitSemaphores, m_signalSemaphores, m_waitStages );
+        // Note: immediately flush render commands to gpu, no synchronization.
+        pDevice->GetMainGraphicCommandQueue()->FlushToGPU();
         Reset();
     }
 
@@ -356,5 +359,4 @@ namespace EE::RG
         m_waitStages.clear();
         m_signalSemaphores.clear();
     }
-
 }

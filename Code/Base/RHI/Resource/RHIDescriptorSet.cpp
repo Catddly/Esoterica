@@ -7,7 +7,7 @@ namespace EE::RHI
     {
         if ( IsValid() )
         {
-            queue.m_descriptorPools.push( *this );
+            queue.m_descriptorPools.enqueue( *this );
         }
     }
 }

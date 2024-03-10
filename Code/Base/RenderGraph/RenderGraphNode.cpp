@@ -35,7 +35,8 @@ namespace EE
             auto* pPipelineRegistry = pRGResourceRegistry->GetPipelineRegistry();
             EE_ASSERT( pPipelineRegistry );
 
-            auto* pPipelineState = pPipelineRegistry->GetPipeline( m_pipelineHandle );
+            auto* pPipelineState = pPipelineRegistry->TryGetRHIPipelineHandle( m_pipelineHandle );
+            EE_ASSERT( pPipelineState );
 
             RGExecutableNode executableNode;
             executableNode.m_inputs = eastl::exchange( m_inputs, {} );

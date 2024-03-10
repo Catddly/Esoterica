@@ -17,6 +17,7 @@
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
+#include "Base/Threading/Threading.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -217,12 +218,17 @@ namespace EE::Render
 			VulkanCommandQueue*							    m_pGlobalTransferQueue = nullptr;
             VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFramebufferCount];
 
-            VulkanCommandBufferPool*                        m_immediateGraphicCommandBufferPool;
-            VulkanCommandBufferPool*                        m_immediateTransferCommandBufferPool;
+            //VulkanCommandBufferPool*                                    m_immediateGraphicCommandBufferPool;
+            //VulkanCommandBufferPool*                                    m_immediateTransferCommandBufferPool;
+
+            Threading::Mutex                                            m_graphicCommandPoolMutex;
+            THashMap<Threading::ThreadID, VulkanCommandBufferPool*>     m_immediateGraphicThreadCommandPools;
 
             VulkanMemoryAllocator                           m_globalMemoryAllcator;
 
             THashMap<VulkanStaticSamplerDesc, VkSampler>    m_immutableSamplers;
+
+            Threading::RecursiveMutex                       m_resourceCreationMutex;
 		};
 	}
 }

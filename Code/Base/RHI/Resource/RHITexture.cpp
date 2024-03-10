@@ -51,7 +51,7 @@ namespace EE::RHI
 
 	void RHITexture::Enqueue( DeferReleaseQueue& queue )
 	{
-        queue.m_deferReleaseTextures.push( this );
+        queue.m_deferReleaseTextures.enqueue( this );
 	}
 
     void RHITexture::Release( RHIDevice* pDevice )

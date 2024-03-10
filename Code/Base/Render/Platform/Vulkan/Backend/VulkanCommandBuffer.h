@@ -81,6 +81,7 @@ namespace EE::Render
 		{
             friend class VulkanDevice;
             friend class VulkanCommandBufferPool;
+            friend class VulkanCommandQueue;
 
         public:
 
@@ -94,6 +95,12 @@ namespace EE::Render
             virtual ~VulkanCommandBuffer() = default;
 
         public:
+
+            // Synchronization
+            //-------------------------------------------------------------------------
+
+            //virtual RHI::RenderCommandSyncPoint SetSyncPoint( Render::PipelineStage stage ) override;
+            //virtual void WaitSyncPoint( RHI::RenderCommandSyncPoint syncPoint, Render::PipelineStage stage ) override;
 
             // Render Commands
             //-------------------------------------------------------------------------
@@ -195,12 +202,12 @@ namespace EE::Render
             RHI::RHIDevice*                                             m_pDevice = nullptr;
 
             VkCommandBuffer					                            m_pHandle = nullptr;
-            VulkanCommandBufferPool*                                    m_pCommandBufferPool = nullptr;
-            uint32_t                                                    m_pInnerPoolIndex = 0;
 
-            // Only safe cached hash here
+            // Only safe to cache hash here
             THashMap<size_t, VkDescriptorSet>                           m_updatedDescriptorSets;
-		};
+
+            TVector<TPair<VkEvent, VkPipelineStageFlags>>               m_syncPoints;
+        };
     }
 }
 

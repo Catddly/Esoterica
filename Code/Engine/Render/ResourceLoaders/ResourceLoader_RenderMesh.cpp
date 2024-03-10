@@ -102,12 +102,12 @@ namespace EE::Render
         auto pMesh = pResourceRecord->GetResourceData<Mesh>();
         if ( pMesh != nullptr )
         {
-            m_pRenderDevice->LockDevice();
+            //m_pRenderDevice->LockDevice();
             m_pRenderDevice->GetRHIDevice()->DestroyBuffer( pMesh->m_vertexBuffer.m_pBuffer );
             m_pRenderDevice->GetRHIDevice()->DestroyBuffer( pMesh->m_indexBuffer.m_pBuffer );
             //m_pRenderDevice->DestroyBuffer( pMesh->m_vertexBuffer );
             //m_pRenderDevice->DestroyBuffer( pMesh->m_indexBuffer );
-            m_pRenderDevice->UnlockDevice();
+            //m_pRenderDevice->UnlockDevice();
 
             pMesh->m_vertexBuffer.m_pBuffer = nullptr;
             pMesh->m_indexBuffer.m_pBuffer = nullptr;

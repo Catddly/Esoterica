@@ -469,8 +469,8 @@ namespace EE
                     barrier.m_pPreviousAccesses = prevBarrier;
                     barrier.m_nextAccessesCount = 1;
                     barrier.m_pNextAccesses = nextBarrier;
-                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
-                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
+                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
 
                     commandContext.GetRHICommandBuffer()->PipelineBarrier(
                         nullptr,
@@ -494,8 +494,8 @@ namespace EE
                     barrier.m_pNextAccesses = nextBarrier;
                     barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
                     barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
-                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
-                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                    barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
+                    barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
                     // TODO: for now, always keep contents
                     barrier.m_discardContents = false;
 
@@ -564,8 +564,8 @@ namespace EE
                         barrier.m_pPreviousAccesses = &barrierTransitions[currentTransition].first;
                         barrier.m_nextAccessesCount = 1;
                         barrier.m_pNextAccesses = &barrierTransitions[currentTransition].second;
-                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
-                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
+                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
 
                         bufferBarriers.push_back( barrier );
 
@@ -582,8 +582,8 @@ namespace EE
                         barrier.m_pNextAccesses = &barrierTransitions[currentTransition].second;
                         barrier.m_previousLayout = RHI::TextureMemoryLayout::Optimal;
                         barrier.m_nextLayout = RHI::TextureMemoryLayout::Optimal;
-                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
-                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetDeviceIndex();
+                        barrier.m_srcQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
+                        barrier.m_dstQueueFamilyIndex = pSubmitQueue->GetQueueIndex();
                         // TODO: for now, always keep contents
                         barrier.m_discardContents = false;
 

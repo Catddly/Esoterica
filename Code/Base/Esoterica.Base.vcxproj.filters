@@ -502,6 +502,8 @@
     <ClCompile Include="Input\InputDevice.cpp" />
     <ClCompile Include="Render\Settings\GlobalSettings_Render.cpp" />
     <ClCompile Include="Settings\SettingsRegistry.cpp" />
+    <ClCompile Include="RHI\RHICommandBufferPool.cpp" />
+    <ClCompile Include="RHI\RHICommandQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -1963,7 +1965,7 @@
     <ClInclude Include="Serialization\BitSerialization.h">
       <Filter>Serialization</Filter>
     </ClInclude>
-    <ClInclude Include="Types\RefCount.h">
+    <ClInclude Include="Types\RefCounting.h">
       <Filter>Types</Filter>
     </ClInclude>
     <ClInclude Include="RHI\RHIDevice.h">
@@ -2136,6 +2138,7 @@
     <ClInclude Include="Settings\SettingsRegistry.h" />
     <ClInclude Include="Settings\Settings.h" />
     <ClInclude Include="Render\Settings\GlobalSettings_Render.h" />
+    <ClInclude Include="RHI\RHICommandBufferPool.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

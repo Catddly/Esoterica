@@ -9,30 +9,25 @@ namespace EE::RHI
 
     void DeferReleaseQueue::ReleaseAllStaleResources( RHIDevice* pDevice )
     {
-        while ( !m_descriptorPools.empty() )
+        RHIDescriptorPool popPool;
+        while ( m_descriptorPools.try_dequeue( popPool ) )
         {
-            auto& pool = m_descriptorPools.front();
-            pool.Release( pDevice );
+            //auto& pool = m_descriptorPools.front();
+            popPool.Release( pDevice );
 
-            m_descriptorPools.pop();
+            //m_descriptorPools.pop();
         }
 
-        while ( !m_deferReleaseBuffers.empty() )
+        RHIBuffer* pPopBuffer;
+        while ( m_deferReleaseBuffers.try_dequeue( pPopBuffer ) )
         {
-            auto& buffer = m_deferReleaseBuffers.front();
-            pDevice->DestroyBuffer( buffer );
-            buffer = nullptr;
-
-            m_deferReleaseBuffers.pop();
+            pDevice->DestroyBuffer( pPopBuffer );
         }
 
-        while ( !m_deferReleaseTextures.empty() )
+        RHITexture* pPopTexture;
+        while ( m_deferReleaseTextures.try_dequeue( pPopTexture ) )
         {
-            auto& texture = m_deferReleaseTextures.front();
-            pDevice->DestroyTexture( texture );
-            texture = nullptr;
-
-            m_deferReleaseTextures.pop();
+            pDevice->DestroyTexture( pPopTexture );
         }
     }
 

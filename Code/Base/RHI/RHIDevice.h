@@ -4,6 +4,7 @@
 #include "Base/Memory/Pointers.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Queue.h"
+#include "Base/Threading/Threading.h"
 #include "Base/Resource/ResourcePtr.h"
 #include "Resource/RHIDeferReleasable.h"
 #include "Resource/RHIDescriptorSet.h"
@@ -46,9 +47,9 @@ namespace EE::RHI
 
     private:
 
-        TQueue<RHIDescriptorPool>                   m_descriptorPools;
-        TQueue<RHIBuffer*>                          m_deferReleaseBuffers;
-        TQueue<RHITexture*>                         m_deferReleaseTextures;
+        Threading::LockFreeQueue<RHIDescriptorPool> m_descriptorPools;
+        Threading::LockFreeQueue<RHIBuffer*>        m_deferReleaseBuffers;
+        Threading::LockFreeQueue<RHITexture*>       m_deferReleaseTextures;
     };
 
     //-------------------------------------------------------------------------
@@ -156,6 +157,7 @@ namespace EE::RHI
         size_t                                      m_deviceFrameCount;
         uint32_t                                    m_deviceFrameIndex;
 
+        // TODO: replace to lock free queue
         DeferReleaseQueue                           m_deferReleaseQueues[NumDeviceFramebufferCount];
     };
 }

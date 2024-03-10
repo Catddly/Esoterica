@@ -4,6 +4,7 @@
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Color.h"
+#include "Base/Render/RenderAPI.h"
 #include "Base/Math/Math.h"
 #include "Resource/RHITextureView.h"
 #include "Resource/RHIResourceCreationCommons.h"
@@ -319,8 +320,19 @@ namespace EE::RHI
         uint32_t                m_stencil = 0;
     };
 
+    class RHICommandQueue;
+    class RHISemaphore;
+    class RHICommandBufferPool;
+
+    struct RenderCommandSyncPoint
+    {
+        int32_t     m_syncPointIndex = -1;
+    };
+
     class RHICommandBuffer : public RHITaggedType
     {
+        friend class RHICommandQueue;
+
     public:
 
         RHICommandBuffer( ERHIType rhiType )
@@ -333,6 +345,12 @@ namespace EE::RHI
 
         RHICommandBuffer( RHICommandBuffer&& ) = default;
         RHICommandBuffer& operator=( RHICommandBuffer&& ) = default;
+
+        // Synchronization
+        //-------------------------------------------------------------------------
+
+        //virtual RenderCommandSyncPoint SetSyncPoint( Render::PipelineStage stage ) = 0;
+        //virtual void WaitSyncPoint( RenderCommandSyncPoint syncPoint, Render::PipelineStage stage ) = 0;
 
         // Render Commands
         //-------------------------------------------------------------------------
@@ -395,11 +413,13 @@ namespace EE::RHI
 
     public:
 
-        RHICPUGPUSync               m_sync;
+        RHICPUGPUSync                   m_sync;
+        bool                            m_bRecording = false;
 
-    private:
+    protected:
         
-        bool                        m_bRecording = false;
+        RHI::RHICommandBufferPool*      m_pCommandBufferPool = nullptr;
+        uint32_t                        m_pInnerPoolIndex = 0;
     };
 
 }

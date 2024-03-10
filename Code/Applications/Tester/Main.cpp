@@ -12,10 +12,63 @@
 #include "Base/Math/MathRandom.h"
 #include "Base/Time/Timers.h"
 #include "Base/Encoding/Quantization.h"
+#include "Base/Types/RefCounting.h"
 
 //-------------------------------------------------------------------------
 
 using namespace EE;
+
+//-------------------------------------------------------------------------
+
+class ObjectDestroyer;
+
+struct MyRefObjectA : public ThreadSafeRcObject
+{
+    MyRefObjectA( int a )
+        : m_a( a )
+    {
+    }
+
+    virtual ~MyRefObjectA();
+
+    void Log() const { std::cout << m_a << "\n"; }
+
+    ObjectDestroyer*            m_pDestroyer = nullptr;
+    int                         m_a;
+};
+
+class ObjectDestroyer
+{
+public:
+
+    void Destroy( MyRefObjectA* pObject )
+    {
+        std::cout << "Kill by ObjectDestroyer.";
+        pObject->Log();
+    }
+};
+
+MyRefObjectA::~MyRefObjectA()
+{
+    std::cout << "[A] Destruct!\n";
+    m_pDestroyer->Destroy( this );
+}
+
+struct MyRefObjectB final : public MyRefObjectA
+{
+    MyRefObjectB( double b )
+        : m_b( b ), MyRefObjectA( 4 )
+    {
+    }
+    virtual ~MyRefObjectB() final
+    {
+        std::cout << "[B] Destruct!\n";
+    }
+
+    void Log() const { std::cout << m_b << " " << m_a << "\n"; }
+
+    double                      m_b;
+};
 
 //-------------------------------------------------------------------------
 
@@ -141,6 +194,37 @@ int main( int argc, char *argv[] )
         //}
         //
         //std::cout << "Vector: " << time.ToFloat() << "ms" << std::endl;
+
+        //-------------------------------------------------------------------------
+
+        ObjectDestroyer destroyer;
+
+        auto refPtrA = RefPtr<MyRefObjectA>::New<MyRefObjectB>( 8.5454 );
+        auto refPtrB = RefPtr<MyRefObjectB>::New( 2.33 );
+
+        refPtrA->m_pDestroyer = &destroyer;
+        refPtrB->m_pDestroyer = &destroyer;
+
+        std::thread threads[1];
+
+        for ( uint32_t i = 0; i < 1; ++i )
+        {
+            threads[i] = std::thread( [=] ()
+            {
+                {
+                    RefPtr<MyRefObjectA> innerPtr;
+                    innerPtr = refPtrB;
+                }
+
+                refPtrA->Log();
+                refPtrB->Log();
+            } );
+        }
+        
+        for ( uint32_t i = 0; i < 1; ++i )
+        {
+            threads[i].join();
+        }
 
         //-------------------------------------------------------------------------
 

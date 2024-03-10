@@ -83,15 +83,20 @@ namespace EE::Render
 
             WaitUntilIdle();
             
-            if ( m_immediateGraphicCommandBufferPool )
+            //if ( m_immediateGraphicCommandBufferPool )
+            //{
+            //    EE::Delete( m_immediateGraphicCommandBufferPool );
+            //}
+
+            for ( auto& threadCommandPool : m_immediateGraphicThreadCommandPools )
             {
-                EE::Delete( m_immediateGraphicCommandBufferPool );
+                EE::Delete( threadCommandPool.second );
             }
 
-            if ( m_immediateTransferCommandBufferPool )
-            {
-                EE::Delete( m_immediateTransferCommandBufferPool );
-            }
+            //if ( m_immediateTransferCommandBufferPool )
+            //{
+            //    EE::Delete( m_immediateTransferCommandBufferPool );
+            //}
 
             for ( auto& commandPool : m_commandBufferPool )
             {
@@ -126,12 +131,17 @@ namespace EE::Render
         {
             EE_ASSERT( !m_frameExecuting );
             
+            // Flush submitted immediate render commands first.
+            //-------------------------------------------------------------------------
+
+            m_pGlobalGraphicQueue->FlushToGPU();
+
             // Wait until current frame is completed on GPU side.
             // Then we can safety free the resources used in this frame.
             //-------------------------------------------------------------------------
 
             auto& commandPool = GetCurrentFrameCommandBufferPool();
-            commandPool.WaitUntilAllCommandsFinish();
+            commandPool.WaitUntilAllCommandsFinished();
 
             // Release all stale resources.
             //-------------------------------------------------------------------------
@@ -196,22 +206,43 @@ namespace EE::Render
 
         RHI::RHICommandBuffer* VulkanDevice::GetImmediateGraphicCommandBuffer()
         {
-            if ( !m_immediateGraphicCommandBufferPool )
+            Threading::ThreadID const threadId = Threading::GetCurrentThreadID();
+
+            Threading::ScopeLock lock( m_graphicCommandPoolMutex );
+
+            auto iterator = m_immediateGraphicThreadCommandPools.find( threadId );
+            if ( iterator == m_immediateGraphicThreadCommandPools.end() )
             {
-                m_immediateGraphicCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
+                auto* pThreadCommandPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
+                m_immediateGraphicThreadCommandPools.insert( { threadId, pThreadCommandPool } );
+
+                return pThreadCommandPool->Allocate();
+            }
+            else
+            {
+                auto pThreadCommandPool = iterator->second;
+                return pThreadCommandPool->Allocate();
             }
 
-            return m_immediateGraphicCommandBufferPool->Allocate();
+
+            //if ( !m_immediateGraphicCommandBufferPool )
+            //{
+            //    m_immediateGraphicCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
+            //}
+
+            //return m_immediateGraphicCommandBufferPool->Allocate();
         }
 
         RHI::RHICommandBuffer* VulkanDevice::GetImmediateTransferCommandBuffer()
         {
-            if ( !m_immediateTransferCommandBufferPool )
-            {
-                m_immediateTransferCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalTransferQueue );
-            }
+            //if ( !m_immediateTransferCommandBufferPool )
+            //{
+            //    m_immediateTransferCommandBufferPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalTransferQueue );
+            //}
 
-            return m_immediateTransferCommandBufferPool->Allocate();
+            EE_UNIMPLEMENTED_FUNCTION();
+            //return m_immediateTransferCommandBufferPool->Allocate();
+            return nullptr;
         }
 
         bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
@@ -268,7 +299,7 @@ namespace EE::Render
                 auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
                 EE_ASSERT( pCommandBufferPool );
 
-                pCommandBufferPool->SubmitToQueue( pVkCommandBuffer, pWaitSemaphores, pSignalSemaphores, waitStages );
+                pCommandBufferPool->Submit( pVkCommandBuffer, pWaitSemaphores, pSignalSemaphores, waitStages );
             }
         }
 
@@ -276,6 +307,8 @@ namespace EE::Render
 
         RHI::RHITexture* VulkanDevice::CreateTexture( RHI::RHITextureCreateDesc const& createDesc )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
 
             VkImageCreateInfo imageCreateInfo = {};
@@ -384,6 +417,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroyTexture( RHI::RHITexture* pTexture )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             // Special case: destroy swapchain texture
             // We can NOT destroy swapchain texture here, we just invalid the swapchain texture.
             // When swapchain is truly destroyed, the texture with it will be destroyed together. 
@@ -427,6 +462,8 @@ namespace EE::Render
 
         RHI::RHIBuffer* VulkanDevice::CreateBuffer( RHI::RHIBufferCreateDesc const& createDesc )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
 
             VkDeviceSize bufferSize = createDesc.m_desireSize;
@@ -519,6 +556,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroyBuffer( RHI::RHIBuffer* pBuffer )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pBuffer != nullptr );
             auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pBuffer );
             EE_ASSERT( pVkBuffer->m_pHandle != nullptr );
@@ -541,6 +580,8 @@ namespace EE::Render
 
         RHI::RHISemaphore* VulkanDevice::CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc const& createDesc )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
             VulkanSemaphore* pVkSemaphore = EE::New<VulkanSemaphore>();
             EE_ASSERT( pVkSemaphore );
@@ -557,6 +598,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroySyncSemaphore( RHI::RHISemaphore* pShader )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pShader != nullptr );
             auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pShader );
             EE_ASSERT( pVkSemaphore->m_pHandle != nullptr );
@@ -568,6 +611,8 @@ namespace EE::Render
 
         RHI::RHIShader* VulkanDevice::CreateShader( RHI::RHIShaderCreateDesc const& createDesc )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
             VulkanShader* pVkShader = EE::New<VulkanShader>();
             EE_ASSERT( pVkShader );
@@ -584,6 +629,8 @@ namespace EE::Render
 
 		void VulkanDevice::DestroyShader( RHI::RHIShader* pShader )
 		{
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pShader != nullptr );
             auto* pVkShader = RHI::RHIDowncast<VulkanShader>( pShader );
             EE_ASSERT( pVkShader->m_pModule != nullptr );
@@ -597,6 +644,8 @@ namespace EE::Render
 
         RHI::RHIRenderPass* VulkanDevice::CreateRenderPass( RHI::RHIRenderPassCreateDesc const& createDesc )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
             VulkanRenderPass* pVkRenderPass = EE::New<VulkanRenderPass>();
             EE_ASSERT( pVkRenderPass );
@@ -675,6 +724,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroyRenderPass( RHI::RHIRenderPass* pRenderPass )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pRenderPass != nullptr );
             auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass );
             EE_ASSERT( pVkRenderPass->m_pHandle != nullptr );
@@ -688,7 +739,9 @@ namespace EE::Render
         //-------------------------------------------------------------------------
 
         RHI::RHIPipelineState* VulkanDevice::CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders )
-         {
+        {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
             EE_ASSERT( !compiledShaders.empty() );
 
@@ -928,6 +981,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroyRasterPipelineState( RHI::RHIPipelineState* pPipelineState )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pPipelineState != nullptr );
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState->m_pipelineState.m_pPipeline != nullptr );
@@ -940,6 +995,8 @@ namespace EE::Render
 
         RHI::RHIPipelineState* VulkanDevice::CreateComputePipelineState( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( createDesc.IsValid() );
             EE_ASSERT( pCompiledShader );
 
@@ -1015,6 +1072,8 @@ namespace EE::Render
 
         void VulkanDevice::DestroyComputePipelineState( RHI::RHIPipelineState* pPipelineState )
         {
+            Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
+
             EE_ASSERT( pPipelineState != nullptr );
             auto* pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState->m_pipelineState.m_pPipeline != nullptr );
@@ -1214,7 +1273,7 @@ namespace EE::Render
                         return false;
                     }
 
-                    m_pGlobalGraphicQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Graphic, deviceQueueFamily, (uint32_t) queueIndex );
+                    m_pGlobalGraphicQueue = EE::New<VulkanCommandQueue>( this, RHI::CommandQueueType::Graphic, deviceQueueFamily, (uint32_t) queueIndex );
                     break;
                 }
             }
@@ -1230,7 +1289,7 @@ namespace EE::Render
                         return false;
                     }
 
-                    m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
+                    m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
                     bHasNoTransferQueue = false;
                     break;
                 }
@@ -1250,7 +1309,7 @@ namespace EE::Render
                             return false;
                         }
 
-                        m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( *this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
+                        m_pGlobalTransferQueue = EE::New<VulkanCommandQueue>( this, RHI::CommandQueueType::Transfer, deviceQueueFamily, (uint32_t) queueIndex );
                         break;
                     }
                 }

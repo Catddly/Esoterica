@@ -465,7 +465,7 @@ namespace EE::Render
         return false;
     }
 
-    RHI::RHIPipelineState* PipelineRegistry::GetPipeline( PipelineHandle const& pipelineHandle ) const
+    RHI::RHIPipelineState* PipelineRegistry::TryGetRHIPipelineHandle( PipelineHandle const& pipelineHandle ) const
     {
         if ( pipelineHandle.IsValid() )
         {

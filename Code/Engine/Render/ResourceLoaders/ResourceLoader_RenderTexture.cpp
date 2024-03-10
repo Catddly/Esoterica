@@ -75,10 +75,10 @@ namespace EE::Render
             EE_UNIMPLEMENTED_FUNCTION();
         }
 
-        m_pRenderDevice->LockDevice();
+        //m_pRenderDevice->LockDevice();
         pTextureResource->m_pTexture = m_pRenderDevice->GetRHIDevice()->CreateTexture( texDesc );
         //m_pRenderDevice->CreateDataTexture( *pTextureResource, pTextureResource->m_format, pTextureResource->m_rawData );
-        m_pRenderDevice->UnlockDevice();
+        //m_pRenderDevice->UnlockDevice();
 
         if ( pTextureResource->m_pTexture == nullptr )
         {
@@ -94,9 +94,9 @@ namespace EE::Render
         auto* pTextureResource = pResourceRecord->GetResourceData<Texture>();
         if ( pTextureResource != nullptr && pTextureResource->IsValid() )
         {
-            m_pRenderDevice->LockDevice();
+            //m_pRenderDevice->LockDevice();
             m_pRenderDevice->GetRHIDevice()->DestroyTexture( pTextureResource->GetRHITexture() );
-            m_pRenderDevice->UnlockDevice();
+            //m_pRenderDevice->UnlockDevice();
         }
     }
 
