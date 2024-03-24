@@ -9,7 +9,7 @@
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Tuple.h"
 #include "Base/Types/String.h"
-#include "Base/RHI/RHIDevice.h"
+#include "Base/RHI/RHIObject.h"
 // TODO: may be decouple pipeline barrier from command buffer 
 #include "Base/RHI/RHICommandBuffer.h"
 
@@ -23,7 +23,6 @@ namespace EE::Render
 
 namespace EE::RHI
 {
-    class RHIDevice;
     class RHISwapchain;
     class RHIResource;
     class RHITexture;
@@ -80,9 +79,9 @@ namespace EE::RG
         // Execution Stage
         //-------------------------------------------------------------------------
 
-        void Execute( RHI::RHIDevice* pRhiDevice );
+        void Execute( RHI::RHIDeviceRef& pRhiDevice );
 
-        void Present( RHI::RHIDevice* pRhiDevice, Render::SwapchainRenderTarget& swapchainRt );
+        void Present( RHI::RHIDeviceRef& pRhiDevice, Render::SwapchainRenderTarget& swapchainRt );
 
         // Cleanup Stage
         //-------------------------------------------------------------------------
@@ -98,8 +97,8 @@ namespace EE::RG
         inline RGResourceRegistry const& GetResourceRegistry() const { return m_resourceRegistry; };
 
         // return a reset command context.
-        RGRenderCommandContext& ResetCommandContext( RHI::RHIDevice* pRhiDevice );
-        void FlushCommandContext( RHI::RHIDevice* pRhiDevice );
+        RGRenderCommandContext& ResetCommandContext( RHI::RHIDeviceRef& pRhiDevice );
+        void FlushCommandContext( RHI::RHIDeviceRef& pRhiDevice );
 
         // Return -1 if failed to find the presentable node.
         int32_t FindPresentNodeIndex( TVector<RGExecutableNode> const& executionSequence ) const;

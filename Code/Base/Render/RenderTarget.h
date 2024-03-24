@@ -2,6 +2,7 @@
 
 #include "Base/_Module/API.h"
 #include "Base/Types/Event.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIResource.h"
 #include "RenderTexture.h"
 
@@ -9,9 +10,6 @@
 
 namespace EE::RHI
 {
-    class RHIDevice;
-    class RHISwapchain;
-
     class RHITexture;
     class RHISemaphore;
 }
@@ -69,15 +67,15 @@ namespace EE::Render
 
         virtual bool IsSwapchainRenderTarget() const { return false; }
 
-        virtual void Release( RHI::RHIDevice* pDevice ) override;
+        virtual void Release( RHI::RHIDeviceRef& pDevice ) override;
 
     public:
 
-        bool Initialize( RHI::RHIDevice* pDevice, RenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
+        bool Initialize( RHI::RHIDeviceRef& pDevice, RenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
 
     protected:
 
-        virtual bool InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams ) override;
+        virtual bool InitializeBase( RHI::RHIDeviceRef& pDevice, ResourceCreateParameters const& createParams ) override;
 
     protected:
 
@@ -104,38 +102,38 @@ namespace EE::Render
 
         struct SwapchainRenderTargetCreateParameters : public ResourceCreateParameters
         {
-            RHI::RHISwapchain*              m_pSwapchain = nullptr;
+            RHI::RHISwapchainRef              m_pSwapchain;
         };
 
     public:
 
         virtual bool IsSwapchainRenderTarget() const override { return true; }
 
-        virtual void Release( RHI::RHIDevice* pDevice ) override;
+        virtual void Release( RHI::RHIDeviceRef& pDevice ) override;
 
     public:
 
-        bool Initialize( RHI::RHIDevice* pDevice, SwapchainRenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
+        bool Initialize( RHI::RHIDeviceRef& pDevice, SwapchainRenderTargetCreateParameters const& createParams ) { return InitializeBase( pDevice, createParams ); }
 
         void ResetFrame();
 
         bool AcquireNextFrame();
 
-        RHI::RHISwapchain const* GetRHISwapchain() const { return m_pSwapchain; }
+        RHI::RHISwapchainRef const& GetRHISwapchain() const { return m_pSwapchain; }
         RHI::RHISemaphore const* GetWaitSemaphore() const { return m_pTextureAcquireSemaphore; }
         RHI::RHISemaphore const* GetSignalSemaphore() const { return m_pRenderCompleteSemaphore; }
 
-        RHI::RHISwapchain* GetRHISwapchain() { return m_pSwapchain; }
+        RHI::RHISwapchainRef& GetRHISwapchain() { return m_pSwapchain; }
         RHI::RHISemaphore* GetWaitSemaphore() { return m_pTextureAcquireSemaphore; }
         RHI::RHISemaphore* GetSignalSemaphore() { return m_pRenderCompleteSemaphore; }
 
     private:
 
-        virtual bool InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams ) override;
+        virtual bool InitializeBase( RHI::RHIDeviceRef& pDevice, ResourceCreateParameters const& createParams ) override;
 
     private:
 
-        RHI::RHISwapchain*              m_pSwapchain = nullptr;
+        RHI::RHISwapchainRef            m_pSwapchain;
 
         RHI::RHISemaphore*              m_pTextureAcquireSemaphore = nullptr;
         RHI::RHISemaphore*              m_pRenderCompleteSemaphore = nullptr;

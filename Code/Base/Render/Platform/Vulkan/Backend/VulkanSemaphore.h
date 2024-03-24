@@ -1,6 +1,7 @@
 #pragma once
-#ifdef EE_VULKAN
+#if defined(EE_VULKAN)
 
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHISemaphore.h"
 
 #include <vulkan/vulkan_core.h>
@@ -11,13 +12,13 @@ namespace EE::Render
 	{
 		class VulkanSemaphore final : public RHI::RHISemaphore
 		{
+            EE_RHI_OBJECT( Vulkan, RHISemaphore )
+
 			friend class VulkanDevice;
 			friend class VulkanSwapchain;
             friend class VulkanCommandQueue;
 
 		public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanSemaphore()
                 : RHISemaphore( RHI::ERHIType::Vulkan )

@@ -1,6 +1,7 @@
 #pragma once
 #if defined(EE_VULKAN)
 
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIRenderPass.h"
 
 #include <vulkan/vulkan_core.h>
@@ -16,13 +17,13 @@ namespace EE::Render
     {
         class VulkanFramebuffer : public RHI::RHIFramebuffer
         {
+            EE_RHI_OBJECT( Vulkan, RHIFramebuffer )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
             friend class VulkanFramebufferCache;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanFramebuffer()
                 : RHIFramebuffer( RHI::ERHIType::Vulkan )
@@ -44,13 +45,13 @@ namespace EE::Render
 
         class VulkanRenderPass : public RHI::RHIRenderPass
         {
+            EE_RHI_OBJECT( Vulkan, RHIRenderPass )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
             friend class VulkanFramebufferCache;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanRenderPass();
             virtual ~VulkanRenderPass();

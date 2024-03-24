@@ -1,6 +1,7 @@
 #pragma once
 #if defined(EE_VULKAN)
 
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIShader.h"
 
 #include <vulkan/vulkan_core.h>
@@ -11,9 +12,9 @@ namespace EE::Render
     {
         class VulkanShader final : public RHI::RHIShader
         {
-        public:
+            EE_RHI_OBJECT( Vulkan, RHIShader )
 
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
+        public:
 
             VulkanShader()
                 : RHIShader( RHI::ERHIType::Vulkan )

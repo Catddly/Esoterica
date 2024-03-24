@@ -2,6 +2,7 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Threading/Threading.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/RHICommandQueue.h"
 #include "VulkanPhysicalDevice.h"
 
@@ -13,14 +14,14 @@ namespace EE::Render
     {
         class VulkanCommandQueue : public RHI::RHICommandQueue
         {
+            EE_RHI_OBJECT( Vulkan, RHICommandQueue )
+
             friend class VulkanDevice;
             friend class VulkanSwapchain;
             friend class VulkanCommandBuffer;
             friend class VulkanCommandBufferPool;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanCommandQueue()
                 : RHI::RHICommandQueue( RHI::ERHIType::Vulkan )

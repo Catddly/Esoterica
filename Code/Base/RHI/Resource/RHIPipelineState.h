@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Base/Memory/Pointers.h"
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
 
@@ -71,4 +72,9 @@ namespace EE::RHI
 
         RHIComputePipelineStateCreateDesc                m_desc;
     };
+    
+    //-------------------------------------------------------------------------
+
+    using RHIRasterPipelineRef = TTSSharedPtr<RHIRasterPipelineState>;
+    using RHIComputePipelineRef = TTSSharedPtr<RHIComputePipelineState>;
 }

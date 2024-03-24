@@ -1,6 +1,7 @@
 #pragma once
 #if defined(EE_VULKAN)
 
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIBuffer.h"
 #include "VulkanCommon.h"
 
@@ -9,28 +10,18 @@
 #include <vma/vk_mem_alloc.h>
 #endif
 
-namespace EE::RHI
-{
-    class RHIDevice;
-}
-
 namespace EE::Render
 {
     namespace Backend
     {
-        //struct VulkanBufferReleaseImpl : public RHI::IRHIBufferReleaseImpl
-        //{
-        //    inline virtual void Release( RHI::RHIDevice* pDevice, void* pBuffer ) override;
-        //};
-
         class VulkanBuffer : public RHI::RHIBuffer
         {
+            EE_RHI_OBJECT( Vulkan, RHIBuffer )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanBuffer()
                 : RHIBuffer( RHI::ERHIType::Vulkan )
@@ -39,8 +30,8 @@ namespace EE::Render
 
         public:
 
-            [[nodiscard]] virtual void* Map( RHI::RHIDevice* pDevice ) override;
-            virtual void  Unmap( RHI::RHIDevice* pDevice ) override;
+            [[nodiscard]] virtual void* Map( RHI::RHIDeviceRef& pDevice) override;
+            virtual void Unmap( RHI::RHIDeviceRef& pDevice ) override;
 
         private:
 

@@ -4,6 +4,7 @@
 #include "Base/Types/Arrays.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Threading/Threading.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/RHICommandBufferPool.h"
 
 #include <vulkan/vulkan_core.h>
@@ -25,6 +26,8 @@ namespace EE::Render
 
         class VulkanCommandBufferPool final : public RHI::RHICommandBufferPool
         {
+            EE_RHI_OBJECT( Vulkan, RHICommandBufferPool )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
@@ -33,8 +36,6 @@ namespace EE::Render
             using AllocatedCommandBufferArray = TVector<TFixedVector<VulkanCommandBuffer*, NumMaxCommandBufferPerPool>>;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanCommandBufferPool()
                 : RHI::RHICommandBufferPool( RHI::ERHIType::Vulkan )

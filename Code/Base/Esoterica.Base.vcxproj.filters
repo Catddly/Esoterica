@@ -504,6 +504,7 @@
     <ClCompile Include="Settings\SettingsRegistry.cpp" />
     <ClCompile Include="RHI\RHICommandBufferPool.cpp" />
     <ClCompile Include="RHI\RHICommandQueue.cpp" />
+    <ClCompile Include="RHI\RHIDowncastHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imgui\ImguiGizmo.h">
@@ -2112,9 +2113,6 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanResourceBinding.h">
-      <Filter>Render\Platform\Vulkan\Backend</Filter>
-    </ClInclude>
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h">
       <Filter>Render\Platform\Vulkan\Backend</Filter>
     </ClInclude>
@@ -2139,6 +2137,8 @@
     <ClInclude Include="Settings\Settings.h" />
     <ClInclude Include="Render\Settings\GlobalSettings_Render.h" />
     <ClInclude Include="RHI\RHICommandBufferPool.h" />
+    <ClInclude Include="RHI\RHIObject.h" />
+    <ClInclude Include="Types\StringView.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ThirdParty\cmdParser\LICENSE">

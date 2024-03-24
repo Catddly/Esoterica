@@ -5,7 +5,7 @@
 
 namespace EE::RHI
 {
-    void DispatchImmediateGraphicCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
+    void DispatchImmediateGraphicCommandAndWait( RHIDeviceRef& pDevice, ImmediateCommandCallback const& commandCallback )
     {
         EE_ASSERT( pDevice );
         
@@ -24,7 +24,7 @@ namespace EE::RHI
         }
     }
 
-    void DispatchImmediateTransferCommandAndWait( RHIDevice* pDevice, ImmediateCommandCallback const& commandCallback )
+    void DispatchImmediateTransferCommandAndWait( RHIDeviceRef& pDevice, ImmediateCommandCallback const& commandCallback )
     {
         EE_ASSERT( pDevice );
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Base/Memory/Pointers.h"
 #include "RHIResource.h"
 
 namespace EE::RHI
@@ -13,4 +14,8 @@ namespace EE::RHI
         {}
         virtual ~RHISemaphore() = default;
     };
+
+    //-------------------------------------------------------------------------
+
+    using RHISemaphoreRef = TTSSharedPtr<RHISemaphore>;
 }

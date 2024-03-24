@@ -8,7 +8,7 @@ namespace EE::RHI
         queue.m_deferReleaseBuffers.enqueue( this );
     }
 
-    void RHIBuffer::Release( RHIDevice* pDevice )
+    void RHIBuffer::Release( RHIDeviceRef& pDevice )
     {
         pDevice->DestroyBuffer( this );
     }

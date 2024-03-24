@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Base/Memory/Pointers.h"
+#include "../RHIObject.h"
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
 #include "RHIDeferReleasable.h"
@@ -26,20 +28,20 @@ namespace EE::RHI
     public:
 
         template <typename T>
-        [[nodiscard]] typename std::enable_if<std::is_pointer_v<T>, T>::type MapTo( RHIDevice* pDevice )
+        [[nodiscard]] typename std::enable_if<std::is_pointer_v<T>, T>::type MapTo( RHIDeviceRef& pDevice )
         {
             void* pMappedData = Map( pDevice );
             return reinterpret_cast<T>( pMappedData );
         }
 
-        [[nodiscard]] virtual void* Map( RHIDevice* pDevice ) = 0;
-        virtual void  Unmap( RHIDevice* pDevice ) = 0;
+        [[nodiscard]] virtual void* Map( RHIDeviceRef& pDevice ) = 0;
+        virtual void  Unmap( RHIDeviceRef& pDevice ) = 0;
 
     private:
 
         virtual void Enqueue( DeferReleaseQueue& queue ) override;
 
-        inline virtual void Release( RHIDevice* pDevice ) override;
+        inline virtual void Release( RHIDeviceRef& pDevice ) override;
 
     protected:
 

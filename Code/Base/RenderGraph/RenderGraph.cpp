@@ -26,7 +26,7 @@ namespace EE
         // Build Stage
 		//-------------------------------------------------------------------------
 		
-        RGRenderCommandContext& RenderGraph::ResetCommandContext( RHI::RHIDevice* pRhiDevice )
+        RGRenderCommandContext& RenderGraph::ResetCommandContext( RHI::RHIDeviceRef& pRhiDevice )
         {
             EE_ASSERT( pRhiDevice );
 
@@ -45,7 +45,7 @@ namespace EE
             return commandContext;
         }
 
-        void RenderGraph::FlushCommandContext( RHI::RHIDevice* pRhiDevice )
+        void RenderGraph::FlushCommandContext( RHI::RHIDeviceRef& pRhiDevice )
         {
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
             EE_ASSERT( commandContext.m_pCommandBuffer );
@@ -272,7 +272,7 @@ namespace EE
         // Execution Stage
         //-------------------------------------------------------------------------
 
-        void RenderGraph::Execute( RHI::RHIDevice* pRhiDevice )
+        void RenderGraph::Execute( RHI::RHIDeviceRef& pRhiDevice )
         {
             EE_ASSERT( Threading::IsMainThread() );
             EE_ASSERT( pRhiDevice );
@@ -332,7 +332,7 @@ namespace EE
             }
         }
 
-        void RenderGraph::Present( RHI::RHIDevice* pRhiDevice, Render::SwapchainRenderTarget& swapchainRt )
+        void RenderGraph::Present( RHI::RHIDeviceRef& pRhiDevice, Render::SwapchainRenderTarget& swapchainRt )
         {
             EE_ASSERT( Threading::IsMainThread() );
             EE_ASSERT( pRhiDevice );
@@ -452,7 +452,7 @@ namespace EE
             }
 
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
-            auto* pSubmitQueue = commandContext.m_pCommandQueue;
+            auto& pSubmitQueue = commandContext.m_pCommandQueue;
 
             switch ( compiledResource.GetResourceType() )
             {
@@ -545,7 +545,7 @@ namespace EE
             }
 
             auto& commandContext = m_renderCommandContexts[m_currentDeviceFrameIndex];
-            auto* pSubmitQueue = commandContext.m_pCommandQueue;
+            auto& pSubmitQueue = commandContext.m_pCommandQueue;
 
             // Safety: After this time point, barrierTransitions should NOT be reallocated.
             //         This will cause m_pPreviousAccesses and m_pNextAccesses points to dangling memory.

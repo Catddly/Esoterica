@@ -25,9 +25,9 @@
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandBufferPool.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanCommandQueue.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanDescriptorSet.h" />
-    <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanResourceBinding.h" />
     <ClInclude Include="Render\Platform\Vulkan\Backend\VulkanSynchronization.h" />
     <ClInclude Include="RHI\RHICommandBufferPool.h" />
+    <ClInclude Include="RHI\RHIObject.h" />
     <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\Resource\RHIDescriptorSet.h" />
     <ClInclude Include="RHI\Resource\RHITextureView.h" />
@@ -57,6 +57,7 @@
     <ClInclude Include="Types\Map.h" />
     <ClInclude Include="Types\Optional.h" />
     <ClInclude Include="Types\Queue.h" />
+    <ClInclude Include="Types\StringView.h" />
     <ClInclude Include="Types\Tuple.h" />
     <ClInclude Include="Utils\Sort.h" />
     <ClInclude Include="Encoding\Hash.h" />
@@ -602,6 +603,7 @@
     <ClCompile Include="RHI\Resource\RHIResourceCreationCommons.cpp" />
     <ClCompile Include="RHI\Resource\RHITexture.cpp" />
     <ClCompile Include="RHI\RHICommandBuffer.cpp" />
+    <ClCompile Include="RHI\RHIDowncastHelper.cpp" />
     <ClCompile Include="RHI\RHIHelper.cpp" />
     <ClCompile Include="RHI\RHIResourceBinding.cpp" />
     <ClCompile Include="Platform\Platform.cpp" />

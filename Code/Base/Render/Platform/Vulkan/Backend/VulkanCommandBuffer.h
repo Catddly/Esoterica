@@ -79,13 +79,13 @@ namespace EE::Render
 
 		class VulkanCommandBuffer : public RHI::RHICommandBuffer
 		{
+            EE_RHI_OBJECT( Vulkan, RHICommandBuffer )
+
             friend class VulkanDevice;
             friend class VulkanCommandBufferPool;
             friend class VulkanCommandQueue;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanCommandBuffer()
                 : RHICommandBuffer( RHI::ERHIType::Vulkan )

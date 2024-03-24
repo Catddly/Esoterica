@@ -30,7 +30,7 @@ namespace EE::Render
 
     protected:
 
-        RHI::RHISwapchain*                  m_pSwapchain = nullptr;
+        RHI::RHISwapchainRef                m_pSwapchain;
         Render::SwapchainRenderTarget       m_renderTarget;
     };
 }

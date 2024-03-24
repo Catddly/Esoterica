@@ -14,6 +14,7 @@
 #include "Base/Types/Function.h"
 #include "Base/Memory/Pointers.h"
 #include "Base/Resource/ResourcePtr.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
@@ -55,6 +56,8 @@ namespace EE::Render
 
 		class VulkanDevice final : public RHI::RHIDevice
 		{
+            EE_RHI_OBJECT( Vulkan, RHIDevice )
+
             friend class VulkanMemoryAllocator;
             friend class VulkanCommandBuffer;
             friend class VulkanCommandBufferPool;
@@ -86,8 +89,6 @@ namespace EE::Render
 			};
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
 			// Only support single physical device for now.
 			VulkanDevice();

@@ -8,15 +8,7 @@ namespace EE::Render
 {
     namespace Backend
     {
-        //void VulkanBufferReleaseImpl::Release( RHI::RHIDevice* pDevice, void* pBuffer )
-        //{
-        //    auto* pRhiBuffer = reinterpret_cast<RHI::RHIBuffer*>( pBuffer );
-        //    pDevice->DestroyBuffer( pRhiBuffer );
-        //}
-
-        //-------------------------------------------------------------------------
-
-        void* VulkanBuffer::Map( RHI::RHIDevice* pDevice )
+        void* VulkanBuffer::Map( RHI::RHIDeviceRef& pDevice )
         {
             if ( m_desc.m_memoryUsage == RHI::ERenderResourceMemoryUsage::GPUOnly ||
                  m_desc.m_memoryUsage == RHI::ERenderResourceMemoryUsage::GPULazily )
@@ -27,8 +19,7 @@ namespace EE::Render
             EE_ASSERT( pDevice );
             EE_ASSERT( m_pHandle );
 
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             #if VULKAN_USE_VMA_ALLOCATION
             if ( m_desc.m_memoryFlag.IsFlagSet( RHI::ERenderResourceMemoryFlag::PersistentMapping ) )
@@ -47,7 +38,7 @@ namespace EE::Render
             return m_pMappedMemory;
         }
 
-        void VulkanBuffer::Unmap( RHI::RHIDevice* pDevice )
+        void VulkanBuffer::Unmap( RHI::RHIDeviceRef& pDevice )
         {
             if ( m_desc.m_memoryUsage == RHI::ERenderResourceMemoryUsage::GPUOnly ||
                  m_desc.m_memoryUsage == RHI::ERenderResourceMemoryUsage::GPULazily )
@@ -55,8 +46,7 @@ namespace EE::Render
                 return;
             }
 
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             #if VULKAN_USE_VMA_ALLOCATION
             vmaUnmapMemory( pVkDevice->m_globalMemoryAllcator.m_pHandle, m_allocation );

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Base/Memory/Pointers.h"
 #include "RHIResource.h"
 
 namespace EE::RHI
@@ -18,4 +19,8 @@ namespace EE::RHI
     private:
 
     };
+
+    //-------------------------------------------------------------------------
+
+    using RHIShaderRef = TTSSharedPtr<RHIShader>;
 }

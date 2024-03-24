@@ -2,6 +2,7 @@
 
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unique_ptr.h>
+#include <eathread/shared_ptr_mt.h>
 
 //-------------------------------------------------------------------------
 
@@ -47,6 +48,23 @@ namespace EE
     TUniquePtr<T> MakeUnique( Args&&... args )
     {
         return eastl::make_unique<T>( eastl::forward<Args>( args )... );
+    }
+
+    //-------------------------------------------------------------------------
+
+    // TS stands for thread safe
+    template <typename T, typename D = Memory::DefaultDeleter<T>> using TTSSharedPtr = EA::Thread::shared_ptr_mt<T>;
+
+    template <typename T, typename... Args>
+    TTSSharedPtr<T> MakeTSShared( Args&&... args )
+    {
+        return TTSSharedPtr<T>( EE::New<T>( eastl::forward<Args>( args )... ) );
+    }
+
+    template <typename T, typename D, typename... Args>
+    TTSSharedPtr<D> MakeTSShared( Args&&... args )
+    {
+        return TTSSharedPtr<D>( EE::New<T>( eastl::forward<Args>( args )... ) );
     }
 }
 

@@ -14,7 +14,7 @@ namespace EE::Render
 {
     namespace Backend
     {
-        void* VulkanTexture::MapSlice( RHI::RHIDevice* pDevice, uint32_t layer )
+        void* VulkanTexture::MapSlice( RHI::RHIDeviceRef& pDevice, uint32_t layer )
         {
             EE_ASSERT( layer < m_desc.m_array );
             EE_ASSERT( pDevice );
@@ -36,7 +36,7 @@ namespace EE::Render
             return pStagingBuffer->Map( pDevice );
         }
 
-        void VulkanTexture::UnmapSlice( RHI::RHIDevice* pDevice, uint32_t layer )
+        void VulkanTexture::UnmapSlice( RHI::RHIDeviceRef& pDevice, uint32_t layer )
         {
             EE_ASSERT( layer < m_desc.m_array );
             EE_ASSERT( pDevice );
@@ -51,7 +51,7 @@ namespace EE::Render
             EE_UNREACHABLE_CODE();
         }
 
-        bool VulkanTexture::UploadMappedData( RHI::RHIDevice* pDevice, RHI::RenderResourceBarrierState dstBarrierState )
+        bool VulkanTexture::UploadMappedData( RHI::RHIDeviceRef& pDevice, RHI::RenderResourceBarrierState dstBarrierState )
         {
             if ( m_waitToFlushMappedMemory.empty() )
             {
@@ -95,9 +95,9 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        RHI::RHITextureView VulkanTexture::CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc ) const
+        RHI::RHITextureView VulkanTexture::CreateView( RHI::RHIDeviceRef& pDevice, RHI::RHITextureViewCreateDesc const& desc ) const
         {
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
             {
                 return {};
@@ -141,9 +141,9 @@ namespace EE::Render
             return textureView;
         }
 
-        void VulkanTexture::DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView& textureView )
+        void VulkanTexture::DestroyView( RHI::RHIDeviceRef& pDevice, RHI::RHITextureView& textureView )
         {
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
             {
                 EE_ASSERT( false );
@@ -164,7 +164,7 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-		void VulkanTexture::ForceDiscardAllUploadedData( RHI::RHIDevice* pDevice )
+		void VulkanTexture::ForceDiscardAllUploadedData( RHI::RHIDeviceRef& pDevice )
 		{
             if ( !m_waitToFlushMappedMemory.empty() )
             {

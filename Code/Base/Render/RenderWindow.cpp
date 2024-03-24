@@ -12,7 +12,7 @@ namespace EE::Render
 	{
         if ( m_renderTarget.IsInitialized() )
         {
-            auto* pSwapchain = m_renderTarget.GetRHISwapchain();
+            auto pSwapchain = m_renderTarget.GetRHISwapchain();
             if ( pSwapchain )
             {
                 pSwapchain->Present( RHI::SwapchainTexture {

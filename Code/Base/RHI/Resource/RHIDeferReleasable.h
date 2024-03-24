@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Base/Esoterica.h"
 #include "Base/_Module/API.h"
+#include "Base/Esoterica.h"
+#include "Base/RHI/RHIObject.h"
 
 namespace EE::RHI
 {
@@ -29,6 +30,6 @@ namespace EE::RHI
 
         virtual void Enqueue( DeferReleaseQueue& queue ) = 0;
 
-        virtual void Release( RHIDevice* pDevice ) = 0;
+        virtual void Release( RHIDeviceRef& pDevice ) = 0;
     };
 }

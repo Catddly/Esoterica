@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../RHITaggedType.h"
+#include "Base/RHI/RHIObject.h"
 
 namespace EE::RHI
 {
@@ -37,7 +38,7 @@ namespace EE::RHI
     public:
 
         // Release resources own by this resource wrapper.
-        virtual void Release( RHIDevice* pDevice ) = 0;
+        virtual void Release( RHIDeviceRef& pDevice ) = 0;
 
         inline bool IsInitialized() const { return m_isInitialized; }
 
@@ -46,7 +47,7 @@ namespace EE::RHI
         // Initialize resources by pass unique create parameters.
         // Ensure type safety by using wrapper functions sush as Initialize( RHIDevice* pDevice, MyResourceCreateParameters const& createParams )
         // which MyResourceCreateParameters is derived from ResourceCreateParameters.
-        virtual bool InitializeBase( RHIDevice* pDevice, ResourceCreateParameters const& createParams ) = 0;
+        virtual bool InitializeBase( RHIDeviceRef& pDevice, ResourceCreateParameters const& createParams ) = 0;
 
     protected:
 

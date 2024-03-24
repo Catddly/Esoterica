@@ -3,6 +3,7 @@
 #include "RHITaggedType.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Types/Arrays.h"
+#include "Base/Memory/Pointers.h"
 #include "Base/Threading/Threading.h"
 
 namespace EE::RHI

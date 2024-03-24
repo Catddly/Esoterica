@@ -19,6 +19,7 @@
 #include "Base/Logging/Log.h"
 #include "Base/Types/List.h"
 #include "Base/Types/HashMap.h"
+#include "Base/Types/StringView.h"
 #include "Base/Math/Math.h"
 #include "Base/Resource/ResourcePtr.h"
 
@@ -433,7 +434,9 @@ namespace EE::Render
                 EE_LOG_WARNING("Render", "VulkanDevice", "Try to destroy texture with host data to upload. Force upload ");
             }
 
-            pVkTexture->ClearAllViews( this );
+            RHI::RHIDeviceRef thisRef;
+            thisRef.reset( this );
+            pVkTexture->ClearAllViews( thisRef );
 
             // Note: swapchain texture has null allocation
             if ( pVkTexture->m_allocation == nullptr )

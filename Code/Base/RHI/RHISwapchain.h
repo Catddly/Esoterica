@@ -2,6 +2,7 @@
 
 #include "RHITaggedType.h"
 #include "Base/Types/Arrays.h"
+#include "Base/Memory/Pointers.h"
 #include "Base/Math/Math.h"
 #include "Base/Render/RenderTarget.h"
 #include "Resource/RHIResourceCreationCommons.h"
@@ -50,4 +51,7 @@ namespace EE::RHI
         virtual TVector<RHI::RHITexture*> const GetPresentTextures() const = 0;
     };
 
+    //-------------------------------------------------------------------------
+
+    using RHISwapchainRef = TTSSharedPtr<RHISwapchain>;
 }

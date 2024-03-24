@@ -3,6 +3,7 @@
 
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Event.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/RHISwapchain.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
@@ -12,12 +13,13 @@ namespace EE::Render
 {
 	namespace Backend
 	{
-		class VulkanDevice;
         class VulkanTexture;
         class VulkanSemaphore;
 
 		class VulkanSwapchain final : public RHI::RHISwapchain
 		{
+            EE_RHI_OBJECT( Vulkan, RHISwapchain )
+
 		public:
 
 			struct InitConfig
@@ -48,10 +50,8 @@ namespace EE::Render
 
 		public:
 
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
-			
-            VulkanSwapchain( VulkanDevice* pDevice );
-			VulkanSwapchain( InitConfig config, VulkanDevice* pDevice );
+            VulkanSwapchain( RHI::RHIDeviceRef& pDevice );
+			VulkanSwapchain( InitConfig config, RHI::RHIDeviceRef& pDevice );
 
 			~VulkanSwapchain();
 
@@ -76,8 +76,7 @@ namespace EE::Render
 
 		private:
 
-            // Cache device pointer (Use TSharedPtr ?)
-			VulkanDevice*           				m_pDevice = nullptr;
+            RHI::RHIDeviceRef           			m_pDevice;
 
 			VkSwapchainKHR							m_pHandle;
 			LoadFuncs								m_loadFuncs;

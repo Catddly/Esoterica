@@ -10,6 +10,7 @@
 #include "VulkanUtils.h"
 #include "RHIToVulkanSpecification.h"
 #include "Base/Logging/Log.h"
+#include "Base/RHI/RHIDevice.h"
 #include "Base/RHI/Resource/RHISemaphore.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/RHIDowncastHelper.h"
@@ -34,25 +35,27 @@ namespace EE::Render
 
 		//-------------------------------------------------------------------------
 
-		VulkanSwapchain::VulkanSwapchain( VulkanDevice* pDevice )
+		VulkanSwapchain::VulkanSwapchain( RHI::RHIDeviceRef& pDevice )
 			: VulkanSwapchain( InitConfig::GetDefault(), pDevice )
 		{}
 
-		VulkanSwapchain::VulkanSwapchain( InitConfig config, VulkanDevice* pDevice )
+		VulkanSwapchain::VulkanSwapchain( InitConfig config, RHI::RHIDeviceRef& pDevice )
 			: RHISwapchain( RHI::ERHIType::Vulkan ), m_pDevice( pDevice ), m_currentRenderFrameIndex( 0 )
 		{
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+
             // load functions
             //-------------------------------------------------------------------------
 
-            m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc = (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR) m_pDevice->m_pInstance->GetProcAddress( "vkGetPhysicalDeviceSurfaceCapabilitiesKHR" );
-            m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc = (PFN_vkGetPhysicalDeviceSurfaceFormatsKHR) m_pDevice->m_pInstance->GetProcAddress( "vkGetPhysicalDeviceSurfaceFormatsKHR" );
-            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc = (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR) m_pDevice->m_pInstance->GetProcAddress( "vkGetPhysicalDeviceSurfacePresentModesKHR" );
-            m_loadFuncs.m_pCreateSwapchainKHRFunc = (PFN_vkCreateSwapchainKHR) m_pDevice->m_pInstance->GetProcAddress( "vkCreateSwapchainKHR" );
-            m_loadFuncs.m_pDestroySwapchainKHRFunc = (PFN_vkDestroySwapchainKHR) m_pDevice->m_pInstance->GetProcAddress( "vkDestroySwapchainKHR" );
-            m_loadFuncs.m_pGetSwapchainImagesKHRFunc = (PFN_vkGetSwapchainImagesKHR) m_pDevice->m_pInstance->GetProcAddress( "vkGetSwapchainImagesKHR" );
+            m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc = (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR) pVkDevice->m_pInstance->GetProcAddress("vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+            m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc = (PFN_vkGetPhysicalDeviceSurfaceFormatsKHR) pVkDevice->m_pInstance->GetProcAddress( "vkGetPhysicalDeviceSurfaceFormatsKHR" );
+            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc = (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR) pVkDevice->m_pInstance->GetProcAddress( "vkGetPhysicalDeviceSurfacePresentModesKHR" );
+            m_loadFuncs.m_pCreateSwapchainKHRFunc = (PFN_vkCreateSwapchainKHR) pVkDevice->m_pInstance->GetProcAddress( "vkCreateSwapchainKHR" );
+            m_loadFuncs.m_pDestroySwapchainKHRFunc = (PFN_vkDestroySwapchainKHR) pVkDevice->m_pInstance->GetProcAddress( "vkDestroySwapchainKHR" );
+            m_loadFuncs.m_pGetSwapchainImagesKHRFunc = (PFN_vkGetSwapchainImagesKHR) pVkDevice->m_pInstance->GetProcAddress( "vkGetSwapchainImagesKHR" );
 
-            m_loadFuncs.m_pAcquireNextImageKHRFunc = (PFN_vkAcquireNextImageKHR) m_pDevice->m_pInstance->GetProcAddress( "vkAcquireNextImageKHR" );
-            m_loadFuncs.m_pQueuePresentKHR = (PFN_vkQueuePresentKHR) m_pDevice->m_pInstance->GetProcAddress( "vkQueuePresentKHR" );
+            m_loadFuncs.m_pAcquireNextImageKHRFunc = (PFN_vkAcquireNextImageKHR) pVkDevice->m_pInstance->GetProcAddress( "vkAcquireNextImageKHR" );
+            m_loadFuncs.m_pQueuePresentKHR = (PFN_vkQueuePresentKHR) pVkDevice->m_pInstance->GetProcAddress( "vkQueuePresentKHR" );
 
             EE_ASSERT( CreateOrRecreate( config ) );
                 
@@ -70,7 +73,7 @@ namespace EE::Render
             // register callback
             //-------------------------------------------------------------------------
         
-            m_onSwapchainTextureDestroyedEventId = pDevice->OnSwapchainImageDestroyed().Bind( [this] ( RHI::RHITexture* pTexture )
+            m_onSwapchainTextureDestroyedEventId = pVkDevice->OnSwapchainImageDestroyed().Bind( [this] ( RHI::RHITexture* pTexture )
             {
                 OnTextrueDestroyed( pTexture );
             } );
@@ -78,7 +81,9 @@ namespace EE::Render
 
 		VulkanSwapchain::~VulkanSwapchain()
 		{
-            m_pDevice->OnSwapchainImageDestroyed().Unbind( m_onSwapchainTextureDestroyedEventId );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+
+            pVkDevice->OnSwapchainImageDestroyed().Unbind( m_onSwapchainTextureDestroyedEventId );
 
 			for ( int i = (int)m_textureAcquireSemaphores.size() - 1; i >= 0; i-- )
 			{
@@ -99,7 +104,7 @@ namespace EE::Render
 			EE_ASSERT( m_pHandle != nullptr );
 			EE_ASSERT( m_loadFuncs.m_pDestroySwapchainKHRFunc != nullptr );
 
-			m_loadFuncs.m_pDestroySwapchainKHRFunc( m_pDevice->m_pHandle, m_pHandle, nullptr );
+			m_loadFuncs.m_pDestroySwapchainKHRFunc( pVkDevice->m_pHandle, m_pHandle, nullptr );
 			m_pHandle = nullptr;
 		}
 
@@ -119,6 +124,8 @@ namespace EE::Render
 
         RHI::SwapchainTexture VulkanSwapchain::AcquireNextFrameRenderTarget()
         {
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+
             EE_ASSERT( m_loadFuncs.m_pAcquireNextImageKHRFunc );
 
             uint64_t constexpr InfiniteWaitTimeOut = std::numeric_limits<uint64_t>::max();
@@ -128,7 +135,7 @@ namespace EE::Render
             EE_ASSERT( pVkAcquireSemaphore );
 
             uint32_t acquireFrameIndex;
-            VkResult result = m_loadFuncs.m_pAcquireNextImageKHRFunc( m_pDevice->m_pHandle, m_pHandle, InfiniteWaitTimeOut, pVkAcquireSemaphore->m_pHandle, nullptr, &acquireFrameIndex );
+            VkResult result = m_loadFuncs.m_pAcquireNextImageKHRFunc( pVkDevice->m_pHandle, m_pHandle, InfiniteWaitTimeOut, pVkAcquireSemaphore->m_pHandle, nullptr, &acquireFrameIndex );
 
             EE_ASSERT( acquireFrameIndex == m_currentRenderFrameIndex );
 
@@ -169,7 +176,9 @@ namespace EE::Render
             presentInfo.swapchainCount = 1;
             presentInfo.waitSemaphoreCount = 1;
 
-            VK_SUCCEEDED( m_loadFuncs.m_pQueuePresentKHR( m_pDevice->m_pGlobalGraphicQueue->m_pHandle, &presentInfo ) );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+
+            VK_SUCCEEDED( m_loadFuncs.m_pQueuePresentKHR( pVkDevice->m_pGlobalGraphicQueue->m_pHandle, &presentInfo ) );
 
             if ( result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR )
             {
@@ -239,10 +248,12 @@ namespace EE::Render
 
             EE_ASSERT( m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc != nullptr );
 
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+
             uint32_t surfaceFormatCount = 0;
-            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &surfaceFormatCount, nullptr ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc( pVkDevice->m_physicalDevice.m_pHandle, pVkDevice->m_pSurface->m_pHandle, &surfaceFormatCount, nullptr ) );
             TVector<VkSurfaceFormatKHR> surfaceFormats( surfaceFormatCount );
-            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &surfaceFormatCount, surfaceFormats.data() ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceFormatsKHRFunc( pVkDevice->m_physicalDevice.m_pHandle, pVkDevice->m_pSurface->m_pHandle, &surfaceFormatCount, surfaceFormats.data() ) );
 
             if ( surfaceFormatCount == 0 )
             {
@@ -281,7 +292,7 @@ namespace EE::Render
 
             VkSurfaceCapabilitiesKHR surfaceCaps = {};
             EE_ASSERT( m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc != nullptr );
-            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &surfaceCaps ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pGetPhysicalDeviceSurfaceCapabilitiesKHRFunc( pVkDevice->m_physicalDevice.m_pHandle, pVkDevice->m_pSurface->m_pHandle, &surfaceCaps ) );
 
             uint32_t const imageCount = Math::Max( m_initConfig.m_swapBufferCount, surfaceCaps.minImageCount );
             if ( imageCount > surfaceCaps.maxImageCount )
@@ -311,9 +322,9 @@ namespace EE::Render
             EE_ASSERT( m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc != nullptr );
 
             uint32_t supportedPresentModeCount = 0;
-            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &supportedPresentModeCount, nullptr );
+            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc( pVkDevice->m_physicalDevice.m_pHandle, pVkDevice->m_pSurface->m_pHandle, &supportedPresentModeCount, nullptr );
             TVector<VkPresentModeKHR> supportedPresentModes( supportedPresentModeCount );
-            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc( m_pDevice->m_physicalDevice.m_pHandle, m_pDevice->m_pSurface->m_pHandle, &supportedPresentModeCount, supportedPresentModes.data() );
+            m_loadFuncs.m_pGetPhysicalDeviceSurfacePresentModesKHRFunc( pVkDevice->m_physicalDevice.m_pHandle, pVkDevice->m_pSurface->m_pHandle, &supportedPresentModeCount, supportedPresentModes.data() );
 
             // choose present modes by vsync, the one at the front will be chosen first if they both supported by the surface.
             // more info: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html
@@ -361,7 +372,7 @@ namespace EE::Render
             swapchainCI.presentMode = pickPresentMode;
             swapchainCI.clipped = true;
             swapchainCI.preTransform = transformFlag;
-            swapchainCI.surface = m_pDevice->m_pSurface->m_pHandle;
+            swapchainCI.surface = pVkDevice->m_pSurface->m_pHandle;
             swapchainCI.minImageCount = imageCount;
 
             swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -374,7 +385,7 @@ namespace EE::Render
             swapchainCI.oldSwapchain = pOldSwapchain;
 
             EE_ASSERT( m_loadFuncs.m_pCreateSwapchainKHRFunc != nullptr );
-            VK_SUCCEEDED( m_loadFuncs.m_pCreateSwapchainKHRFunc( m_pDevice->m_pHandle, &swapchainCI, nullptr, &m_pHandle ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pCreateSwapchainKHRFunc( pVkDevice->m_pHandle, &swapchainCI, nullptr, &m_pHandle ) );
 
             // destroy old swapchain
             //-------------------------------------------------------------------------
@@ -390,7 +401,7 @@ namespace EE::Render
                 m_presentTextures.clear();
 
                 EE_ASSERT( m_loadFuncs.m_pDestroySwapchainKHRFunc != nullptr );
-                m_loadFuncs.m_pDestroySwapchainKHRFunc( m_pDevice->m_pHandle, pOldSwapchain, nullptr );
+                m_loadFuncs.m_pDestroySwapchainKHRFunc( pVkDevice->m_pHandle, pOldSwapchain, nullptr );
 
                 // reset render frame index
                 m_currentRenderFrameIndex = 0;
@@ -400,9 +411,9 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             uint32_t swapchainImageCount = 0;
-            VK_SUCCEEDED( m_loadFuncs.m_pGetSwapchainImagesKHRFunc( m_pDevice->m_pHandle, m_pHandle, &swapchainImageCount, nullptr ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pGetSwapchainImagesKHRFunc( pVkDevice->m_pHandle, m_pHandle, &swapchainImageCount, nullptr ) );
             TVector<VkImage> swapchainImages( swapchainImageCount );
-            VK_SUCCEEDED( m_loadFuncs.m_pGetSwapchainImagesKHRFunc( m_pDevice->m_pHandle, m_pHandle, &swapchainImageCount, swapchainImages.data() ) );
+            VK_SUCCEEDED( m_loadFuncs.m_pGetSwapchainImagesKHRFunc( pVkDevice->m_pHandle, m_pHandle, &swapchainImageCount, swapchainImages.data() ) );
 
             for ( uint32_t i = 0; i < swapchainImageCount; ++i )
             {

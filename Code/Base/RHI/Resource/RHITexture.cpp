@@ -15,7 +15,7 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    RHITextureView RHITexture::GetOrCreateView( RHIDevice* pDevice, RHITextureViewCreateDesc const& desc )
+    RHITextureView RHITexture::GetOrCreateView( RHIDeviceRef& pDevice, RHITextureViewCreateDesc const& desc )
     {
         auto iter = m_viewCache.find( desc );
         if ( iter != m_viewCache.end() )
@@ -38,7 +38,7 @@ namespace EE::RHI
         return {};
     }
 
-    void RHITexture::ClearAllViews( RHIDevice* pDevice )
+    void RHITexture::ClearAllViews( RHIDeviceRef& pDevice )
     {
         for ( auto& view : m_viewCache )
         {
@@ -54,7 +54,7 @@ namespace EE::RHI
         queue.m_deferReleaseTextures.enqueue( this );
 	}
 
-    void RHITexture::Release( RHIDevice* pDevice )
+    void RHITexture::Release( RHIDeviceRef& pDevice )
     {
         pDevice->DestroyTexture( this );
 

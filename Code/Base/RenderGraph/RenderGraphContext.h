@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "RenderGraph.h"
 #include "RenderGraphNodeRef.h"
 #include "RenderGraphResource.h"
 #include "Base/Math/Math.h"
@@ -8,13 +7,12 @@
 #include "Base/Render/RenderShader.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Optional.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
 namespace EE::RHI
 {
-    class RHIDevice;
-    class RHICommandQueue;
     class RHICommandBuffer;
     class RHIRenderPass;
     class RHIPipelineState;
@@ -42,7 +40,7 @@ namespace EE::RG
 
     private:
 
-        RGBoundPipeline( RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer, RHI::RHIPipelineState const* pPipelineState, RenderGraph const* pRenderGraph );
+        RGBoundPipeline( RHI::RHIDeviceRef& pDevice, RHI::RHICommandBuffer* pCommandBuffer, RHI::RHIPipelineState const* pPipelineState, RenderGraph const* pRenderGraph );
 
         // Helper functions
         //-------------------------------------------------------------------------
@@ -60,7 +58,7 @@ namespace EE::RG
 
         using RGPipelineSetBinding = TPair<uint32_t, TSpan<RGPipelineBinding const>>;
 
-        RHI::RHIDevice*                                     m_pDevice = nullptr;
+        RHI::RHIDeviceRef                                   m_pDevice;
         RHI::RHICommandBuffer*                              m_pCommandBuffer = nullptr;
         RHI::RHIPipelineState const*                        m_pPipelineState = nullptr;
 
@@ -75,8 +73,8 @@ namespace EE::RG
 
     public:
 
-        inline RHI::RHICommandBuffer* const& GetRHICommandBuffer() const { return m_pCommandBuffer; }
-        inline RHI::RHIDevice* const& GetRHIDevice() const { return m_pDevice; }
+        inline RHI::RHICommandBufferRef const& GetRHICommandBuffer() const { return m_pCommandBuffer; }
+        inline RHI::RHIDeviceRef const& GetRHIDevice() const { return m_pDevice; }
 
         // Concrete Resources
         //-------------------------------------------------------------------------
@@ -175,7 +173,7 @@ namespace EE::RG
     private:
 
         // functions only accessible by RenderGraph.
-        void SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer );
+        void SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDeviceRef& pDevice, RHI::RHICommandBuffer* pCommandBuffer );
         inline bool IsValid() const { return m_pRenderGraph && m_pDevice && m_pCommandBuffer; }
         void Reset();
 
@@ -184,9 +182,9 @@ namespace EE::RG
         RenderGraph const*                  m_pRenderGraph = nullptr;
         RGExecutableNode const*             m_pExecutingNode = nullptr;
 
-        RHI::RHIDevice*                     m_pDevice = nullptr;
-        RHI::RHICommandQueue*               m_pCommandQueue = nullptr;
-        RHI::RHICommandBuffer*              m_pCommandBuffer = nullptr;
+        RHI::RHIDeviceRef                   m_pDevice;
+        RHI::RHICommandQueueRef             m_pCommandQueue;
+        RHI::RHICommandBufferRef            m_pCommandBuffer;
 
         TVector<RHI::RHISemaphore*>         m_waitSemaphores;
         TVector<Render::PipelineStage>      m_waitStages;

@@ -2,6 +2,7 @@
 #if defined(EE_VULKAN)
 
 #include "Base/Types/Map.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIPipelineState.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
 
@@ -28,12 +29,12 @@ namespace EE::Render
 
         class VulkanRasterPipelineState final : public RHI::RHIRasterPipelineState
         {
+            EE_RHI_OBJECT( Vulkan, RHIRasterPipelineState )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanRasterPipelineState()
                 : RHIRasterPipelineState( RHI::ERHIType::Vulkan )
@@ -52,12 +53,12 @@ namespace EE::Render
 
         class VulkanComputePipelineState final : public RHI::RHIComputePipelineState
         {
+            EE_RHI_OBJECT( Vulkan, RHIComputePipelineState )
+
             friend class VulkanDevice;
             friend class VulkanCommandBuffer;
 
         public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanComputePipelineState()
                 : RHIComputePipelineState( RHI::ERHIType::Vulkan )

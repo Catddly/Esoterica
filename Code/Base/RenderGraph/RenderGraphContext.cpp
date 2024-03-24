@@ -48,7 +48,7 @@ namespace EE::RG
         m_pCommandBuffer->UpdateDescriptorSetBinding( set, binding, m_pPipelineState, rhiPipelineBinding );
     }
 
-    RGBoundPipeline::RGBoundPipeline( RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer, RHI::RHIPipelineState const* pPipelineState, RenderGraph const* pRenderGraph )
+    RGBoundPipeline::RGBoundPipeline( RHI::RHIDeviceRef& pDevice, RHI::RHICommandBuffer* pCommandBuffer, RHI::RHIPipelineState const* pPipelineState, RenderGraph const* pRenderGraph )
         : m_pDevice( pDevice ), m_pCommandBuffer( pCommandBuffer ), m_pPipelineState( pPipelineState ), m_pRenderGraph( pRenderGraph )
     {
     }
@@ -340,7 +340,7 @@ namespace EE::RG
 
     //-------------------------------------------------------------------------
 
-    void RGRenderCommandContext::SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDevice* pDevice, RHI::RHICommandBuffer* pCommandBuffer )
+    void RGRenderCommandContext::SetCommandContext( RenderGraph const* pRenderGraph, RHI::RHIDeviceRef& pDevice, RHI::RHICommandBuffer* pCommandBuffer )
     {
         m_pDevice = pDevice;
         m_pCommandQueue = pDevice->GetMainGraphicCommandQueue();
@@ -351,7 +351,7 @@ namespace EE::RG
     void RGRenderCommandContext::Reset()
     {
         m_pRenderGraph = nullptr;
-        m_pDevice = nullptr;
+        m_pDevice.reset();
         m_pCommandQueue = nullptr;
         m_pCommandBuffer = nullptr;
 

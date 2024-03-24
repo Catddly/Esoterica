@@ -5,12 +5,6 @@
 #include <limits>
 #include <stdint.h>
 
-// helper macro
-
-#define EE_RHI_STATIC_TAGGED_TYPE( rhiType ) inline static EE::RHI::ERHIType GetStaticRHIType() { return rhiType; }
-
-//-------------------------------------------------------------------------
-
 namespace EE::RHI
 {
     enum class ERHIType : uint8_t

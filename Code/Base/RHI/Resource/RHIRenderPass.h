@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Base/Types/HashMap.h"
+#include "Base/Memory/Pointers.h"
 #include "../RHITaggedType.h"
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
@@ -81,4 +82,8 @@ namespace EE::RHI
         RHIFramebufferCache*                m_pFramebufferCache = nullptr;
         RHIRenderPassCreateDesc             m_desc;
     };
+    
+    //-------------------------------------------------------------------------
+
+    using RHIRenderPassRef = TTSSharedPtr<RHIRenderPass>;
 }

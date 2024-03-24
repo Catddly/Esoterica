@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Base/Render/RenderAPI.h"
-#include "Base/Memory/Pointers.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Queue.h"
 #include "Base/Threading/Threading.h"

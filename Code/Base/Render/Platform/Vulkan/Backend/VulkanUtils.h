@@ -8,6 +8,7 @@ namespace EE::Render
 {
 	namespace Backend::Util
 	{
+        // TODO: use some platform api instead of writing a own version here
 		Int2 GetCurrentActiveWindowUserExtent();
 
         inline bool IsUniformBuffer( RHI::RHIBufferCreateDesc const& bufferCreateDesc )

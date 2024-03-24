@@ -6,6 +6,7 @@
 #include "Base/Types/Color.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Math/Math.h"
+#include "Base/Memory/Pointers.h"
 #include "Resource/RHITextureView.h"
 #include "Resource/RHIResourceCreationCommons.h"
 #include "Base/RHI/RHIResourceBinding.h"
@@ -421,5 +422,4 @@ namespace EE::RHI
         RHI::RHICommandBufferPool*      m_pCommandBufferPool = nullptr;
         uint32_t                        m_pInnerPoolIndex = 0;
     };
-
 }

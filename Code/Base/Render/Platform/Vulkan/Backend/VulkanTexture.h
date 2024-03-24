@@ -3,6 +3,7 @@
 
 #include "Base/Math/Math.h"
 #include "Base/Types/Map.h"
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHITexture.h"
 #include "VulkanCommon.h"
 
@@ -13,7 +14,6 @@
 
 namespace EE::RHI
 {
-    class RHIDevice;
     class RHIBuffer;
 }
 
@@ -34,13 +34,13 @@ namespace EE::Render
 
 		class VulkanTexture : public RHI::RHITexture
 		{
+            EE_RHI_OBJECT( Vulkan, RHITexture )
+
             friend class VulkanDevice;
 			friend class VulkanSwapchain;
 			friend class VulkanCommandBuffer;
 
 		public:
-
-            EE_RHI_STATIC_TAGGED_TYPE( RHI::ERHIType::Vulkan )
 
             VulkanTexture()
                 : RHITexture( RHI::ERHIType::Vulkan )
@@ -49,19 +49,19 @@ namespace EE::Render
 
         public:
 
-            virtual void* MapSlice( RHI::RHIDevice* pDevice, uint32_t layer ) override;
-            virtual void  UnmapSlice( RHI::RHIDevice* pDevice, uint32_t layer ) override;
+            virtual void* MapSlice( RHI::RHIDeviceRef& pDevice, uint32_t layer ) override;
+            virtual void  UnmapSlice( RHI::RHIDeviceRef& pDevice, uint32_t layer ) override;
 
             // Upload mapped slice from CPU to GPU texture.
             // Return true if no data to upload or update data successfully.
-            virtual bool UploadMappedData( RHI::RHIDevice* pDevice, RHI::RenderResourceBarrierState dstBarrierState ) override;
+            virtual bool UploadMappedData( RHI::RHIDeviceRef& pDevice, RHI::RenderResourceBarrierState dstBarrierState ) override;
 
         private:
 
-            void ForceDiscardAllUploadedData( RHI::RHIDevice* pDevice );
+            void ForceDiscardAllUploadedData( RHI::RHIDeviceRef& pDevice );
 
-            virtual RHI::RHITextureView  CreateView( RHI::RHIDevice* pDevice, RHI::RHITextureViewCreateDesc const& desc) const override;
-            virtual void                 DestroyView( RHI::RHIDevice* pDevice, RHI::RHITextureView& textureView ) override;
+            virtual RHI::RHITextureView  CreateView( RHI::RHIDeviceRef& pDevice, RHI::RHITextureViewCreateDesc const& desc) const override;
+            virtual void                 DestroyView( RHI::RHIDeviceRef& pDevice, RHI::RHITextureView& textureView ) override;
 
             uint32_t GetLayerByteSize( uint32_t layer );
 

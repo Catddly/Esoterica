@@ -30,7 +30,7 @@ namespace EE::Render::CoreResources
     void Initialize( RenderDevice* pRenderDevice )
     {
         EE_ASSERT( pRenderDevice != nullptr );
-        auto* pRhiDevice = pRenderDevice->GetRHIDevice();
+        auto& pRhiDevice = pRenderDevice->GetRHIDevice();
         EE_ASSERT( pRhiDevice );
 
         //-------------------------------------------------------------------------
@@ -56,7 +56,7 @@ namespace EE::Render::CoreResources
     void Shutdown( RenderDevice* pRenderDevice )
     {
         EE_ASSERT( pRenderDevice != nullptr );
-        auto* pRhiDevice = pRenderDevice->GetRHIDevice();
+        auto& pRhiDevice = pRenderDevice->GetRHIDevice();
         EE_ASSERT( pRhiDevice );
 
         //-------------------------------------------------------------------------

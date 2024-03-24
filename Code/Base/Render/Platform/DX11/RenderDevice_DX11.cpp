@@ -128,14 +128,13 @@ namespace EE::Render
             return false;
         }
 
-        RHI::RHISwapchain* pSwapchain = nullptr;
+        RHI::RHISwapchainRef pSwapchain;
 
         #if defined(EE_VULKAN)
         Backend::VulkanDevice::InitConfig deviceConfig = Backend::VulkanDevice::InitConfig::GetDefault( true );
-         deviceConfig.m_activeWindowHandle = reinterpret_cast<void*>( pActiveWindow );
+        deviceConfig.m_activeWindowHandle = reinterpret_cast<void*>( pActiveWindow );
 
-        auto pVkRHIDevice = EE::New<Backend::VulkanDevice>( deviceConfig );
-        m_pRHIDevice = pVkRHIDevice;
+        m_pRHIDevice = RHI::MakeRHIObject<Backend::VulkanDevice>( deviceConfig );
 
         Backend::VulkanSwapchain::InitConfig swapchainConfig;
         swapchainConfig.m_width = static_cast<uint32_t>( m_resolution.m_x );
@@ -145,7 +144,7 @@ namespace EE::Render
         swapchainConfig.m_swapBufferCount = RHI::RHIDevice::NumDeviceFramebufferCount;
         swapchainConfig.m_sample = RHI::ESampleCount::SC1;
 
-        pSwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        pSwapchain = RHI::MakeRHIObject<Backend::VulkanSwapchain>( swapchainConfig, m_pRHIDevice );
         #endif
 
         EE_ASSERT( pSwapchain );
@@ -252,7 +251,7 @@ namespace EE::Render
 
         if ( m_primaryWindow.m_pSwapchain )
         {
-            EE::Delete( m_primaryWindow.m_pSwapchain );
+            m_primaryWindow.m_pSwapchain.reset();
         }
 
         //if ( m_immediateContext.m_pDeviceContext != nullptr )
@@ -284,9 +283,9 @@ namespace EE::Render
         //    #endif
         //}
 
-        if ( m_pRHIDevice != nullptr )
+        if ( m_pRHIDevice )
         {
-            EE::Delete( m_pRHIDevice );
+            m_pRHIDevice.reset();
         }
     }
 
@@ -389,7 +388,7 @@ namespace EE::Render
         //IDXGISwapChain* pSwapChain = nullptr;
         //m_pFactory->CreateSwapChain( m_pDevice, &sd, &pSwapChain );
 
-        RHI::RHISwapchain* pSwapchain = nullptr;
+        RHI::RHISwapchainRef pSwapchain;
 
         #if defined(EE_VULKAN)
         Backend::VulkanSwapchain::InitConfig swapchainConfig;
@@ -400,9 +399,7 @@ namespace EE::Render
         swapchainConfig.m_swapBufferCount = RHI::RHIDevice::NumDeviceFramebufferCount;
         swapchainConfig.m_sample = RHI::ESampleCount::SC1;
 
-        auto* pVkRHIDevice = RHI::RHIDowncast<Backend::VulkanDevice>( m_pRHIDevice );
-
-        pSwapchain = EE::New<Backend::VulkanSwapchain>( swapchainConfig, pVkRHIDevice );
+        pSwapchain = RHI::MakeRHIObject<Backend::VulkanSwapchain>( m_pRHIDevice );
         #endif
         
         EE_ASSERT( pSwapchain );
@@ -430,10 +427,8 @@ namespace EE::Render
 
         if ( window.m_pSwapchain )
         {
-            EE::Delete( window.m_pSwapchain );
+            window.m_pSwapchain.reset();
         }
-
-        window.m_pSwapchain = nullptr;
 
         //m_immediateContext.m_pDeviceContext->ClearState();
         //m_immediateContext.m_pDeviceContext->Flush();

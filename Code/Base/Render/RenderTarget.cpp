@@ -8,7 +8,7 @@
 
 namespace EE::Render
 {
-	bool RenderTarget::InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams )
+	bool RenderTarget::InitializeBase( RHI::RHIDeviceRef& pDevice, ResourceCreateParameters const& createParams )
 	{
         EE_ASSERT( pDevice );
 
@@ -55,7 +55,7 @@ namespace EE::Render
         return true;
     }
 
-	void RenderTarget::Release( RHI::RHIDevice* pDevice )
+	void RenderTarget::Release( RHI::RHIDeviceRef& pDevice )
 	{
         EE_ASSERT( pDevice );
 
@@ -87,7 +87,7 @@ namespace EE::Render
 
     //-------------------------------------------------------------------------
 
-	void SwapchainRenderTarget::Release( RHI::RHIDevice* pDevice )
+	void SwapchainRenderTarget::Release( RHI::RHIDeviceRef& pDevice )
 	{
         if ( m_isInitialized )
         {
@@ -95,12 +95,12 @@ namespace EE::Render
             m_pTextureAcquireSemaphore = nullptr;
             m_pRenderCompleteSemaphore = nullptr;
 
-            m_pSwapchain = nullptr;
+            m_pSwapchain.reset();
             m_isInitialized = false;
         }
 	}
 
-	bool SwapchainRenderTarget::InitializeBase( RHI::RHIDevice* pDevice, ResourceCreateParameters const& createParams )
+	bool SwapchainRenderTarget::InitializeBase( RHI::RHIDeviceRef& pDevice, ResourceCreateParameters const& createParams )
 	{
         SwapchainRenderTargetCreateParameters const& params = static_cast<SwapchainRenderTargetCreateParameters const&>( createParams );
         m_pSwapchain = params.m_pSwapchain;
