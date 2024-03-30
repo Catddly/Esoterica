@@ -9,11 +9,9 @@ namespace EE::Render
 {
     namespace Backend
     {
-        void* VulkanCPUGPUSyncImpl::Create( RHI::RHIDevice* pDevice, bool bSignaled )
+        void* VulkanCPUGPUSyncImpl::Create( RHI::RHIDeviceRef& pDevice, bool bSignaled )
         {
-            EE_ASSERT( pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             VkFenceCreateInfo fenceCI = {};
             fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -25,31 +23,25 @@ namespace EE::Render
             return fence;
         }
 
-        void VulkanCPUGPUSyncImpl::Destroy( RHI::RHIDevice* pDevice, void*& pCPUGPUSync )
+        void VulkanCPUGPUSyncImpl::Destroy( RHI::RHIDeviceRef& pDevice, void*& pCPUGPUSync )
         {
-            EE_ASSERT( pDevice );
             EE_ASSERT( pCPUGPUSync );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             vkDestroyFence( pVkDevice->m_pHandle, reinterpret_cast<VkFence>( pCPUGPUSync ), nullptr );
         }
 
-        void VulkanCPUGPUSyncImpl::Reset( RHI::RHIDevice* pDevice, void* pCPUGPUSync )
+        void VulkanCPUGPUSyncImpl::Reset( RHI::RHIDeviceRef& pDevice, void* pCPUGPUSync )
         {
-            EE_ASSERT( pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             VkFence fence = reinterpret_cast<VkFence>( pCPUGPUSync );
             VK_SUCCEEDED( vkResetFences( pVkDevice->m_pHandle, 1, &fence ) );
         }
 
-        void VulkanCPUGPUSyncImpl::WaitFor( RHI::RHIDevice* pDevice, void* pCPUGPUSync, uint64_t waitTime )
+        void VulkanCPUGPUSyncImpl::WaitFor( RHI::RHIDeviceRef& pDevice, void* pCPUGPUSync, uint64_t waitTime )
         {
-            EE_ASSERT( pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
 
             VkFence fence = reinterpret_cast<VkFence>( pCPUGPUSync );
             VK_SUCCEEDED( vkWaitForFences( pVkDevice->m_pHandle, 1, &fence, true, waitTime ) );

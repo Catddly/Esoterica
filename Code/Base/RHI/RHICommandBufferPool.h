@@ -1,18 +1,14 @@
 #pragma once
 
-#include "Base/RHI/RHITaggedType.h"
+#include "RHITaggedType.h"
+#include "RHIObject.h"
 #include "Base/Types/Arrays.h"
-#include "Base/Memory/Pointers.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Threading/Threading.h"
 
 namespace EE::RHI
 {
-    class RHICommandBuffer;
-    class RHISemaphore;
-    class RHICommandQueue;
-
-    class RHICommandBufferPool : public RHITaggedType
+    class RHICommandBufferPool : public RHITaggedType, public TSharedFromThis<RHICommandBufferPool>
     {
         friend class RHICommandQueue;
 
@@ -27,8 +23,8 @@ namespace EE::RHI
         RHICommandBufferPool( RHICommandBufferPool&& ) = default;
         RHICommandBufferPool& operator=( RHICommandBufferPool&& ) = default;
 
-        virtual RHICommandBuffer* Allocate() = 0;
-        virtual void Restore( RHICommandBuffer* ) = 0;
+        virtual RHICommandBufferRef Allocate() = 0;
+        virtual void Restore( RHICommandBufferRef& ) = 0;
 
         // Reset whole command buffer pool for next command allocation and record.
         virtual void Reset() = 0;
@@ -37,7 +33,7 @@ namespace EE::RHI
         virtual void WaitUntilAllCommandsFinished() = 0;
 
         // Submit command buffer 
-        virtual void Submit( RHICommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages ) = 0;
+        virtual void Submit( RHICommandBufferRef& pCommandBuffer, TSpan<RHI::RHISemaphoreRef&> pWaitSemaphores, TSpan<RHI::RHISemaphoreRef&> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages ) = 0;
 
     public:
 
@@ -51,10 +47,6 @@ namespace EE::RHI
 
     protected:
 
-        RHI::RHICommandQueue*                   m_pCommandQueue = nullptr;
+        RHI::RHICommandQueueRef                 m_pCommandQueue;
     };
-
-    //-------------------------------------------------------------------------
-
-    using RHICommandBufferRef = TTSSharedPtr<RHICommandBuffer>;
 }

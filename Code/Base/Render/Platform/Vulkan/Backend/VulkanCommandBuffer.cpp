@@ -87,7 +87,7 @@ namespace EE::Render
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
-        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews )
+        bool VulkanCommandBuffer::BeginRenderPass( RHI::RHIRenderPassRef& pRenderPass, RHI::RHIFramebufferRef& pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews )
         {
             EE_ASSERT( pFramebuffer );
             EE_ASSERT( renderArea.IsValid() );
@@ -95,7 +95,7 @@ namespace EE::Render
 
             if ( pRenderPass )
             {
-                if ( auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
+                if ( auto pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
                 {
                     TFixedVector<VkImageView, RHI::RHIRenderPassCreateDesc::NumMaxAttachmentCount> views;
                     views.reserve( textureViews.size() );
@@ -155,7 +155,7 @@ namespace EE::Render
             return false;
         }
 
-        bool VulkanCommandBuffer::BeginRenderPassWithClearValue( RHI::RHIRenderPass* pRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews, RHI::RenderPassClearValue const& clearValue )
+        bool VulkanCommandBuffer::BeginRenderPassWithClearValue( RHI::RHIRenderPassRef& pRenderPass, RHI::RHIFramebufferRef& pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews, RHI::RenderPassClearValue const& clearValue )
         {
             EE_ASSERT( pFramebuffer );
             EE_ASSERT( renderArea.IsValid() );
@@ -163,7 +163,7 @@ namespace EE::Render
 
             if ( pRenderPass )
             {
-                if ( auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
+                if ( auto pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( pRenderPass ) )
                 {
                     Float4 const clearColor = clearValue.m_clearColor.ToFloat4();
                     VkClearValue vkClearValue;
@@ -267,7 +267,7 @@ namespace EE::Render
         // Resource Binding
         //-------------------------------------------------------------------------
 
-        void VulkanCommandBuffer::BindPipelineState( RHI::RHIPipelineState* pRhiPipelineState )
+        void VulkanCommandBuffer::BindPipelineState( RHI::RHIPipelineRef& pRhiPipelineState )
         {
             if ( pRhiPipelineState )
             {
@@ -276,13 +276,13 @@ namespace EE::Render
                 VulkanCommonPipelineStates const* pVkPipelineState = nullptr;
                 if ( pipelineType == RHI::RHIPipelineType::Raster )
                 {
-                    auto* pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pRhiPipelineState );
+                    auto pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pRhiPipelineState );
                     EE_ASSERT( pVkRasterPipelineState );
                     pVkPipelineState = &pVkRasterPipelineState->m_pipelineState;
                 }
                 else if ( pipelineType == RHI::RHIPipelineType::Compute )
                 {
-                    auto* pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pRhiPipelineState );
+                    auto pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pRhiPipelineState );
                     EE_ASSERT( pVkComputePipelineState );
                     pVkPipelineState = &pVkComputePipelineState->m_pipelineState;
                 }
@@ -296,7 +296,7 @@ namespace EE::Render
             }
         }
 
-        void VulkanCommandBuffer::BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings )
+        void VulkanCommandBuffer::BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineRef const& pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings )
         {
             static VkDescriptorSet lastBoundVkDescriptorSet = nullptr;
 
@@ -310,14 +310,14 @@ namespace EE::Render
             VulkanCommonPipelineStates const* pVkPipelineState = nullptr;
             if ( pipelineType == RHI::RHIPipelineType::Raster )
             {
-                auto* pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+                auto pVkRasterPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
                 EE_ASSERT( pVkRasterPipelineState );
                 pVkPipelineInfo = &pVkRasterPipelineState->m_pipelineInfo;
                 pVkPipelineState = &pVkRasterPipelineState->m_pipelineState;
             }
             else if ( pipelineType == RHI::RHIPipelineType::Compute )
             {
-                auto* pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+                auto pVkComputePipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
                 EE_ASSERT( pVkComputePipelineState );
                 pVkPipelineInfo = &pVkComputePipelineState->m_pipelineInfo;
                 pVkPipelineState = &pVkComputePipelineState->m_pipelineState;
@@ -339,8 +339,7 @@ namespace EE::Render
             lastBoundVkDescriptorSet = vkSet;
 
             EE_ASSERT( m_pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
 
             TInlineVector<uint32_t, 4> dynOffsets;
             size_t const setHashValue = hash.GetHash();
@@ -361,15 +360,15 @@ namespace EE::Render
             );
         }
 
-        void VulkanCommandBuffer::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer const*> pVertexBuffers, uint32_t offset )
+        void VulkanCommandBuffer::BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBufferRef const&> pVertexBuffers, uint32_t offset /*= 0 */ )
         {
             VkDeviceSize const bufferOffset = static_cast<VkDeviceSize>( offset );
             uint32_t const bindingCount = static_cast<uint32_t>( pVertexBuffers.size() );
 
             TInlineVector<VkBuffer, 8> pVkBuffers;
-            for ( auto const* pVertexBuffer : pVertexBuffers )
+            for ( RHI::RHIBufferRef const& pVertexBuffer : pVertexBuffers )
             {
-                if ( auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pVertexBuffer ) )
+                if ( auto pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pVertexBuffer ) )
                 {
                     pVkBuffers.push_back( pVkBuffer->m_pHandle );
                 }
@@ -381,16 +380,16 @@ namespace EE::Render
             }
         }
 
-        void VulkanCommandBuffer::BindIndexBuffer( RHI::RHIBuffer const* pIndexBuffer, uint32_t offset )
+        void VulkanCommandBuffer::BindIndexBuffer( RHI::RHIBufferRef const& pIndexBuffer, uint32_t offset /*= 0 */ )
         {
             VkDeviceSize bufferOffset = static_cast<VkDeviceSize>( offset );
-            if ( auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pIndexBuffer ) )
+            if ( auto pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pIndexBuffer ) )
             {
                 vkCmdBindIndexBuffer( m_pHandle, pVkBuffer->m_pHandle, bufferOffset, VK_INDEX_TYPE_UINT32 );
             }
         }
 
-        void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
+        void VulkanCommandBuffer::UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineRef const& pPipelineState, RHI::RHIPipelineBinding const& rhiBinding )
         {
             EE_ASSERT( pPipelineState );
 
@@ -399,13 +398,13 @@ namespace EE::Render
             VulkanCommonPipelineInfo const* pVkPipelineInfo = nullptr;
             if ( pipelineType == RHI::RHIPipelineType::Raster )
             {
-                auto* pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
+                auto pVkPipelineState = RHI::RHIDowncast<VulkanRasterPipelineState>( pPipelineState );
                 EE_ASSERT( pVkPipelineState );
                 pVkPipelineInfo = &pVkPipelineState->m_pipelineInfo;
             }
             else if ( pipelineType == RHI::RHIPipelineType::Compute )
             {
-                auto* pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+                auto pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
                 EE_ASSERT( pVkPipelineState );
                 pVkPipelineInfo = &pVkPipelineState->m_pipelineInfo;
             }
@@ -430,8 +429,7 @@ namespace EE::Render
             }
 
             EE_ASSERT( m_pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
 
             TSInlineList<VkDescriptorBufferInfo, 8> bufferInfos;
             TSInlineList<VkDescriptorImageInfo, 8> textureInfos;
@@ -453,9 +451,9 @@ namespace EE::Render
             EE_UNIMPLEMENTED_FUNCTION();
         }
 
-        void VulkanCommandBuffer::ClearDepthStencil( RHI::RHITexture* pTexture, RHI::TextureSubresourceRange range, RHI::ETextureLayout currentLayout, float depthValue, uint32_t stencil )
+        void VulkanCommandBuffer::ClearDepthStencil( RHI::RHITextureRef& pTexture, RHI::TextureSubresourceRange range, RHI::ETextureLayout currentLayout, float depthValue, uint32_t stencil )
         {
-            if ( auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture ) )
+            if ( auto pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture ) )
             {
                 if ( !pVkTexture->GetDesc().m_usage.IsFlagSet( RHI::ETextureUsage::DepthStencil ) )
                 {
@@ -519,12 +517,12 @@ namespace EE::Render
         // Resource Copying
         //-------------------------------------------------------------------------
 
-        void VulkanCommandBuffer::CopyBufferToBuffer( RHI::RHIBuffer* pSrcBuffer, RHI::RHIBuffer* pDstBuffer )
+        void VulkanCommandBuffer::CopyBufferToBuffer( RHI::RHIBufferRef& pSrcBuffer, RHI::RHIBufferRef& pDstBuffer )
         {
             EE_ASSERT( pSrcBuffer->GetDesc().m_desireSize == pDstBuffer->GetDesc().m_desireSize );
 
-            auto* pVkSrcBuffer = RHI::RHIDowncast<VulkanBuffer>( pSrcBuffer );
-            auto* pVkDstBuffer = RHI::RHIDowncast<VulkanBuffer>( pDstBuffer );
+            auto pVkSrcBuffer = RHI::RHIDowncast<VulkanBuffer>( pSrcBuffer );
+            auto pVkDstBuffer = RHI::RHIDowncast<VulkanBuffer>( pDstBuffer );
             EE_ASSERT( pVkSrcBuffer );
             EE_ASSERT( pVkDstBuffer );
 
@@ -582,7 +580,7 @@ namespace EE::Render
             );
         }
 
-        void VulkanCommandBuffer::CopyBufferToTexture( RHI::RHITexture* pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef )
+        void VulkanCommandBuffer::CopyBufferToTexture( RHI::RHITextureRef& pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef )
         {
             EE_ASSERT( pDstTexture );
 
@@ -715,9 +713,9 @@ namespace EE::Render
                     1, &barrier
                 );
 
-                auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( subresourceRef.m_pStagingBuffer );
+                auto pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( subresourceRef.m_pStagingBuffer );
                 EE_ASSERT( pVkBuffer );
-                auto* pVkDstTexture = RHI::RHIDowncast<VulkanTexture>( pDstTexture );
+                auto pVkDstTexture = RHI::RHIDowncast<VulkanTexture>( pDstTexture );
                 EE_ASSERT( pVkDstTexture );
 
                 vkCmdCopyBufferToImage(
@@ -970,8 +968,8 @@ namespace EE::Render
 
         VkBufferBarrierTransition VulkanCommandBuffer::GetBufferBarrierTransition( RHI::BufferBarrier const& bufferBarrier )
         {
-            auto* pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( bufferBarrier.m_pRhiBuffer );
-            EE_ASSERT( pVkBuffer != nullptr );
+            auto pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( bufferBarrier.m_pRhiBuffer );
+            EE_ASSERT( pVkBuffer.IsValid() );
 
             VkBufferBarrierTransition barrier = {};
             barrier.m_srcStage = VkFlags( 0 );
@@ -1009,7 +1007,7 @@ namespace EE::Render
                 // what stage this resource is used in previous stage
                 barrier.m_dstStage |= accessInfo.m_stageMask;
 
-                // if write access happend before, it must be visible to the dst access.
+                // if write access happened before, it must be visible to the dst access.
                 // (i.e. RAW (Read-After-Write) operation or WAW)
                 if ( barrier.m_barrier.srcAccessMask != VkFlags( 0 ) )
                 {
@@ -1033,8 +1031,8 @@ namespace EE::Render
 
         VkTextureBarrierTransition VulkanCommandBuffer::GetTextureBarrierTransition( RHI::TextureBarrier const& textureBarrier )
         {
-            auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( textureBarrier.m_pRhiTexture );
-            EE_ASSERT( pVkTexture != nullptr );
+            auto pVkTexture = RHI::RHIDowncast<VulkanTexture>( textureBarrier.m_pRhiTexture );
+            EE_ASSERT( pVkTexture.IsValid() );
 
             VkTextureBarrierTransition barrier = {};
             barrier.m_srcStage = VkFlags( 0 );
@@ -1322,8 +1320,7 @@ namespace EE::Render
             }
 
             EE_ASSERT( m_pDevice );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
 
             if ( vkPipelineInfo.m_setDescriptorLayouts.empty() || vkPipelineInfo.m_setDescriptorLayouts.size() <= hash.m_set )
             {
@@ -1365,7 +1362,7 @@ namespace EE::Render
 		{
             m_updatedDescriptorSets.clear();
 
-            if ( auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice ) )
+            if ( auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice ) )
             {
                 for ( auto& syncEvent : m_syncPoints )
                 {

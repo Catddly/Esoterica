@@ -30,7 +30,7 @@ namespace EE::RHI
         virtual ~IRHIResourceWrapper() = default;
 
     public:
-
+       
         struct ResourceCreateParameters
         {
         };

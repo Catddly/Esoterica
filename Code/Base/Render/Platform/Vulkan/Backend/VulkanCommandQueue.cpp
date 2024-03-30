@@ -10,12 +10,13 @@ namespace EE::Render
 {
     namespace Backend
     {
-        VulkanCommandQueue::VulkanCommandQueue( VulkanDevice* pDevice, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex )
+        VulkanCommandQueue::VulkanCommandQueue( RHI::RHIDeviceRef& pDevice, RHI::CommandQueueType type, QueueFamily const& queueFamily, uint32_t queueIndex )
             : RHI::RHICommandQueue( RHI::ERHIType::Vulkan ), m_pDevice( pDevice ), m_queueFamily( queueFamily ), m_queueIndex( queueIndex )
         {
             EE_ASSERT( queueIndex < queueFamily.m_props.queueCount );
 
-            vkGetDeviceQueue( m_pDevice->m_pHandle, queueFamily.m_index, queueIndex, &m_pHandle );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( m_pDevice );
+            vkGetDeviceQueue( pVkDevice->m_pHandle, queueFamily.m_index, queueIndex, &m_pHandle );
 
             if ( type == RHI::CommandQueueType::Graphic && queueFamily.IsGraphicQueue() )
             {
@@ -69,11 +70,9 @@ namespace EE::Render
                 signalSemaphores.reserve( task.m_pSignalSemaphores.size() );
                 waitDstStages.reserve( task.m_waitStages.size() );
 
-                if ( auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( task.m_pCommandBuffer ) )
+                if ( auto pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( task.m_pCommandBuffer ) )
                 {
                     EE_ASSERT( !pVkCommandBuffer->IsRecording() );
-
-                    auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
 
                     if ( pVkCommandBuffer->m_sync.IsValid() )
                     {
@@ -89,7 +88,7 @@ namespace EE::Render
                     {
                         for ( auto& pWaitSemaphore : task.m_pWaitSemaphores )
                         {
-                            if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pWaitSemaphore ) )
+                            if ( auto pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pWaitSemaphore ) )
                             {
                                 waitSemaphores.push_back( pVkSemaphore->m_pHandle );
                             }
@@ -108,7 +107,7 @@ namespace EE::Render
                     {
                         for ( auto& pSignalSemaphore : task.m_pSignalSemaphores )
                         {
-                            if ( auto* pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pSignalSemaphore ) )
+                            if ( auto pVkSemaphore = RHI::RHIDowncast<VulkanSemaphore>( pSignalSemaphore ) )
                             {
                                 signalSemaphores.push_back( pVkSemaphore->m_pHandle );
                             }

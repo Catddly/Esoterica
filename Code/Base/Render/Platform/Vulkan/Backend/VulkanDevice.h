@@ -22,19 +22,6 @@
 
 #include <vulkan/vulkan_core.h>
 
-namespace EE::RHI
-{
-    class RHIShader;
-    class RHIBuffer;
-    class RHITexture;
-    class RHISemaphore;
-
-    class RHICommandBuffer;
-    class RHICommandQueue;
-}
-
-//-------------------------------------------------------------------------
-
 namespace EE::Render
 {
 	namespace Backend
@@ -98,7 +85,7 @@ namespace EE::Render
 
         public:
 
-            inline TEventHandle<RHI::RHITexture*> OnSwapchainImageDestroyed() { return m_onSwapchainImageDestroyedEvent; }
+            inline TEventHandle<RHI::RHITextureRef> OnSwapchainImageDestroyed() { return m_onSwapchainImageDestroyedEvent; }
 
 		public:
 
@@ -107,48 +94,48 @@ namespace EE::Render
 
             inline virtual void WaitUntilIdle() override;
 
-            virtual RHI::RHICommandBuffer* AllocateCommandBuffer() override;
-            inline virtual RHI::RHICommandQueue* GetMainGraphicCommandQueue() override;
+            virtual RHI::RHICommandBufferRef AllocateCommandBuffer() override;
+            inline virtual RHI::RHICommandQueueRef GetMainGraphicCommandQueue() override;
 
-            virtual RHI::RHICommandBuffer* GetImmediateGraphicCommandBuffer() override;
-            virtual RHI::RHICommandBuffer* GetImmediateTransferCommandBuffer() override;
+            virtual RHI::RHICommandBufferRef GetImmediateGraphicCommandBuffer() override;
+            virtual RHI::RHICommandBufferRef GetImmediateTransferCommandBuffer() override;
 
-            virtual bool BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
-            virtual void EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer ) override;
+            virtual bool BeginCommandBuffer( RHI::RHICommandBufferRef& pCommandBuffer ) override;
+            virtual void EndCommandBuffer( RHI::RHICommandBufferRef& pCommandBuffer ) override;
 
             virtual void SubmitCommandBuffer(
-                RHI::RHICommandBuffer* pCommandBuffer,
-                TSpan<RHI::RHISemaphore*> pWaitSemaphores,
-                TSpan<RHI::RHISemaphore*> pSignalSemaphores,
+                RHI::RHICommandBufferRef& pCommandBuffer,
+                TSpan<RHI::RHISemaphoreRef&> pWaitSemaphores,
+                TSpan<RHI::RHISemaphoreRef&> pSignalSemaphores,
                 TSpan<Render::PipelineStage> waitStages
             ) override;
 
             //-------------------------------------------------------------------------
 
-            virtual RHI::RHITexture* CreateTexture( RHI::RHITextureCreateDesc const& createDesc ) override;
-            virtual void             DestroyTexture( RHI::RHITexture* pTexture ) override;
+            virtual RHI::RHITextureRef CreateTexture( RHI::RHITextureCreateDesc const& createDesc ) override;
+            virtual void               DestroyTexture( RHI::RHITextureRef& pTexture ) override;
 
-            virtual RHI::RHIBuffer* CreateBuffer( RHI::RHIBufferCreateDesc const& createDesc ) override;
-            virtual void            DestroyBuffer( RHI::RHIBuffer* pBuffer ) override;
+            virtual RHI::RHIBufferRef CreateBuffer( RHI::RHIBufferCreateDesc const& createDesc ) override;
+            virtual void              DestroyBuffer( RHI::RHIBufferRef& pBuffer ) override;
 
-            virtual RHI::RHIShader* CreateShader( RHI::RHIShaderCreateDesc const& createDesc ) override;
-            virtual void            DestroyShader( RHI::RHIShader* pShader ) override;
+            virtual RHI::RHIShaderRef CreateShader( RHI::RHIShaderCreateDesc const& createDesc ) override;
+            virtual void              DestroyShader( RHI::RHIShaderRef& pShader ) override;
 
-            virtual RHI::RHISemaphore* CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc const& createDesc ) override;
-            virtual void               DestroySyncSemaphore( RHI::RHISemaphore* pSemaphore ) override;
-
-            //-------------------------------------------------------------------------
-
-            virtual RHI::RHIRenderPass* CreateRenderPass( RHI::RHIRenderPassCreateDesc const& createDesc) override;
-            virtual void                DestroyRenderPass( RHI::RHIRenderPass* pRenderPass ) override;
+            virtual RHI::RHISemaphoreRef CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc const& createDesc ) override;
+            virtual void                 DestroySyncSemaphore( RHI::RHISemaphoreRef& pSemaphore ) override;
 
             //-------------------------------------------------------------------------
 
-            virtual RHI::RHIPipelineState* CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) override;
-            virtual void                   DestroyRasterPipelineState( RHI::RHIPipelineState* pPipelineState ) override;
+            virtual RHI::RHIRenderPassRef CreateRenderPass( RHI::RHIRenderPassCreateDesc const& createDesc) override;
+            virtual void                  DestroyRenderPass( RHI::RHIRenderPassRef& pRenderPass ) override;
 
-            virtual RHI::RHIPipelineState* CreateComputePipelineState( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) override;
-            virtual void                   DestroyComputePipelineState( RHI::RHIPipelineState* pPipelineState ) override;
+            //-------------------------------------------------------------------------
+
+            virtual RHI::RHIPipelineRef CreateRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) override;
+            virtual void                DestroyRasterPipeline( RHI::RHIPipelineRef& pPipelineState ) override;
+
+            virtual RHI::RHIPipelineRef CreateComputePipeline( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) override;
+            virtual void                DestroyComputePipeline( RHI::RHIPipelineRef& pPipelineState ) override;
 
 		private:
 
@@ -172,8 +159,8 @@ namespace EE::Render
             // Resource
             //-------------------------------------------------------------------------
 
-            void ImmediateUploadBufferData( VulkanBuffer* pBuffer, RHI::RHIBufferUploadData const& uploadData );
-            void ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureBufferData const& uploadData );
+            void ImmediateUploadBufferData( RHI::RHIBufferRef& pBuffer, RHI::RHIBufferUploadData const& uploadData );
+            void ImmediateUploadTextureData( RHI::RHIDowncastRawPointerGuard<VulkanTexture>& pTexture, RHI::RHITextureBufferData const& uploadData );
 
             // Pipeline State
             //-------------------------------------------------------------------------
@@ -213,17 +200,17 @@ namespace EE::Render
 			VulkanPhysicalDevice				            m_physicalDevice;
             bool                                            m_frameExecuting = false;
 
-            TEvent<RHI::RHITexture*>                        m_onSwapchainImageDestroyedEvent;
+            TEvent<RHI::RHITextureRef>                      m_onSwapchainImageDestroyedEvent;
 
-			VulkanCommandQueue*							    m_pGlobalGraphicQueue = nullptr;
-			VulkanCommandQueue*							    m_pGlobalTransferQueue = nullptr;
-            VulkanCommandBufferPool*                        m_commandBufferPool[NumDeviceFramebufferCount];
+			RHI::RHICommandQueueRef							m_pGlobalGraphicQueue = nullptr;
+			RHI::RHICommandQueueRef							m_pGlobalTransferQueue = nullptr;
+            RHI::RHICommandBufferPoolRef                    m_commandBufferPool[NumDeviceFramebufferCount];
 
             //VulkanCommandBufferPool*                                    m_immediateGraphicCommandBufferPool;
             //VulkanCommandBufferPool*                                    m_immediateTransferCommandBufferPool;
 
-            Threading::Mutex                                            m_graphicCommandPoolMutex;
-            THashMap<Threading::ThreadID, VulkanCommandBufferPool*>     m_immediateGraphicThreadCommandPools;
+            Threading::Mutex                                                m_graphicCommandPoolMutex;
+            THashMap<Threading::ThreadID, RHI::RHICommandBufferPoolRef>     m_immediateGraphicThreadCommandPools;
 
             VulkanMemoryAllocator                           m_globalMemoryAllcator;
 

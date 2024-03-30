@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Base/_Module/API.h"
+#include "../RHIObject.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Set.h"
@@ -971,11 +972,11 @@ namespace EE::RHI
     {
         virtual ~IRHICPUGPUSyncImpl() = default;
 
-        virtual void* Create( RHIDevice* pDevice, bool bSignaled = false ) = 0;
-        virtual void  Destroy( RHIDevice* pDevice, void*& pCPUGPUSync ) = 0;
+        virtual void* Create( RHIDeviceRef& pDevice, bool bSignaled = false ) = 0;
+        virtual void  Destroy( RHIDeviceRef& pDevice, void*& pCPUGPUSync ) = 0;
 
-        virtual void  Reset( RHIDevice* pDevice, void* pCPUGPUSync ) = 0;
-        virtual void  WaitFor( RHIDevice* pDevice, void* pCPUGPUSync, uint64_t waitTime = std::numeric_limits<uint64_t>::max() ) = 0;
+        virtual void  Reset( RHIDeviceRef& pDevice, void* pCPUGPUSync ) = 0;
+        virtual void  WaitFor( RHIDeviceRef& pDevice, void* pCPUGPUSync, uint64_t waitTime = std::numeric_limits<uint64_t>::max() ) = 0;
     };
 
     // Used to synchronize CPU and GPU.
@@ -987,7 +988,7 @@ namespace EE::RHI
 
     public:
 
-        inline static RHICPUGPUSync Create( RHIDevice* pDevice, IRHICPUGPUSyncImpl* pImpl, bool bSignaled = false )
+        inline static RHICPUGPUSync Create( RHIDeviceRef& pDevice, IRHICPUGPUSyncImpl* pImpl, bool bSignaled = false )
         {
             EE_ASSERT( pImpl );
             RHICPUGPUSync sync;
@@ -995,19 +996,19 @@ namespace EE::RHI
             sync.m_pHandle = pImpl->Create( pDevice, bSignaled );
             return sync;
         }
-        inline static void Destroy( RHIDevice* pDevice, RHICPUGPUSync& sync )
+        inline static void Destroy( RHIDeviceRef& pDevice, RHICPUGPUSync& sync )
         {
             EE_ASSERT( sync.m_pImpl );
             sync.m_pImpl->Destroy( pDevice, sync.m_pHandle );
         }
 
-        inline void Reset( RHIDevice* pDevice )
+        inline void Reset( RHIDeviceRef& pDevice )
         {
             EE_ASSERT( m_pImpl );
             m_pImpl->Reset( pDevice, m_pHandle );
         }
 
-        inline void WaitFor( RHIDevice* pDevice )
+        inline void WaitFor( RHIDeviceRef& pDevice )
         {
             EE_ASSERT( m_pImpl );
             m_pImpl->WaitFor( pDevice, m_pHandle );

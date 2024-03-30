@@ -116,9 +116,9 @@ namespace EE::Render
             // Pipeline Barrier
             //-------------------------------------------------------------------------
 
-            virtual bool BeginRenderPass( RHI::RHIRenderPass* pRhiRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews ) override;
+            virtual bool BeginRenderPass( RHI::RHIRenderPassRef& pRhiRenderPass, RHI::RHIFramebufferRef& pFramebuffer, RHI::RenderArea const& renderArea, TSpan<RHI::RHITextureView const> textureViews ) override;
             virtual bool BeginRenderPassWithClearValue(
-                RHI::RHIRenderPass* pRhiRenderPass, RHI::RHIFramebuffer* pFramebuffer, RHI::RenderArea const& renderArea,
+                RHI::RHIRenderPassRef& pRhiRenderPass, RHI::RHIFramebufferRef& pFramebuffer, RHI::RenderArea const& renderArea,
                 TSpan<RHI::RHITextureView const> textureViews,
                 RHI::RenderPassClearValue const& clearValue
             ) override;
@@ -133,19 +133,19 @@ namespace EE::Render
             // Resource Binding
             //-------------------------------------------------------------------------
 
-            virtual void BindPipelineState( RHI::RHIPipelineState* pRhiPipelineState ) override;
-            virtual void BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineState const* pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings ) override;
+            virtual void BindPipelineState( RHI::RHIPipelineRef& pRhiPipelineState ) override;
+            virtual void BindDescriptorSetInPlace( uint32_t set, RHI::RHIPipelineRef const& pPipelineState, TSpan<RHI::RHIPipelineBinding const> const& bindings) override;
 
-            virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBuffer const*> pVertexBuffers, uint32_t offset = 0 ) override;
-            virtual void BindIndexBuffer( RHI::RHIBuffer const* pIndexBuffer, uint32_t offset = 0 ) override;
+            virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHI::RHIBufferRef const&> pVertexBuffers, uint32_t offset = 0 ) override;
+            virtual void BindIndexBuffer( RHI::RHIBufferRef const& pIndexBuffer, uint32_t offset = 0 ) override;
 
-            virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineState const* pPipelineState, RHI::RHIPipelineBinding const& rhiBinding ) override;
+            virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHI::RHIPipelineRef const& pPipelineState, RHI::RHIPipelineBinding const& rhiBinding ) override;
 
             // State Settings
             //-------------------------------------------------------------------------
 
             virtual void ClearColor( Color color ) override;
-            virtual void ClearDepthStencil( RHI::RHITexture* pTexture, RHI::TextureSubresourceRange range, RHI::ETextureLayout currentLayout, float depthValue, uint32_t stencil ) override;
+            virtual void ClearDepthStencil( RHI::RHITextureRef& pTexture, RHI::TextureSubresourceRange range, RHI::ETextureLayout currentLayout, float depthValue, uint32_t stencil ) override;
 
             virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
             virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) override;
@@ -153,8 +153,8 @@ namespace EE::Render
             // Resource Copying
             //-------------------------------------------------------------------------
 
-            virtual void CopyBufferToBuffer( RHI::RHIBuffer* pSrcBuffer, RHI::RHIBuffer* pDstBuffer ) override;
-            virtual void CopyBufferToTexture( RHI::RHITexture* pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef ) override;
+            virtual void CopyBufferToBuffer( RHI::RHIBufferRef& pSrcBuffer, RHI::RHIBufferRef& pDstBuffer ) override;
+            virtual void CopyBufferToTexture( RHI::RHITextureRef& pDstTexture, RHI::RenderResourceBarrierState dstBarrier, TSpan<RHI::TextureSubresourceRangeUploadRef> const uploadDataRef ) override;
 
             //-------------------------------------------------------------------------
 
@@ -199,7 +199,7 @@ namespace EE::Render
             static TInlineVector<VkBufferMemoryBarrier, 32>             m_sBufferBarriers;
             static TInlineVector<VkImageMemoryBarrier, 32>              m_sTextureBarriers;
 			
-            RHI::RHIDevice*                                             m_pDevice = nullptr;
+            RHI::RHIDeviceRef                                           m_pDevice;
 
             VkCommandBuffer					                            m_pHandle = nullptr;
 

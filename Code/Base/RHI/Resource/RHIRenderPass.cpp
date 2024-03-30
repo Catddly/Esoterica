@@ -14,7 +14,7 @@ namespace EE::RHI
 
     //-------------------------------------------------------------------------
 
-    bool RHIFramebufferCache::Initialize( RHIRenderPass* pRenderPass, RHIRenderPassCreateDesc const& createDesc )
+    bool RHIFramebufferCache::Initialize( RHIRenderPassRef& pRenderPass, RHIRenderPassCreateDesc const& createDesc )
     {
         if ( !m_bIsInitialized && pRenderPass != nullptr )
         {
@@ -41,7 +41,7 @@ namespace EE::RHI
         return false;
     }
 
-    void RHIFramebufferCache::ClearUp( RHIDevice* pDevice )
+    void RHIFramebufferCache::ClearUp( RHIDeviceRef& pDevice )
     {
         if ( pDevice != nullptr && m_bIsInitialized )
         {
@@ -61,7 +61,7 @@ namespace EE::RHI
         }
     }
 
-    RHIFramebuffer* RHIFramebufferCache::GetOrCreate( RHIDevice* pDevice, RHIFramebufferCacheKey const& key )
+    RHIFramebufferRef RHIFramebufferCache::GetOrCreate( RHIDeviceRef& pDevice, RHIFramebufferCacheKey const& key )
     {
         EE_ASSERT( m_bIsInitialized );
         EE_ASSERT( m_attachmentDescs.size() == key.m_attachmentHashs.size() );
@@ -73,7 +73,7 @@ namespace EE::RHI
             return iter->second;
         }
 
-        auto* pFramebuffer = CreateFramebuffer( pDevice, key );
+        auto pFramebuffer = CreateFramebuffer( pDevice, key );
         if ( pFramebuffer )
         {
             m_cachedFrameBuffers.insert( { key, pFramebuffer } );

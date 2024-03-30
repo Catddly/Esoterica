@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Base/Types/HashMap.h"
-#include "Base/Memory/Pointers.h"
+#include "../RHIObject.h"
 #include "../RHITaggedType.h"
 #include "RHIResource.h"
 #include "RHIResourceCreationCommons.h"
@@ -38,25 +38,25 @@ namespace EE::RHI
 
     public:
 
-        bool Initialize( RHIRenderPass* pRenderPass, RHIRenderPassCreateDesc const& createDesc );
+        bool Initialize( RHIRenderPassRef& pRenderPass, RHIRenderPassCreateDesc const& createDesc );
         // After clear up, this framebuffer cache is invalid.
         // You need to call Initialize to make it valid.
-        void ClearUp( RHIDevice* pDevice );
+        void ClearUp( RHIDeviceRef& pDevice );
 
-        RHIFramebuffer* GetOrCreate( RHIDevice* pDevice, RHIFramebufferCacheKey const& key );
+        RHIFramebufferRef GetOrCreate( RHIDeviceRef& pDevice, RHIFramebufferCacheKey const& key );
 
         inline uint32_t GetColorAttachmentCount() const { return m_colorAttachmentCount; }
 
     protected:
 
-        virtual RHIFramebuffer* CreateFramebuffer( RHIDevice* pDevice, RHIFramebufferCacheKey const& key ) = 0;
-        virtual void            DestroyFramebuffer( RHIDevice* pDevice, RHIFramebuffer* pFramebuffer ) = 0;
+        virtual RHIFramebufferRef CreateFramebuffer( RHIDeviceRef& pDevice, RHIFramebufferCacheKey const& key ) = 0;
+        virtual void              DestroyFramebuffer( RHIDeviceRef& pDevice, RHIFramebufferRef& pFramebuffer ) = 0;
 
     protected:
 
-        THashMap<RHIFramebufferCacheKey, RHIFramebuffer*>   m_cachedFrameBuffers;
+        THashMap<RHIFramebufferCacheKey, RHIFramebufferRef> m_cachedFrameBuffers;
         RHIRenderPassAttachmentDescs                        m_attachmentDescs;
-        RHIRenderPass*                                      m_pRenderPass = nullptr;
+        RHIRenderPassRef                                    m_pRenderPass;
         uint32_t                                            m_colorAttachmentCount = 0;
 
         bool                                                m_bIsInitialized = false;
@@ -71,7 +71,7 @@ namespace EE::RHI
         {}
         virtual ~RHIRenderPass() = default;
 
-        inline RHIFramebuffer* GetOrCreateFramebuffer( RHIDevice* pDevice, RHIFramebufferCacheKey const& key )
+        inline RHIFramebufferRef GetOrCreateFramebuffer( RHIDeviceRef& pDevice, RHIFramebufferCacheKey const& key )
         {
             EE_ASSERT( m_pFramebufferCache );
             return m_pFramebufferCache->GetOrCreate( pDevice, key );
@@ -82,8 +82,4 @@ namespace EE::RHI
         RHIFramebufferCache*                m_pFramebufferCache = nullptr;
         RHIRenderPassCreateDesc             m_desc;
     };
-    
-    //-------------------------------------------------------------------------
-
-    using RHIRenderPassRef = TTSSharedPtr<RHIRenderPass>;
 }

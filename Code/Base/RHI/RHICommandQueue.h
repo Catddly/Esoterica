@@ -23,10 +23,10 @@ namespace EE::RHI
     // It is now programmer's job to keep this resources alive until the command is submitted and finished.
     struct CommandQueueRenderCommand
     {
-        RHI::RHICommandBuffer*              m_pCommandBuffer;
-        TVector<RHI::RHISemaphore*>         m_pWaitSemaphores;
-        TVector<RHI::RHISemaphore*>         m_pSignalSemaphores;
-        TVector<Render::PipelineStage>      m_waitStages;
+        RHI::RHICommandBufferRef                m_pCommandBuffer;
+        TVector<RHI::RHISemaphoreRef>           m_pWaitSemaphores;
+        TVector<RHI::RHISemaphoreRef>           m_pSignalSemaphores;
+        TVector<Render::PipelineStage>          m_waitStages;
     };
 
     class RHICommandQueue : public RHITaggedType

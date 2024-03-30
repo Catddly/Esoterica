@@ -39,8 +39,8 @@ namespace EE::Render
         {
         private:
 
-            virtual RHI::RHIFramebuffer* CreateFramebuffer( RHI::RHIDevice* pDevice, RHI::RHIFramebufferCacheKey const& key ) override;
-            virtual void                 DestroyFramebuffer( RHI::RHIDevice* pDevice, RHI::RHIFramebuffer* pFramebuffer ) override;
+            virtual RHI::RHIFramebufferRef CreateFramebuffer( RHI::RHIDeviceRef& pDevice, RHI::RHIFramebufferCacheKey const& key ) override;
+            virtual void                   DestroyFramebuffer( RHI::RHIDeviceRef& pDevice, RHI::RHIFramebufferRef& pFramebuffer ) override;
         };
 
         class VulkanRenderPass : public RHI::RHIRenderPass

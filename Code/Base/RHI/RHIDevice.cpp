@@ -7,7 +7,7 @@ namespace EE::RHI
 {
     //-------------------------------------------------------------------------
 
-    void DeferReleaseQueue::ReleaseAllStaleResources( RHIDevice* pDevice )
+    void DeferReleaseQueue::ReleaseAllStaleResources( RHIDeviceRef& pDevice )
     {
         RHIDescriptorPool popPool;
         while ( m_descriptorPools.try_dequeue( popPool ) )
@@ -18,13 +18,13 @@ namespace EE::RHI
             //m_descriptorPools.pop();
         }
 
-        RHIBuffer* pPopBuffer;
+        RHIBufferRef pPopBuffer;
         while ( m_deferReleaseBuffers.try_dequeue( pPopBuffer ) )
         {
             pDevice->DestroyBuffer( pPopBuffer );
         }
 
-        RHITexture* pPopTexture;
+        RHITextureRef pPopTexture;
         while ( m_deferReleaseTextures.try_dequeue( pPopTexture ) )
         {
             pDevice->DestroyTexture( pPopTexture );

@@ -1,9 +1,8 @@
 #pragma once
 #if defined(EE_VULKAN)
 
+#include "Base/RHI/RHIObject.h"
 #include "Base/RHI/Resource/RHIResourceCreationCommons.h"
-
-namespace EE::RHI { class RHIDevice; }
 
 namespace EE::Render
 {
@@ -13,11 +12,11 @@ namespace EE::Render
         {
             ~VulkanCPUGPUSyncImpl() = default;
 
-            virtual void* Create( RHI::RHIDevice* pDevice, bool bSignaled = false ) override;
-            virtual void  Destroy( RHI::RHIDevice* pDevice, void*& pCPUGPUSync ) override;
+            virtual void* Create( RHI::RHIDeviceRef& pDevice, bool bSignaled = false ) override;
+            virtual void  Destroy( RHI::RHIDeviceRef& pDevice, void*& pCPUGPUSync ) override;
 
-            virtual void Reset( RHI::RHIDevice* pDevice, void* pCPUGPUSync ) override;
-            virtual void WaitFor( RHI::RHIDevice* pDevice, void* pCPUGPUSync, uint64_t waitTime = std::numeric_limits<uint64_t>::max() ) override;
+            virtual void Reset( RHI::RHIDeviceRef& pDevice, void* pCPUGPUSync ) override;
+            virtual void WaitFor( RHI::RHIDeviceRef& pDevice, void* pCPUGPUSync, uint64_t waitTime = std::numeric_limits<uint64_t>::max() ) override;
         };
     }
 }

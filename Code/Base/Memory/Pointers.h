@@ -36,6 +36,7 @@ namespace EE
     //-------------------------------------------------------------------------
 
     template<typename T, typename D = Memory::DefaultDeleter<T>> using TSharedPtr = eastl::shared_ptr<T>;
+    template<typename T, typename D = Memory::DefaultDeleter<T>> using TWeakPtr = eastl::weak_ptr<T>;
     template<typename T, typename D = Memory::DefaultDeleter<T>> using TUniquePtr = eastl::unique_ptr<T, D>;
 
     template <typename T, typename... Args>
@@ -49,6 +50,9 @@ namespace EE
     {
         return eastl::make_unique<T>( eastl::forward<Args>( args )... );
     }
+
+    template <typename T>
+    using TSharedFromThis = eastl::enable_shared_from_this<T>;
 
     //-------------------------------------------------------------------------
 

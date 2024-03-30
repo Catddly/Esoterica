@@ -8,7 +8,7 @@
 
 namespace EE::RHI
 {
-    template <typename TPointerType>
+    template <typename T, typename TRaw>
     class RHIDowncastRawPointerGuard
     {
     public:
@@ -25,37 +25,38 @@ namespace EE::RHI
 
         //-------------------------------------------------------------------------
 
-        TPointerType&       operator*()       { EE_ASSERT( m_pPointer ); return *m_pPointer; }
-        TPointerType const& operator*() const { EE_ASSERT( m_pPointer ); return *m_pPointer; }
+        TRaw&       operator*()       { EE_ASSERT( !m_pWeak.expired() ); return m_pRawConverted; }
+        TRaw const& operator*() const { EE_ASSERT( !m_pWeak.expired() ); return m_pRawConverted; }
 
-        TPointerType*       operator->()       { EE_ASSERT( m_pPointer ); return m_pPointer; }
-        TPointerType const* operator->() const { EE_ASSERT( m_pPointer ); return m_pPointer; }
+        TRaw*       operator->()       { EE_ASSERT( !m_pWeak.expired() ); return m_pRawConverted; }
+        TRaw const* operator->() const { EE_ASSERT( !m_pWeak.expired() ); return m_pRawConverted; }
 
         operator bool() const { return IsValid(); }
 
         //-------------------------------------------------------------------------
 
-        inline bool IsValid() const { return m_pPointer != nullptr; }
+        inline bool IsValid() const { return !m_pWeak.expired() && m_pRawConverted; }
 
     private:
 
         template <typename To, typename FromInnerType>
-        friend RHIDowncastRawPointerGuard<To> RHIDowncast( TTSSharedPtr<FromInnerType>& rhiRef );
+        friend RHIDowncastRawPointerGuard<To> RHIDowncast( TSharedPtr<FromInnerType>& rhiRef );
 
-        RHIDowncastRawPointerGuard( TPointerType* pPointer )
-            : m_pPointer( pPointer )
+        RHIDowncastRawPointerGuard( TRaw* pRaw, TSharedPtr<T> const& pPointer )
+            : m_pRawConverted( pRaw ), m_pWeak( pPointer )
         {
         }
 
     private:
 
-        TPointerType*                   m_pPointer = nullptr;
+        TRaw*                         m_pRawConverted = nullptr;
+        TWeakPtr<T>                   m_pWeak = nullptr;
     };
 
-    template <typename TPointerType>
-    RHIDowncastRawPointerGuard<TPointerType>::~RHIDowncastRawPointerGuard()
+    template <typename T, typename TRaw>
+    RHIDowncastRawPointerGuard<T, TRaw>::~RHIDowncastRawPointerGuard()
     {
-        m_pPointer = nullptr;
+        m_pRawConverted = nullptr;
     }
 
     //-------------------------------------------------------------------------
@@ -114,10 +115,18 @@ namespace EE::RHI
     //-------------------------------------------------------------------------
 
     template <typename To, typename FromInnerType>
-    RHIDowncastRawPointerGuard<To> RHIDowncast( TTSSharedPtr<FromInnerType>& rhiRef )
+    RHIDowncastRawPointerGuard<FromInnerType, To> RHIDowncast( TSharedPtr<FromInnerType>& rhiRef )
     {
         FromInnerType* pInnerPtr = rhiRef.get();
         To* pConverted = RHIDowncast<To, FromInnerType>( pInnerPtr );
-        return RHIDowncastRawPointerGuard( pConverted );
+        return RHIDowncastRawPointerGuard( pConverted, rhiRef );
+    }
+
+    template <typename To, typename FromInnerType>
+    RHIDowncastRawPointerGuard<FromInnerType, To const> RHIDowncast( TSharedPtr<FromInnerType> const& rhiRef )
+    {
+        FromInnerType const* pInnerPtr = rhiRef.get();
+        To const* pConverted = RHIDowncast<To const, FromInnerType const>( pInnerPtr );
+        return RHIDowncastRawPointerGuard( pConverted, rhiRef );
     }
 }

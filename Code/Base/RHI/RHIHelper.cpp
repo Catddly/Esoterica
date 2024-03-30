@@ -9,7 +9,7 @@ namespace EE::RHI
     {
         EE_ASSERT( pDevice );
         
-        auto* pCommandBuffer = pDevice->GetImmediateGraphicCommandBuffer();
+        auto pCommandBuffer = pDevice->GetImmediateGraphicCommandBuffer();
 
         if ( pCommandBuffer )
         {
@@ -28,7 +28,7 @@ namespace EE::RHI
     {
         EE_ASSERT( pDevice );
 
-        auto* pCommandBuffer = pDevice->GetImmediateTransferCommandBuffer();
+        auto pCommandBuffer = pDevice->GetImmediateTransferCommandBuffer();
 
         if ( pCommandBuffer )
         {

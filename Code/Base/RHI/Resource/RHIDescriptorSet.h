@@ -1,19 +1,18 @@
 #pragma once
 
+#include "../RHIObject.h"
 #include "RHIResource.h"
 #include "RHIDeferReleasable.h"
 #include "RHIResourceCreationCommons.h"
 
 namespace EE::RHI
 {
-    class RHIDevice;
-
     // RHI implementations (pure function interface)
     struct IRHIDescriptorPoolReleaseImpl
     {
         virtual ~IRHIDescriptorPoolReleaseImpl() = default;
 
-        virtual void Release( RHIDevice* pDevice, void* pSetPool ) = 0;
+        virtual void Release( RHIDeviceRef& pDevice, void* pSetPool ) = 0;
     };
 
     class DeferReleaseQueue;
@@ -37,7 +36,7 @@ namespace EE::RHI
         
         EE_BASE_API void Enqueue( DeferReleaseQueue& queue );
 
-        inline void Release( RHIDevice* pDevice )
+        inline void Release( RHIDeviceRef& pDevice )
         {
             EE_ASSERT( pDevice && m_pImpl );
             m_pImpl->Release( pDevice, m_pSetPoolHandle );

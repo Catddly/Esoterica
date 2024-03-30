@@ -10,20 +10,10 @@
 #include <vulkan/vulkan_core.h>
 #include <limits>
 
-namespace EE::RHI
-{
-    class RHISemaphore;
-}
-
 namespace EE::Render
 {
     namespace Backend
     {
-        class VulkanDevice;
-
-        class VulkanCommandBuffer;
-        class VulkanCommandQueue;
-
         class VulkanCommandBufferPool final : public RHI::RHICommandBufferPool
         {
             EE_RHI_OBJECT( Vulkan, RHICommandBufferPool )
@@ -33,7 +23,7 @@ namespace EE::Render
 
             constexpr static uint32_t NumMaxCommandBufferPerPool = 32;
 
-            using AllocatedCommandBufferArray = TVector<TFixedVector<VulkanCommandBuffer*, NumMaxCommandBufferPerPool>>;
+            using AllocatedCommandBufferArray = TVector<TFixedVector<RHI::RHICommandBufferRef, NumMaxCommandBufferPerPool>>;
 
         public:
 
@@ -41,25 +31,25 @@ namespace EE::Render
                 : RHI::RHICommandBufferPool( RHI::ERHIType::Vulkan )
             {
             }
-            VulkanCommandBufferPool( VulkanDevice* pDevice, VulkanCommandQueue* pCommandQueue );
+            VulkanCommandBufferPool( RHI::RHIDeviceRef& pDevice, RHI::RHICommandQueueRef& pCommandQueue );
             ~VulkanCommandBufferPool();
 
             //-------------------------------------------------------------------------
 
-            virtual RHI::RHICommandBuffer* Allocate() override;
-            virtual void Restore( RHI::RHICommandBuffer* pCommandBuffer ) override;
+            virtual RHI::RHICommandBufferRef Allocate() override;
+            virtual void Restore( RHI::RHICommandBufferRef& pCommandBuffer ) override;
 
             virtual void Reset() override;
 
             virtual void WaitUntilAllCommandsFinished() override;
 
-            virtual void Submit( RHI::RHICommandBuffer* pCommandBuffer, TSpan<RHI::RHISemaphore*> pWaitSemaphores, TSpan<RHI::RHISemaphore*> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages ) override;
+            virtual void Submit( RHI::RHICommandBufferRef& pCommandBuffer, TSpan<RHI::RHISemaphoreRef&> pWaitSemaphores, TSpan<RHI::RHISemaphoreRef&> pSignalSemaphores, TSpan<Render::PipelineStage> waitStages ) override;
 
         private:
 
             void CreateNewPool();
 
-            VulkanCommandBuffer* FindIdleCommandBuffer();
+            RHI::RHICommandBufferRef FindIdleCommandBuffer();
 
             inline uint32_t GetPoolAllocatedBufferCount() const;
 
@@ -67,13 +57,13 @@ namespace EE::Render
 
         private:
 
-            VulkanDevice*                           m_pDevice = nullptr;
+            RHI::RHIDeviceRef                       m_pDevice;
 
             TVector<VkCommandPool>                  m_poolHandles;
 
             AllocatedCommandBufferArray             m_allocatedCommandBuffers;
-            TVector<VulkanCommandBuffer*>           m_submittedCommandBuffers;
-            TVector<VulkanCommandBuffer*>           m_idleCommandBuffers;
+            TVector<RHI::RHICommandBufferRef>       m_submittedCommandBuffers;
+            TVector<RHI::RHICommandBufferRef>       m_idleCommandBuffers;
 
             Threading::Mutex                        m_mutex;
         };

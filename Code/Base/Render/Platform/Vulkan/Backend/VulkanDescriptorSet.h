@@ -9,7 +9,7 @@ namespace EE::Render
     {
         struct VulkanDescriptorSetReleaseImpl : public RHI::IRHIDescriptorPoolReleaseImpl
         {
-            virtual void Release( RHI::RHIDevice* pDevice, void* pSetPool ) override;
+            virtual void Release( RHI::RHIDeviceRef& pDevice, void* pSetPool ) override;
         };
     }
 }

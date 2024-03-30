@@ -1,15 +1,15 @@
 #pragma once
 
 #include "RHITaggedType.h"
+#include "RHIObject.h"
+#include "RHIResourceBinding.h"
+#include "Resource/RHITextureView.h"
+#include "Resource/RHIResourceCreationCommons.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/BitFlags.h"
 #include "Base/Types/Color.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Math/Math.h"
-#include "Base/Memory/Pointers.h"
-#include "Resource/RHITextureView.h"
-#include "Resource/RHIResourceCreationCommons.h"
-#include "Base/RHI/RHIResourceBinding.h"
 
 //-------------------------------------------------------------------------
 //	Rather than use sophisticated enum and bit flags inside vulkan or DX12
@@ -209,9 +209,6 @@ namespace EE::RHI
         RenderResourceBarrierState const*		m_pNextAccesses;
     };
 
-    class RHIBuffer;
-    class RHITexture;
-
     struct BufferBarrier
     {
         uint32_t								m_previousAccessesCount;
@@ -220,7 +217,7 @@ namespace EE::RHI
         RenderResourceBarrierState const*		m_pNextAccesses;
         uint32_t								m_srcQueueFamilyIndex;
         uint32_t								m_dstQueueFamilyIndex;
-        RHIBuffer*					            m_pRhiBuffer = nullptr;
+        RHIBufferRef					        m_pRhiBuffer;
         uint32_t								m_offset;
         uint32_t								m_size;
     };
@@ -270,7 +267,7 @@ namespace EE::RHI
     // TextureSubresourceRangeUploadRef represent a mipmap of a set of mipmap chain in a texture as subresource.
     struct TextureSubresourceRangeUploadRef
     {
-        RHIBuffer*                              m_pStagingBuffer = nullptr;
+        RHIBufferRef                            m_pStagingBuffer;
         TBitFlags<TextureAspectFlags>		    m_aspectFlags;
         uint32_t                                m_bufferBaseOffset = 0;
         uint32_t                                m_baseMipLevel = 0;
@@ -289,13 +286,9 @@ namespace EE::RHI
         TextureMemoryLayout     				m_nextLayout;
         uint32_t								m_srcQueueFamilyIndex;
         uint32_t								m_dstQueueFamilyIndex;
-        RHITexture*					            m_pRhiTexture = nullptr;
+        RHITextureRef					        m_pRhiTexture;
         TextureSubresourceRange					m_subresourceRange;
     };
-
-    class RHIRenderPass;
-    class RHIFramebuffer;
-    class RHIPipelineState;
 
     struct RenderArea
     {
@@ -320,10 +313,6 @@ namespace EE::RHI
         float                   m_depth = 1.0f; // reverse z
         uint32_t                m_stencil = 0;
     };
-
-    class RHICommandQueue;
-    class RHISemaphore;
-    class RHICommandBufferPool;
 
     struct RenderCommandSyncPoint
     {
@@ -367,8 +356,8 @@ namespace EE::RHI
         // Pipeline Barrier
         //-------------------------------------------------------------------------
 
-        virtual bool BeginRenderPass( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews ) = 0;
-        virtual bool BeginRenderPassWithClearValue( RHIRenderPass* pRhiRenderPass, RHIFramebuffer* pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews, RenderPassClearValue const& clearValue ) = 0;
+        virtual bool BeginRenderPass( RHIRenderPassRef& pRhiRenderPass, RHIFramebufferRef& pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews ) = 0;
+        virtual bool BeginRenderPassWithClearValue( RHIRenderPassRef& pRhiRenderPass, RHIFramebufferRef& pFramebuffer, RenderArea const& renderArea, TSpan<RHITextureView const> textureViews, RenderPassClearValue const& clearValue ) = 0;
         virtual void EndRenderPass() = 0;
 
         virtual void PipelineBarrier(
@@ -380,19 +369,19 @@ namespace EE::RHI
         // Resource Binding
         //-------------------------------------------------------------------------
 
-        virtual void BindPipelineState( RHIPipelineState* pRhiPipelineState ) = 0;
-        virtual void BindDescriptorSetInPlace( uint32_t set, RHIPipelineState const* pPipelineState, TSpan<RHIPipelineBinding const> const& bindings ) = 0;
+        virtual void BindPipelineState( RHIPipelineRef& pRhiPipelineState ) = 0;
+        virtual void BindDescriptorSetInPlace( uint32_t set, RHIPipelineRef const& pPipelineState, TSpan<RHIPipelineBinding const> const& bindings ) = 0;
 
-        virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHIBuffer const*> pVertexBuffers, uint32_t offset = 0 ) = 0;
-        virtual void BindIndexBuffer( RHIBuffer const* pIndexBuffer, uint32_t offset = 0 ) = 0;
+        virtual void BindVertexBuffer( uint32_t firstBinding, TSpan<RHIBufferRef const&> pVertexBuffers, uint32_t offset = 0 ) = 0;
+        virtual void BindIndexBuffer( RHIBufferRef const& pIndexBuffer, uint32_t offset = 0 ) = 0;
 
-        virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHIPipelineState const* pPipelineState, RHIPipelineBinding const& rhiBinding ) = 0;
+        virtual void UpdateDescriptorSetBinding( uint32_t set, uint32_t binding, RHIPipelineRef const& pPipelineState, RHIPipelineBinding const& rhiBinding ) = 0;
 
         // State Settings
         //-------------------------------------------------------------------------
 
         virtual void ClearColor( Color color ) = 0;
-        virtual void ClearDepthStencil( RHITexture* pTexture, TextureSubresourceRange range, ETextureLayout currentLayout, float depthValue, uint32_t stencil ) = 0;
+        virtual void ClearDepthStencil( RHITextureRef& pTexture, TextureSubresourceRange range, ETextureLayout currentLayout, float depthValue, uint32_t stencil ) = 0;
 
         virtual void SetViewport( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
         virtual void SetScissor( uint32_t width, uint32_t height, int32_t xOffset = 0, int32_t yOffset = 0 ) = 0;
@@ -400,12 +389,12 @@ namespace EE::RHI
         // Resource Copying
         //-------------------------------------------------------------------------
 
-        virtual void CopyBufferToBuffer( RHIBuffer* pSrcBuffer, RHIBuffer* pDstBuffer ) = 0;
+        virtual void CopyBufferToBuffer( RHIBufferRef& pSrcBuffer, RHIBufferRef& pDstBuffer ) = 0;
 
         // TSpan<TextureSubresourceRangeUploadRef> represent the corresponding layer of a textures.
         // TSpan<TextureSubresourceRangeUploadRef>[0] is layer 0, and [1] is layer 1...
         // if this texture has only one layer, the size of uploadDataRef should be one.
-        virtual void CopyBufferToTexture( RHITexture* pDstTexture, RenderResourceBarrierState dstBarrier, TSpan<TextureSubresourceRangeUploadRef> const uploadDataRef ) = 0;
+        virtual void CopyBufferToTexture( RHITextureRef& pDstTexture, RenderResourceBarrierState dstBarrier, TSpan<TextureSubresourceRangeUploadRef> const uploadDataRef ) = 0;
 
     protected:
 
@@ -419,7 +408,7 @@ namespace EE::RHI
 
     protected:
         
-        RHI::RHICommandBufferPool*      m_pCommandBufferPool = nullptr;
+        RHI::RHICommandBufferPoolRef    m_pCommandBufferPool;
         uint32_t                        m_pInnerPoolIndex = 0;
     };
 }

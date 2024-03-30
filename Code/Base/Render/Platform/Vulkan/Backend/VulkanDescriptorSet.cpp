@@ -7,12 +7,10 @@ namespace EE::Render
 {
     namespace Backend
     {
-        void VulkanDescriptorSetReleaseImpl::Release( RHI::RHIDevice* pDevice, void* pSetPool )
+        void VulkanDescriptorSetReleaseImpl::Release( RHI::RHIDeviceRef& pDevice, void* pSetPool )
         {
-            EE_ASSERT( pDevice );
             EE_ASSERT( pSetPool );
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
-            EE_ASSERT( pVkDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
         
             vkDestroyDescriptorPool( pVkDevice->m_pHandle, reinterpret_cast<VkDescriptorPool>( pSetPool ), nullptr );
         }

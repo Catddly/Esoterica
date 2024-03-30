@@ -37,13 +37,11 @@ namespace EE::RHI
 
     template <
         typename T,
-        typename B = typename HelperTemplates::GetRHIBaseClass<T>::Type,
         typename... Args
     >
-    inline TTSSharedPtr<B> MakeRHIObject( Args&&... args )
+    inline auto MakeRHIObject( Args&&... args )
     {
-        T* pNew = EE::New<T>( eastl::forward<Args>( args )... );
-        return TTSSharedPtr<B>( pNew );
+        return TSharedPtr( EE::New<T>( eastl::forward<Args>( args )... ) );
     }
 
     // Forward definitions
@@ -55,16 +53,36 @@ namespace EE::RHI
     class RHIBuffer;
     class RHITexture;
 
+    class RHISemaphore;
     class RHICommandQueue;
+    class RHICommandBufferPool;
     class RHICommandBuffer;
 
-    using RHIDeviceRef = TTSSharedPtr<RHIDevice>;
-    using RHISwapchainRef = TTSSharedPtr<RHISwapchain>;
+    class RHIRenderPass;
+    class RHIFramebuffer;
 
-    using RHIBufferRef = TTSSharedPtr<RHIBuffer>;
-    using RHITextureRef = TTSSharedPtr<RHITexture>;
+    class RHIShader;
+    class RHIPipelineState;
+    class RHIRasterPipelineState;
+    class RHIComputePipelineState;
 
-    using RHICommandQueueRef = TTSSharedPtr<RHICommandQueue>;
-    using RHICommandBufferRef = TTSSharedPtr<RHICommandBuffer>;
+    using RHIDeviceRef = TSharedPtr<RHIDevice>;
+    using RHISwapchainRef = TSharedPtr<RHISwapchain>;
+
+    using RHIBufferRef = TSharedPtr<RHIBuffer>;
+    using RHITextureRef = TSharedPtr<RHITexture>;
+
+    using RHISemaphoreRef = TSharedPtr<RHISemaphore>;
+    using RHICommandQueueRef = TSharedPtr<RHICommandQueue>;
+    using RHICommandBufferPoolRef = TSharedPtr<RHICommandBufferPool>;
+    using RHICommandBufferRef = TSharedPtr<RHICommandBuffer>;
+
+    using RHIRenderPassRef = TSharedPtr<RHIRenderPass>;
+    using RHIFramebufferRef = TSharedPtr<RHIFramebuffer>;
+
+    using RHIShaderRef = TSharedPtr<RHIShader>;
+    using RHIPipelineRef = TSharedPtr<RHIPipelineState>;
+    using RHIRasterPipelineRef = TSharedPtr<RHIRasterPipelineState>;
+    using RHIComputePipelineRef = TSharedPtr<RHIComputePipelineState>;
 
 }

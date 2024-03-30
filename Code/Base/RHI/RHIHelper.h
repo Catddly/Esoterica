@@ -5,9 +5,7 @@
 
 namespace EE::RHI
 {
-    class RHICommandBuffer;
-
-    using ImmediateCommandCallback = TFunction<bool( RHICommandBuffer* )>;
+    using ImmediateCommandCallback = TFunction<bool( RHICommandBufferRef& )>;
 
     // Dispatch a immediate command buffer to its command queue.
     // CPU will wait until GPU finished this command.

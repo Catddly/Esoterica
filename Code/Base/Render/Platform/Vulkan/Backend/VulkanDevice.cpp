@@ -91,7 +91,7 @@ namespace EE::Render
 
             for ( auto& threadCommandPool : m_immediateGraphicThreadCommandPools )
             {
-                EE::Delete( threadCommandPool.second );
+                threadCommandPool.second.reset();
             }
 
             //if ( m_immediateTransferCommandBufferPool )
@@ -101,22 +101,22 @@ namespace EE::Render
 
             for ( auto& commandPool : m_commandBufferPool )
             {
-                EE::Delete( commandPool );
+                commandPool.reset();
             }
 
             if ( m_pGlobalGraphicQueue )
             {
-                EE::Delete( m_pGlobalGraphicQueue );
+                m_pGlobalGraphicQueue.reset();
             }
 
             if ( m_pGlobalTransferQueue )
             {
-                EE::Delete( m_pGlobalTransferQueue );
+                m_pGlobalTransferQueue.reset();
             }
 
             for ( auto& deferReleaseQueue : m_deferReleaseQueues )
             {
-                deferReleaseQueue.ReleaseAllStaleResources( this );
+                deferReleaseQueue.ReleaseAllStaleResources( shared_from_this() );
             }
 
             DestroyStaticSamplers();
@@ -148,7 +148,7 @@ namespace EE::Render
             //-------------------------------------------------------------------------
             
             uint32_t const frameIndex = GetDeviceFrameIndex();
-            m_deferReleaseQueues[frameIndex].ReleaseAllStaleResources( this );
+            m_deferReleaseQueues[frameIndex].ReleaseAllStaleResources( shared_from_this() );
 
             // Reset command buffer pool
             //-------------------------------------------------------------------------
@@ -173,7 +173,7 @@ namespace EE::Render
             }
         }
 
-        RHI::RHICommandBuffer* VulkanDevice::AllocateCommandBuffer()
+        RHI::RHICommandBufferRef VulkanDevice::AllocateCommandBuffer()
         {
             auto& commandBufferPool = GetCurrentFrameCommandBufferPool();
 
@@ -200,12 +200,12 @@ namespace EE::Render
             return commandBufferPool.Allocate();
         }
 
-        RHI::RHICommandQueue* VulkanDevice::GetMainGraphicCommandQueue()
+        RHI::RHICommandQueueRef VulkanDevice::GetMainGraphicCommandQueue()
         {
             return m_pGlobalGraphicQueue;
         }
 
-        RHI::RHICommandBuffer* VulkanDevice::GetImmediateGraphicCommandBuffer()
+        RHI::RHICommandBufferRef VulkanDevice::GetImmediateGraphicCommandBuffer()
         {
             Threading::ThreadID const threadId = Threading::GetCurrentThreadID();
 
@@ -214,7 +214,7 @@ namespace EE::Render
             auto iterator = m_immediateGraphicThreadCommandPools.find( threadId );
             if ( iterator == m_immediateGraphicThreadCommandPools.end() )
             {
-                auto* pThreadCommandPool = EE::New<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
+                auto pThreadCommandPool = RHI::MakeRHIObject<VulkanCommandBufferPool>( this, m_pGlobalGraphicQueue );
                 m_immediateGraphicThreadCommandPools.insert( { threadId, pThreadCommandPool } );
 
                 return pThreadCommandPool->Allocate();
@@ -234,7 +234,7 @@ namespace EE::Render
             //return m_immediateGraphicCommandBufferPool->Allocate();
         }
 
-        RHI::RHICommandBuffer* VulkanDevice::GetImmediateTransferCommandBuffer()
+        RHI::RHICommandBufferRef VulkanDevice::GetImmediateTransferCommandBuffer()
         {
             //if ( !m_immediateTransferCommandBufferPool )
             //{
@@ -246,15 +246,14 @@ namespace EE::Render
             return nullptr;
         }
 
-        bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
+        bool VulkanDevice::BeginCommandBuffer( RHI::RHICommandBufferRef& pCommandBuffer )
         {
             if ( !pCommandBuffer )
             {
                 return false;
             }
 
-            auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
-            EE_ASSERT( pVkCommandBuffer );
+            auto pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
 
             if ( pVkCommandBuffer->IsRecording() )
             {
@@ -272,12 +271,11 @@ namespace EE::Render
             return true;
         }
 
-        void VulkanDevice::EndCommandBuffer( RHI::RHICommandBuffer* pCommandBuffer )
+        void VulkanDevice::EndCommandBuffer( RHI::RHICommandBufferRef& pCommandBuffer )
         {
             EE_ASSERT( pCommandBuffer );
 
-            auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
-            EE_ASSERT( pVkCommandBuffer );
+            auto pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
             EE_ASSERT( pVkCommandBuffer->IsRecording() );
 
             VK_SUCCEEDED( vkEndCommandBuffer( pVkCommandBuffer->m_pHandle ) );
@@ -285,28 +283,24 @@ namespace EE::Render
         }
 
         void VulkanDevice::SubmitCommandBuffer(
-            RHI::RHICommandBuffer* pCommandBuffer,
-            TSpan<RHI::RHISemaphore*> pWaitSemaphores,
-            TSpan<RHI::RHISemaphore*> pSignalSemaphores,
+            RHI::RHICommandBufferRef& pCommandBuffer,
+            TSpan<RHI::RHISemaphoreRef&> pWaitSemaphores,
+            TSpan<RHI::RHISemaphoreRef&> pSignalSemaphores,
             TSpan<Render::PipelineStage> waitStages
         )
         {
             if ( pCommandBuffer )
             {
-                auto* pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
-                EE_ASSERT( pVkCommandBuffer );
+                auto pVkCommandBuffer = RHI::RHIDowncast<VulkanCommandBuffer>( pCommandBuffer );
                 EE_ASSERT( !pVkCommandBuffer->IsRecording() );
 
-                auto* pCommandBufferPool = pVkCommandBuffer->m_pCommandBufferPool;
-                EE_ASSERT( pCommandBufferPool );
-
-                pCommandBufferPool->Submit( pVkCommandBuffer, pWaitSemaphores, pSignalSemaphores, waitStages );
+                pVkCommandBuffer->m_pCommandBufferPool->Submit( pCommandBuffer, pWaitSemaphores, pSignalSemaphores, waitStages );
             }
         }
 
 		//-------------------------------------------------------------------------
 
-        RHI::RHITexture* VulkanDevice::CreateTexture( RHI::RHITextureCreateDesc const& createDesc )
+        RHI::RHITextureRef VulkanDevice::CreateTexture( RHI::RHITextureCreateDesc const& createDesc )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -346,7 +340,8 @@ namespace EE::Render
             bool bRequireDedicatedMemory = false;
             uint32_t allcatedMemorySize = 0;
 
-            VulkanTexture* pVkTexture = EE::New<VulkanTexture>();
+            RHI::RHITextureRef pTexture = RHI::MakeRHIObject<VulkanTexture>();
+            auto pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture );
 
             #if VULKAN_USE_VMA_ALLOCATION
             VmaAllocationCreateInfo vmaAllocationCI = {};
@@ -413,10 +408,10 @@ namespace EE::Render
                 ImmediateUploadTextureData( pVkTexture, createDesc.m_bufferData );
             }
 
-            return pVkTexture;
+            return pTexture;
         }
 
-        void VulkanDevice::DestroyTexture( RHI::RHITexture* pTexture )
+        void VulkanDevice::DestroyTexture( RHI::RHITextureRef& pTexture )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -426,17 +421,15 @@ namespace EE::Render
             //-------------------------------------------------------------------------
 
             EE_ASSERT( pTexture != nullptr );
-            auto* pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture );
-            EE_ASSERT( pVkTexture && pVkTexture->m_pHandle != nullptr );
+            auto pVkTexture = RHI::RHIDowncast<VulkanTexture>( pTexture );
+            EE_ASSERT( pVkTexture->m_pHandle != nullptr );
 
             if ( !pVkTexture->m_waitToFlushMappedMemory.empty() )
             {
                 EE_LOG_WARNING("Render", "VulkanDevice", "Try to destroy texture with host data to upload. Force upload ");
             }
 
-            RHI::RHIDeviceRef thisRef;
-            thisRef.reset( this );
-            pVkTexture->ClearAllViews( thisRef );
+            pVkTexture->ClearAllViews( shared_from_this() );
 
             // Note: swapchain texture has null allocation
             if ( pVkTexture->m_allocation == nullptr )
@@ -460,10 +453,10 @@ namespace EE::Render
             }
             #endif // VULKAN_USE_VMA_ALLOCATION
 
-            EE::Delete( pTexture );
+            pTexture.reset();
         }
 
-        RHI::RHIBuffer* VulkanDevice::CreateBuffer( RHI::RHIBufferCreateDesc const& createDesc )
+        RHI::RHIBufferRef VulkanDevice::CreateBuffer( RHI::RHIBufferCreateDesc const& createDesc )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -484,7 +477,8 @@ namespace EE::Render
 
             uint32_t allcatedMemorySize = 0;
 
-            VulkanBuffer* pVkBuffer = EE::New<VulkanBuffer>();
+            RHI::RHIBufferRef pBuffer = RHI::MakeRHIObject<VulkanBuffer>();
+            auto pVkBuffer = RHI::RHIDowncast<VulkanBuffer>( pBuffer );
 
             #if VULKAN_USE_VMA_ALLOCATION
             VmaAllocationCreateInfo vmaAllocationCI = {};
@@ -557,7 +551,7 @@ namespace EE::Render
             return pVkBuffer;
         }
 
-        void VulkanDevice::DestroyBuffer( RHI::RHIBuffer* pBuffer )
+        void VulkanDevice::DestroyBuffer( RHI::RHIBufferRef& pBuffer )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -581,7 +575,7 @@ namespace EE::Render
             EE::Delete( pVkBuffer );
         }
 
-        RHI::RHISemaphore* VulkanDevice::CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc const& createDesc )
+        RHI::RHISemaphoreRef VulkanDevice::CreateSyncSemaphore( RHI::RHISemaphoreCreateDesc const& createDesc )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -599,7 +593,7 @@ namespace EE::Render
             return pVkSemaphore;
         }
 
-        void VulkanDevice::DestroySyncSemaphore( RHI::RHISemaphore* pShader )
+        void VulkanDevice::DestroySyncSemaphore( RHI::RHISemaphoreRef& pShader )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -612,7 +606,7 @@ namespace EE::Render
             EE::Delete( pVkSemaphore );
         }
 
-        RHI::RHIShader* VulkanDevice::CreateShader( RHI::RHIShaderCreateDesc const& createDesc )
+        RHI::RHIShaderRef VulkanDevice::CreateShader( RHI::RHIShaderCreateDesc const& createDesc )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -630,7 +624,7 @@ namespace EE::Render
             return pVkShader;
         }
 
-		void VulkanDevice::DestroyShader( RHI::RHIShader* pShader )
+		void VulkanDevice::DestroyShader( RHI::RHIShaderRef& pShader )
 		{
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -645,7 +639,7 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        RHI::RHIRenderPass* VulkanDevice::CreateRenderPass( RHI::RHIRenderPassCreateDesc const& createDesc )
+        RHI::RHIRenderPassRef VulkanDevice::CreateRenderPass( RHI::RHIRenderPassCreateDesc const& createDesc )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -725,7 +719,7 @@ namespace EE::Render
             return pVkRenderPass;
         }
 
-        void VulkanDevice::DestroyRenderPass( RHI::RHIRenderPass* pRenderPass )
+        void VulkanDevice::DestroyRenderPass( RHI::RHIRenderPassRef& pRenderPass )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -741,7 +735,7 @@ namespace EE::Render
 
         //-------------------------------------------------------------------------
 
-        RHI::RHIPipelineState* VulkanDevice::CreateRasterPipelineState( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders )
+        RHI::RHIPipelineRef VulkanDevice::CreateRasterPipeline( RHI::RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -982,7 +976,7 @@ namespace EE::Render
             return pVkPipelineStage;
         }
 
-        void VulkanDevice::DestroyRasterPipelineState( RHI::RHIPipelineState* pPipelineState )
+        void VulkanDevice::DestroyRasterPipeline( RHI::RHIPipelineRef& pPipelineState )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -996,7 +990,7 @@ namespace EE::Render
             EE::Delete( pVkPipelineState );
         }
 
-        RHI::RHIPipelineState* VulkanDevice::CreateComputePipelineState( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader )
+        RHI::RHIPipelineRef VulkanDevice::CreateComputePipeline( RHI::RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
@@ -1073,18 +1067,18 @@ namespace EE::Render
             return pVkPipelineStage;
         }
 
-        void VulkanDevice::DestroyComputePipelineState( RHI::RHIPipelineState* pPipelineState )
+        void VulkanDevice::DestroyComputePipeline( RHI::RHIPipelineRef& pPipelineState )
         {
             Threading::RecursiveScopeLock lock( m_resourceCreationMutex );
 
             EE_ASSERT( pPipelineState != nullptr );
-            auto* pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
+            auto pVkPipelineState = RHI::RHIDowncast<VulkanComputePipelineState>( pPipelineState );
             EE_ASSERT( pVkPipelineState->m_pipelineState.m_pPipeline != nullptr );
 
             DestroyComputePipelineStateLayout( pVkPipelineState );
             vkDestroyPipeline( m_pHandle, pVkPipelineState->m_pipelineState.m_pPipeline, nullptr );
 
-            EE::Delete( pVkPipelineState );
+            pPipelineState.reset();
         }
 
 		//-------------------------------------------------------------------------
@@ -1333,9 +1327,11 @@ namespace EE::Render
         // Resource
         //-------------------------------------------------------------------------
 
-        void VulkanDevice::ImmediateUploadBufferData( VulkanBuffer* pBuffer, RHI::RHIBufferUploadData const& uploadData )
+        void VulkanDevice::ImmediateUploadBufferData( RHI::RHIBufferRef& pBuffer, RHI::RHIBufferUploadData const& uploadData )
         {
-            EE_ASSERT( pBuffer->m_desc.m_usage.IsFlagSet( RHI::EBufferUsage::TransferDst ) );
+            EE_ASSERT( pBuffer->GetDesc().m_usage.IsFlagSet( RHI::EBufferUsage::TransferDst ) );
+
+            auto pSelfShared = shared_from_this();
 
             // Create staging buffer
             //-------------------------------------------------------------------------
@@ -1344,20 +1340,19 @@ namespace EE::Render
             stagingBufferDesc.m_usage.ClearAllFlags();
             stagingBufferDesc.m_usage.SetFlag( RHI::EBufferUsage::TransferSrc );
             stagingBufferDesc.m_memoryUsage = RHI::ERenderResourceMemoryUsage::CPUToGPU;
-            auto* pStagingBuffer = CreateBuffer( stagingBufferDesc );
-            EE_ASSERT( pStagingBuffer );
+            auto pStagingBuffer = CreateBuffer( stagingBufferDesc );
 
             // Copy data to staging buffer
             //-------------------------------------------------------------------------
 
-            void* pMapped = pStagingBuffer->Map( this );
+            void* pMapped = pStagingBuffer->Map( pSelfShared );
             memcpy( pMapped, uploadData.m_pData, stagingBufferDesc.m_desireSize );
-            pStagingBuffer->Unmap( this );
+            pStagingBuffer->Unmap( pSelfShared );
 
             // Copy staging buffer to buffer
             //-------------------------------------------------------------------------
 
-            DispatchImmediateGraphicCommandAndWait( this, [pStagingBuffer, pBuffer] ( RHI::RHICommandBuffer* pCommandBuffer ) -> bool
+            DispatchImmediateGraphicCommandAndWait( pSelfShared, [=] ( RHI::RHICommandBufferRef& pCommandBuffer ) mutable
             {
                 pCommandBuffer->CopyBufferToBuffer( pStagingBuffer, pBuffer );
                 return true;
@@ -1369,7 +1364,7 @@ namespace EE::Render
             DestroyBuffer( pStagingBuffer );
         }
 
-        void VulkanDevice::ImmediateUploadTextureData( VulkanTexture* pTexture, RHI::RHITextureBufferData const& uploadData )
+        void VulkanDevice::ImmediateUploadTextureData( RHI::RHIDowncastRawPointerGuard<VulkanTexture>& pTexture, RHI::RHITextureBufferData const& uploadData )
         {
             if ( pTexture )
             {
@@ -1377,11 +1372,13 @@ namespace EE::Render
 
                 if ( uploadData.HasValidData() && uploadData.CanBeUsedBy( pTexture->m_desc ) )
                 {
-                    void* pMappedMemory = pTexture->MapSlice( this, 0 );
-                    memcpy( pMappedMemory, uploadData.m_binary.data(), uploadData.m_binary.size() );
-                    pTexture->UnmapSlice( this, 0 );
+                    auto pSelfShared = shared_from_this();
 
-                    pTexture->UploadMappedData( this, RHI::RenderResourceBarrierState::AnyShaderReadSampledImageOrUniformTexelBuffer );
+                    void* pMappedMemory = pTexture->MapSlice( pSelfShared, 0 );
+                    memcpy( pMappedMemory, uploadData.m_binary.data(), uploadData.m_binary.size() );
+                    pTexture->UnmapSlice( pSelfShared, 0 );
+
+                    pTexture->UploadMappedData( pSelfShared, RHI::RenderResourceBarrierState::AnyShaderReadSampledImageOrUniformTexelBuffer );
                 }
             }
         }

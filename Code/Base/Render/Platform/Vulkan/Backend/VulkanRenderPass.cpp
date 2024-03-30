@@ -10,15 +10,15 @@ namespace EE::Render
 {
     namespace Backend
     {
-        RHI::RHIFramebuffer* VulkanFramebufferCache::CreateFramebuffer( RHI::RHIDevice* pDevice, RHI::RHIFramebufferCacheKey const& key )
+        RHI::RHIFramebufferRef VulkanFramebufferCache::CreateFramebuffer( RHI::RHIDeviceRef& pDevice, RHI::RHIFramebufferCacheKey const& key )
         {
-            auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
+            auto pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
             {
                 return nullptr;
             }
 
-            auto* pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( m_pRenderPass );
+            auto pVkRenderPass = RHI::RHIDowncast<VulkanRenderPass>( m_pRenderPass );
             if ( !pVkRenderPass )
             {
                 return nullptr;
@@ -62,7 +62,7 @@ namespace EE::Render
             // Note: we specified VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT flag, so this can be nullptr
             framebufferCI.pAttachments = nullptr;
 
-            auto* pFramebuffer = EE::New<VulkanFramebuffer>();
+            auto pFramebuffer = RHI::MakeRHIObject<VulkanFramebuffer>();
             if ( !pFramebuffer )
             {
                 EE_ASSERT( false );
@@ -72,7 +72,7 @@ namespace EE::Render
             return pFramebuffer;
         }
 
-        void VulkanFramebufferCache::DestroyFramebuffer( RHI::RHIDevice* pDevice, RHI::RHIFramebuffer* pFramebuffer )
+        void VulkanFramebufferCache::DestroyFramebuffer( RHI::RHIDeviceRef& pDevice, RHI::RHIFramebufferRef& pFramebuffer )
         {
             auto* pVkDevice = RHI::RHIDowncast<VulkanDevice>( pDevice );
             if ( !pVkDevice )
@@ -89,8 +89,7 @@ namespace EE::Render
             }
 
             vkDestroyFramebuffer( pVkDevice->m_pHandle, pVkFramebuffer->m_pHandle, nullptr );
-
-            EE::Delete( pFramebuffer );
+            pFramebuffer.reset();
         }
 
         //-------------------------------------------------------------------------

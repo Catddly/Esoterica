@@ -230,7 +230,7 @@ namespace EE::Render
         {
             if ( entry->IsVisible() )
             {
-                pDevice->DestroyRasterPipelineState( entry->m_pPipelineState );
+                pDevice->DestroyRasterPipeline( entry->m_pPipelineState );
                 entry->m_pPipelineState = nullptr;
             }
         }
@@ -243,7 +243,7 @@ namespace EE::Render
         {
             if ( entry->IsVisible() )
             {
-                pDevice->DestroyComputePipelineState( entry->m_pPipelineState );
+                pDevice->DestroyComputePipeline( entry->m_pPipelineState );
                 entry->m_pPipelineState = nullptr;
             }
         }
@@ -403,7 +403,7 @@ namespace EE::Render
         RHI::RHIDevice::CompiledShaderArray compiledShaders;
         compiledShaders.push_back( rasterEntry->m_vertexShader.GetPtr() );
         compiledShaders.push_back( rasterEntry->m_pixelShader.GetPtr() );
-        auto* pPipelineState = pDevice->CreateRasterPipelineState( rasterEntry->m_desc, compiledShaders );
+        auto* pPipelineState = pDevice->CreateRasterPipeline( rasterEntry->m_desc, compiledShaders );
         if ( pPipelineState )
         {
             rasterEntry->m_pPipelineState = pPipelineState;
@@ -424,7 +424,7 @@ namespace EE::Render
 
         // Safety: We make sure compute pipeline state layout will only be created by single thread,
         //         and it ResourcePtr is loaded and will not be changed by RHIDevice.
-        auto* pPipelineState = pDevice->CreateComputePipelineState( computeEntry->m_desc, computeEntry->m_computeShader.GetPtr() );
+        auto* pPipelineState = pDevice->CreateComputePipeline( computeEntry->m_desc, computeEntry->m_computeShader.GetPtr() );
         if ( pPipelineState )
         {
             computeEntry->m_pPipelineState = pPipelineState;

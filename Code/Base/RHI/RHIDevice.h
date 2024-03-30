@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RHITaggedType.h"
+#include "RHIObject.h"
 #include "Base/Render/RenderAPI.h"
 #include "Base/Types/Arrays.h"
 #include "Base/Types/Queue.h"
@@ -8,7 +10,6 @@
 #include "Resource/RHIDeferReleasable.h"
 #include "Resource/RHIDescriptorSet.h"
 #include "Resource/RHIResourceCreationCommons.h"
-#include "RHITaggedType.h"
 
 #include <EASTL/type_traits.h>
 
@@ -21,16 +22,7 @@ namespace EE::Render
 
 namespace EE::RHI
 {
-    class RHIShader;
-    class RHISemaphore;
-    class RHITexture;
-    class RHIBuffer;
-    class RHIRenderPass;
-    class RHIPipelineState;
-
     class RHICPUGPUSync;
-    class RHICommandBuffer;
-    class RHICommandQueue;
 
     //-------------------------------------------------------------------------
 
@@ -42,18 +34,18 @@ namespace EE::RHI
 
     public:
 
-        void ReleaseAllStaleResources( RHIDevice* pDevice );
+        void ReleaseAllStaleResources( RHIDeviceRef& pDevice );
 
     private:
 
-        Threading::LockFreeQueue<RHIDescriptorPool> m_descriptorPools;
-        Threading::LockFreeQueue<RHIBuffer*>        m_deferReleaseBuffers;
-        Threading::LockFreeQueue<RHITexture*>       m_deferReleaseTextures;
+        Threading::LockFreeQueue<RHIDescriptorPool>   m_descriptorPools;
+        Threading::LockFreeQueue<RHIBufferRef>        m_deferReleaseBuffers;
+        Threading::LockFreeQueue<RHITextureRef>       m_deferReleaseTextures;
     };
 
     //-------------------------------------------------------------------------
 
-    class RHIDevice : public RHITaggedType
+    class RHIDevice : public RHITaggedType, public TSharedFromThis<RHIDevice>
     {
     public:
 
@@ -89,48 +81,48 @@ namespace EE::RHI
 
         virtual void WaitUntilIdle() = 0;
 
-        virtual RHICommandBuffer* AllocateCommandBuffer() = 0;
-        virtual RHICommandQueue* GetMainGraphicCommandQueue() = 0;
+        virtual RHICommandBufferRef AllocateCommandBuffer() = 0;
+        virtual RHICommandQueueRef GetMainGraphicCommandQueue() = 0;
 
-        virtual RHICommandBuffer* GetImmediateGraphicCommandBuffer() = 0;
-        virtual RHICommandBuffer* GetImmediateTransferCommandBuffer() = 0;
+        virtual RHICommandBufferRef GetImmediateGraphicCommandBuffer() = 0;
+        virtual RHICommandBufferRef GetImmediateTransferCommandBuffer() = 0;
 
-        virtual bool BeginCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
-        virtual void EndCommandBuffer( RHICommandBuffer* pCommandBuffer ) = 0;
+        virtual bool BeginCommandBuffer( RHICommandBufferRef& pCommandBuffer ) = 0;
+        virtual void EndCommandBuffer( RHICommandBufferRef& pCommandBuffer ) = 0;
 
         virtual void SubmitCommandBuffer(
-            RHICommandBuffer* pCommandBuffer,
-            TSpan<RHISemaphore*> pWaitSemaphores,
-            TSpan<RHISemaphore*> pSignalSemaphores,
+            RHICommandBufferRef& pCommandBuffer,
+            TSpan<RHISemaphoreRef&> pWaitSemaphores,
+            TSpan<RHISemaphoreRef&> pSignalSemaphores,
             TSpan<Render::PipelineStage> waitStages
         ) = 0;
 
         //-------------------------------------------------------------------------
 
-        virtual RHITexture* CreateTexture( RHITextureCreateDesc const& createDesc ) = 0;
-        virtual void        DestroyTexture( RHITexture* pTexture ) = 0;
+        virtual RHITextureRef CreateTexture( RHITextureCreateDesc const& createDesc ) = 0;
+        virtual void          DestroyTexture( RHITextureRef& pTexture ) = 0;
 
-        virtual RHIBuffer* CreateBuffer( RHIBufferCreateDesc const& createDesc ) = 0;
-        virtual void       DestroyBuffer( RHIBuffer* pBuffer ) = 0;
+        virtual RHIBufferRef CreateBuffer( RHIBufferCreateDesc const& createDesc ) = 0;
+        virtual void         DestroyBuffer( RHIBufferRef& pBuffer ) = 0;
 
-        virtual RHIShader* CreateShader( RHIShaderCreateDesc const& createDesc ) = 0;
-        virtual void       DestroyShader( RHIShader* pShader ) = 0;
+        virtual RHIShaderRef CreateShader( RHIShaderCreateDesc const& createDesc ) = 0;
+        virtual void         DestroyShader( RHIShaderRef& pShader ) = 0;
 
-        virtual RHISemaphore* CreateSyncSemaphore( RHISemaphoreCreateDesc const& createDesc ) = 0;
-        virtual void          DestroySyncSemaphore( RHISemaphore* pSemaphore ) = 0;
-
-        //-------------------------------------------------------------------------
-
-        virtual RHIRenderPass* CreateRenderPass( RHIRenderPassCreateDesc const& createDesc ) = 0;
-        virtual void           DestroyRenderPass( RHIRenderPass* pRenderPass ) = 0;
+        virtual RHISemaphoreRef CreateSyncSemaphore( RHISemaphoreCreateDesc const& createDesc ) = 0;
+        virtual void            DestroySyncSemaphore( RHISemaphoreRef& pSemaphore ) = 0;
 
         //-------------------------------------------------------------------------
 
-        virtual RHIPipelineState* CreateRasterPipelineState( RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) = 0;
-        virtual void              DestroyRasterPipelineState( RHIPipelineState* pPipelineState ) = 0;
+        virtual RHIRenderPassRef CreateRenderPass( RHIRenderPassCreateDesc const& createDesc ) = 0;
+        virtual void             DestroyRenderPass( RHIRenderPassRef& pRenderPass ) = 0;
 
-        virtual RHIPipelineState* CreateComputePipelineState( RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) = 0;
-        virtual void              DestroyComputePipelineState( RHIPipelineState* pPipelineState ) = 0;
+        //-------------------------------------------------------------------------
+
+        virtual RHIPipelineRef CreateRasterPipeline( RHIRasterPipelineStateCreateDesc const& createDesc, CompiledShaderArray const& compiledShaders ) = 0;
+        virtual void           DestroyRasterPipeline( RHIPipelineRef& pPipelineState ) = 0;
+
+        virtual RHIPipelineRef CreateComputePipeline( RHIComputePipelineStateCreateDesc const& createDesc, Render::ComputeShader const* pCompiledShader ) = 0;
+        virtual void           DestroyComputePipeline( RHIPipelineRef& pPipelineState ) = 0;
 
         //-------------------------------------------------------------------------
 
